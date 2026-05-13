@@ -1,0 +1,206 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  direction: rtl;
+  font-size: 16px;
+}
+
+body {
+  background-color: #060d18;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: 'Noto Naskh Arabic', 'Cairo', sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a1628;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e3a5f;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #c9a84c;
+}
+
+/* Ant Design dark theme overrides */
+.ant-btn-primary {
+  background-color: #c9a84c !important;
+  border-color: #c9a84c !important;
+}
+
+.ant-btn-primary:hover {
+  background-color: #d4b86a !important;
+  border-color: #d4b86a !important;
+}
+
+.ant-input:focus,
+.ant-input-focused,
+.ant-select-focused .ant-select-selector {
+  border-color: #c9a84c !important;
+  box-shadow: 0 0 0 2px rgba(201, 168, 76, 0.2) !important;
+}
+
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #c9a84c !important;
+}
+
+.ant-tabs-ink-bar {
+  background: #c9a84c !important;
+}
+
+.ant-menu-item-selected {
+  background-color: rgba(201, 168, 76, 0.15) !important;
+  color: #c9a84c !important;
+}
+
+.ant-menu-item-selected .anticon,
+.ant-menu-item-selected span {
+  color: #c9a84c !important;
+}
+
+.ant-switch-checked {
+  background-color: #c9a84c !important;
+}
+
+.ant-progress-bg {
+  background-color: #c9a84c !important;
+}
+
+.ant-slider-track {
+  background-color: #c9a84c !important;
+}
+
+.ant-slider-handle::after {
+  box-shadow: 0 0 0 2px #c9a84c !important;
+}
+
+/* Blinking cursor animation */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: #c9a84c;
+  margin-right: 2px;
+  vertical-align: text-bottom;
+  animation: blink 1s infinite;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(10, 22, 40, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+}
+
+/* RTL overrides for antd */
+.ant-modal,
+.ant-drawer,
+.ant-select-dropdown,
+.ant-dropdown-menu {
+  direction: rtl;
+  font-family: 'Noto Naskh Arabic', 'Cairo', sans-serif;
+}
+
+.ant-table {
+  direction: rtl;
+}
+
+.ant-form {
+  direction: rtl;
+}
+
+/* Collection color pills */
+.collection-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+/* Smooth transitions */
+.ant-menu-item,
+.ant-btn,
+.ant-card {
+  transition: all 0.2s ease !important;
+}
+
+/* Gold gradient text */
+.gold-text {
+  background: linear-gradient(135deg, #c9a84c, #f0d080);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Message bubbles */
+.message-user {
+  background: linear-gradient(135deg, #c9a84c, #a8892e);
+  color: #000;
+  border-radius: 16px 16px 4px 16px;
+  padding: 12px 16px;
+  max-width: 70%;
+  align-self: flex-end;
+  margin-right: 8px;
+  direction: rtl;
+  text-align: right;
+}
+
+.message-assistant {
+  background: #0d1b2e;
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: 16px 16px 16px 4px;
+  padding: 12px 16px;
+  max-width: 80%;
+  align-self: flex-start;
+  margin-left: 8px;
+  direction: rtl;
+  text-align: right;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .message-user,
+  .message-assistant {
+    max-width: 90%;
+  }
+}
