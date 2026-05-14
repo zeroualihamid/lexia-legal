@@ -24,8 +24,26 @@ export const COLLECTION_LABELS: Record<string, string> = {
   user_documents: 'وثائقي',
 }
 
+// Brand accent — fixed across themes.
 export const GOLD = '#c9a84c'
-export const NAVY = '#0a1628'
-export const DARK = '#060d18'
-export const DARK_CARD = '#0d1b2e'
-export const BORDER_COLOR = 'rgba(201, 168, 76, 0.2)'
+
+// Theme-aware tokens. These resolve to the CSS variables defined in
+// `index.css`, which switch on the [data-theme] attribute of <html>.
+// Existing imports of `DARK`/`NAVY`/`DARK_CARD`/`BORDER_COLOR` now flip
+// automatically with the active theme.
+export const DARK = 'var(--color-bg-base)'
+export const NAVY = 'var(--color-bg-sidebar)'
+export const DARK_CARD = 'var(--color-bg-card)'
+export const ELEVATED = 'var(--color-bg-elevated)'
+export const BG_DEEP = 'var(--color-bg-deep)'
+export const BORDER_COLOR = 'var(--color-border)'
+export const BORDER_SUBTLE = 'var(--color-border-subtle)'
+
+export const TEXT_PRIMARY = 'var(--color-text-primary)'
+export const TEXT_SECONDARY = 'var(--color-text-secondary)'
+export const TEXT_TERTIARY = 'var(--color-text-tertiary)'
+export const TEXT_QUATERNARY = 'var(--color-text-quaternary)'
+
+export const GOLD_TINT = 'var(--color-gold-tint)'
+export const GOLD_TINT_STRONG = 'var(--color-gold-tint-strong)'
+export const GOLD_BORDER = 'var(--color-gold-border)'

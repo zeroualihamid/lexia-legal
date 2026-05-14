@@ -87,6 +87,13 @@ CREATE TYPE transport_type AS ENUM (
     'http'
 );
 
+CREATE TYPE analysis_status AS ENUM (
+    'pending',
+    'running',
+    'completed',
+    'failed'
+);
+
 CREATE TYPE auth_type AS ENUM (
     'none',
     'api_key',
@@ -570,3 +577,27 @@ INSERT INTO agent_configurations (
     TRUE,
     TRUE
 );
+
+-- ────────────────────────────────────────────────────────────
+-- Judgment Analyses (Claude Code CLI — admin)
+-- One row per uploaded judgment PDF + its structured French analysis.
+-- ────────────────────────────────────────────────────────────
+CREATE TABLE judgment_analyses (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    filename        TEXT NOT NULL,
+    pdf_bucket      TEXT NOT NULL,
+    pdf_key         TEXT NOT NULL,
+    status          analysis_status NOT NULL DEFAULT 'pending',
+    markdown_result TEXT,
+    error_message   TEXT,
+    model           TEXT,
+    prompt_version  TEXT NOT NULL DEFAULT 'v1',
+    created_by      UUID,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    started_at      TIMESTAMPTZ,
+    completed_at    TIMESTAMPTZ
+);
+
+CREATE INDEX idx_judgment_analyses_status     ON judgment_analyses (status);
+CREATE INDEX idx_judgment_analyses_created_by ON judgment_analyses (created_by);
+CREATE INDEX idx_judgment_analyses_created_at ON judgment_analyses (created_at DESC);

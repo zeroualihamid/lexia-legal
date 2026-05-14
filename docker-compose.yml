@@ -56,6 +56,15 @@ services:
       - "4000"
     env_file:
       - .env
+    volumes:
+      # Claude Code CLI OAuth credentials from the host. Run `claude login`
+      # on the host once; the backend container then bills runs against that
+      # subscription. Do NOT set ANTHROPIC_API_KEY in .env or the CLI will
+      # prefer it over OAuth.
+      - ${HOME}/.claude:/root/.claude
+      # PDF staging dir for judgment analyses (worker writes here before
+      # invoking the CLI, then cleans up).
+      - claude_tmp:/tmp/judgments
     depends_on:
       postgres:
         condition: service_healthy
@@ -250,6 +259,8 @@ volumes:
   minio_data:
     driver: local
   redis_data:
+    driver: local
+  claude_tmp:
     driver: local
 
 # ─── Networks ─────────────────────────────────────────────────

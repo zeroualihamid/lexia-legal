@@ -62,6 +62,7 @@ async function bootstrap() {
   const documentQueue = new Queue('document-processing', { redis: redisConfig });
   const scrapingQueue = new Queue('scraping', { redis: redisConfig });
   const embeddingQueue = new Queue('embedding', { redis: redisConfig });
+  const judgmentAnalysisQueue = new Queue('judgment-analysis', { redis: redisConfig });
 
   const bullBoardAdapter = new BullBoardExpressAdapter();
   bullBoardAdapter.setBasePath('/bull-board');
@@ -71,6 +72,7 @@ async function bootstrap() {
       new BullAdapter(documentQueue),
       new BullAdapter(scrapingQueue),
       new BullAdapter(embeddingQueue),
+      new BullAdapter(judgmentAnalysisQueue),
     ],
     serverAdapter: bullBoardAdapter,
   });

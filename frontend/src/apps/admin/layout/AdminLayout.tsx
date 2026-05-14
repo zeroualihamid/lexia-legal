@@ -4,6 +4,7 @@ import { Layout, Menu, Button, Avatar, Dropdown, Badge, Tooltip, Space } from 'a
 import {
   DashboardOutlined,
   FileTextOutlined,
+  FileSearchOutlined,
   CloudDownloadOutlined,
   RobotOutlined,
   TeamOutlined,
@@ -16,7 +17,9 @@ import {
   SettingOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../../../shared/store/authStore'
-import { GOLD, DARK, NAVY, BORDER_COLOR } from '../../../shared/constants'
+import { useThemeStore } from '../../../shared/store/themeStore'
+import { GOLD, DARK, NAVY, BORDER_COLOR, TEXT_SECONDARY, TEXT_TERTIARY } from '../../../shared/constants'
+import { ThemeToggle } from '../../../shared/components/ThemeToggle'
 
 const { Sider, Header, Content } = Layout
 
@@ -24,6 +27,7 @@ export function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { email, accessLevel, keycloak, logout } = useAuthStore()
+  const themeMode = useThemeStore((s) => s.mode)
   const [collapsed, setCollapsed] = useState(false)
 
   const isSuperAdmin = accessLevel === 'SUPERADMIN'
@@ -48,6 +52,11 @@ export function AdminLayout() {
       key: '/admin/agent',
       icon: <RobotOutlined />,
       label: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إعداد الوكيل</span>,
+    },
+    {
+      key: '/admin/judgment-analysis',
+      icon: <FileSearchOutlined />,
+      label: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>تحليل الأحكام</span>,
     },
     ...(isSuperAdmin
       ? [
@@ -157,7 +166,7 @@ export function AdminLayout() {
             marginTop: 8,
             direction: 'rtl',
           }}
-          theme="dark"
+          theme={themeMode === 'dark' ? 'dark' : 'light'}
         />
       </Sider>
 
@@ -189,14 +198,14 @@ export function AdminLayout() {
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed(!collapsed)}
-              style={{ color: 'rgba(255,255,255,0.6)' }}
+              style={{ color: TEXT_SECONDARY }}
             />
 
             {/* Breadcrumb */}
             <span
               style={{
                 fontSize: 15,
-                color: 'rgba(255,255,255,0.7)',
+                color: TEXT_SECONDARY,
                 fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
               }}
             >
@@ -205,10 +214,12 @@ export function AdminLayout() {
           </div>
 
           <Space>
+            <ThemeToggle />
+
             {/* Language toggle */}
             <Button
               type="text"
-              style={{ color: 'rgba(255,255,255,0.5)', fontFamily: "'Cairo', sans-serif", fontSize: 13 }}
+              style={{ color: TEXT_TERTIARY, fontFamily: "'Cairo', sans-serif", fontSize: 13 }}
             >
               FR / AR
             </Button>
@@ -219,7 +230,7 @@ export function AdminLayout() {
                 <Button
                   type="text"
                   icon={<BellOutlined />}
-                  style={{ color: 'rgba(255,255,255,0.6)' }}
+                  style={{ color: TEXT_SECONDARY }}
                 />
               </Badge>
             </Tooltip>
@@ -241,7 +252,7 @@ export function AdminLayout() {
                   <span
                     style={{
                       fontSize: 13,
-                      color: 'rgba(255,255,255,0.6)',
+                      color: TEXT_SECONDARY,
                       fontFamily: "'Cairo', sans-serif",
                       maxWidth: 120,
                       overflow: 'hidden',

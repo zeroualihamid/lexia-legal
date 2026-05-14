@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ConfigProvider, theme, Spin } from 'antd'
 import Keycloak from 'keycloak-js'
 import { useAuthStore } from './shared/store/authStore'
+import { useThemeStore } from './shared/store/themeStore'
 import { UserLayout } from './apps/user/layout/UserLayout'
 import { ChatPage } from './apps/user/chat/ChatPage'
 import { SearchPage } from './apps/user/search/SearchPage'
@@ -14,7 +15,8 @@ import { ScraperPage } from './apps/admin/scraper/ScraperPage'
 import { AgentPage } from './apps/admin/agent/AgentPage'
 import { AnalyticsPage } from './apps/admin/analytics/AnalyticsPage'
 import { UsersPage } from './apps/admin/users/UsersPage'
-import { DARK, GOLD, NAVY } from './shared/constants'
+import { JudgmentAnalysisPage } from './apps/admin/judgment-analysis/JudgmentAnalysisPage'
+import { DARK, GOLD } from './shared/constants'
 
 const keycloakConfig = {
   url: import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8080',
@@ -24,7 +26,13 @@ const keycloakConfig = {
 
 export default function App() {
   const setAuth = useAuthStore((s) => s.setAuth)
+  const themeMode = useThemeStore((s) => s.mode)
   const [keycloakReady, setKeycloakReady] = useState(false)
+
+  // Reflect the active theme on <html> so CSS variables in index.css resolve correctly.
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', themeMode)
+  }, [themeMode])
 
   useEffect(() => {
     const kc = new Keycloak(keycloakConfig)
@@ -94,43 +102,45 @@ export default function App() {
     )
   }
 
+  const isDark = themeMode === 'dark'
+
   return (
     <ConfigProvider
       direction="rtl"
       theme={{
-        algorithm: theme.darkAlgorithm,
+        algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
           colorPrimary: GOLD,
-          colorBgBase: DARK,
-          colorBgContainer: '#0d1b2e',
-          colorBgElevated: '#0f2040',
-          colorBorder: 'rgba(201, 168, 76, 0.2)',
-          colorBorderSecondary: 'rgba(255,255,255,0.08)',
-          colorText: 'rgba(255,255,255,0.85)',
-          colorTextSecondary: 'rgba(255,255,255,0.55)',
+          colorBgBase: 'var(--color-bg-base)',
+          colorBgContainer: 'var(--color-bg-card)',
+          colorBgElevated: 'var(--color-bg-elevated)',
+          colorBorder: 'var(--color-border)',
+          colorBorderSecondary: 'var(--color-border-subtle)',
+          colorText: 'var(--color-text-primary)',
+          colorTextSecondary: 'var(--color-text-secondary)',
           borderRadius: 8,
           fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
         },
         components: {
           Menu: {
-            darkItemBg: NAVY,
-            darkSubMenuItemBg: '#07111f',
-            itemBg: NAVY,
-            subMenuItemBg: '#07111f',
+            darkItemBg: 'var(--color-bg-sidebar)',
+            darkSubMenuItemBg: 'var(--color-bg-deep)',
+            itemBg: 'var(--color-bg-sidebar)',
+            subMenuItemBg: 'var(--color-bg-deep)',
           },
           Table: {
-            headerBg: '#0a1628',
-            rowHoverBg: 'rgba(201, 168, 76, 0.05)',
+            headerBg: 'var(--color-bg-sidebar)',
+            rowHoverBg: 'var(--color-gold-tint)',
           },
           Card: {
-            colorBgContainer: '#0d1b2e',
+            colorBgContainer: 'var(--color-bg-card)',
           },
           Modal: {
-            contentBg: '#0d1b2e',
-            headerBg: '#0d1b2e',
+            contentBg: 'var(--color-bg-card)',
+            headerBg: 'var(--color-bg-card)',
           },
           Drawer: {
-            colorBgContainer: '#0d1b2e',
+            colorBgContainer: 'var(--color-bg-card)',
           },
         },
       }}
@@ -147,6 +157,7 @@ export default function App() {
             <Route path="documents" element={<DocumentsPage />} />
             <Route path="scraper" element={<ScraperPage />} />
             <Route path="agent" element={<AgentPage />} />
+            <Route path="judgment-analysis" element={<JudgmentAnalysisPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
           </Route>

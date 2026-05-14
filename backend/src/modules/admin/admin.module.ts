@@ -32,9 +32,13 @@ import { AgentConfigService } from './agent-config/agent-config.service';
 // Chat Module for ToolExecutorService
 import { ChatModule } from '../chat/chat.module';
 
+// Judgment Analysis (Claude Code CLI)
+import { JudgmentAnalysisModule } from './judgment-analysis/judgment-analysis.module';
+
 @Module({
   imports: [
     ChatModule,
+    JudgmentAnalysisModule,
     BullModule.registerQueue(
       { name: 'scraping' },
       { name: 'document-processing' },
