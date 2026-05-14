@@ -67,7 +67,7 @@ function WelcomeScreen() {
         <p
           style={{
             fontSize: 15,
-            color: 'rgba(255,255,255,0.55)',
+            color: 'var(--color-text-secondary)',
             fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
             maxWidth: 500,
             lineHeight: 1.7,
@@ -96,7 +96,7 @@ function WelcomeScreen() {
               padding: '12px 16px',
               cursor: 'pointer',
               fontSize: 13,
-              color: 'rgba(255,255,255,0.7)',
+              color: 'var(--color-text-secondary)',
               fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
               textAlign: 'right',
               lineHeight: 1.5,
@@ -104,11 +104,11 @@ function WelcomeScreen() {
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = `rgba(201,168,76,0.5)`
-              e.currentTarget.style.color = 'rgba(255,255,255,0.9)'
+              e.currentTarget.style.color = 'var(--color-text-primary)'
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = BORDER_COLOR
-              e.currentTarget.style.color = 'rgba(255,255,255,0.7)'
+              e.currentTarget.style.color = 'var(--color-text-secondary)'
             }}
           >
             {p}
@@ -128,10 +128,10 @@ function ToolIndicator({ name, result, status }: { name: string; result?: string
         gap: 6,
         padding: '4px 10px',
         borderRadius: 8,
-        background: 'rgba(255,255,255,0.05)',
-        border: '1px solid rgba(255,255,255,0.1)',
+        background: 'var(--color-surface-soft)',
+        border: '1px solid var(--color-border-subtle)',
         fontSize: 12,
-        color: 'rgba(255,255,255,0.6)',
+        color: 'var(--color-text-secondary)',
         fontFamily: "'Cairo', sans-serif",
         margin: '2px 0',
       }}
@@ -143,7 +143,7 @@ function ToolIndicator({ name, result, status }: { name: string; result?: string
       )}
       <span>{name}</span>
       {result && (
-        <span style={{ color: 'rgba(255,255,255,0.4)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ color: 'var(--color-text-tertiary)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           : {result}
         </span>
       )}
@@ -283,7 +283,7 @@ export function ChatPage() {
                           label: (
                             <span style={{
                               fontSize: 12,
-                              color: 'rgba(255,255,255,0.5)',
+                              color: 'var(--color-text-secondary)',
                               fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
                             }}>
                               المصادر ({msg.sources.length})
@@ -295,8 +295,8 @@ export function ChatPage() {
                                 <div
                                   key={i}
                                   style={{
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    background: 'var(--color-surface-faint)',
+                                    border: '1px solid var(--color-border-subtle)',
                                     borderRadius: 8,
                                     padding: '8px 12px',
                                     direction: 'rtl',
@@ -313,7 +313,7 @@ export function ChatPage() {
                                   <div style={{
                                     fontSize: 13,
                                     fontWeight: 600,
-                                    color: 'rgba(255,255,255,0.8)',
+                                    color: 'var(--color-text-primary)',
                                     fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
                                     marginBottom: 4,
                                   }}>
@@ -322,7 +322,7 @@ export function ChatPage() {
                                   {src.snippet && (
                                     <div style={{
                                       fontSize: 12,
-                                      color: 'rgba(255,255,255,0.45)',
+                                      color: 'var(--color-text-tertiary)',
                                       fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
                                       lineHeight: 1.6,
                                     }}>
@@ -347,7 +347,7 @@ export function ChatPage() {
                         background: 'rgba(201,168,76,0.08)',
                         border: `1px solid rgba(201,168,76,0.2)`,
                         fontSize: 12,
-                        color: 'rgba(255,255,255,0.5)',
+                        color: 'var(--color-text-secondary)',
                         fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
                         cursor: 'pointer',
                         maxWidth: '80%',
@@ -388,7 +388,7 @@ export function ChatPage() {
                   }}
                 >
                   {currentMessage || (
-                    <span style={{ color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>
+                    <span style={{ color: 'var(--color-text-tertiary)', fontStyle: 'italic' }}>
                       جاري التفكير...
                     </span>
                   )}
@@ -441,8 +441,8 @@ export function ChatPage() {
             disabled={isStreaming}
             style={{
               background: DARK_CARD,
-              border: `1px solid ${inputValue ? 'rgba(201,168,76,0.4)' : 'rgba(255,255,255,0.1)'}`,
-              color: 'rgba(255,255,255,0.85)',
+              border: `1px solid ${inputValue ? 'rgba(201,168,76,0.4)' : 'var(--color-border-subtle)'}`,
+              color: 'var(--color-text-primary)',
               borderRadius: 12,
               padding: '10px 14px',
               fontSize: 14,
@@ -460,7 +460,7 @@ export function ChatPage() {
             style={{
               background: inputValue.trim() && !isStreaming ? GOLD : 'rgba(201,168,76,0.3)',
               borderColor: 'transparent',
-              color: inputValue.trim() && !isStreaming ? '#000' : 'rgba(255,255,255,0.3)',
+              color: inputValue.trim() && !isStreaming ? '#000' : 'var(--color-text-quaternary)',
               height: 42,
               width: 42,
               borderRadius: 10,
@@ -477,7 +477,7 @@ export function ChatPage() {
             style={{
               textAlign: 'center',
               fontSize: 11,
-              color: 'rgba(255,255,255,0.3)',
+              color: 'var(--color-text-quaternary)',
               marginTop: 8,
               fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
             }}

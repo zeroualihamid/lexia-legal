@@ -115,7 +115,7 @@ function SkillModal({
   return (
     <Modal
       title={
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.9)' }}>
+        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
           {editSkill ? 'تعديل المهارة' : 'إضافة مهارة جديدة'}
         </span>
       }
@@ -140,8 +140,8 @@ function SkillModal({
         </Form.Item>
         <Form.Item name="is_default" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المهارة الافتراضية</span>}>
           <Radio.Group>
-            <Radio value={true} style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.7)' }}>نعم</Radio>
-            <Radio value={false} style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.7)' }}>لا</Radio>
+            <Radio value={true} style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}>نعم</Radio>
+            <Radio value={false} style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}>لا</Radio>
           </Radio.Group>
         </Form.Item>
         <Form.Item name="system_prompt" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الرسالة النظامية (System Prompt)</span>} rules={[{ required: true }]}>
@@ -205,7 +205,7 @@ function ToolModal({
   return (
     <Modal
       title={
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.9)' }}>
+        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
           {editTool ? 'تعديل الأداة' : 'إضافة أداة جديدة'}
         </span>
       }
@@ -240,7 +240,7 @@ function ToolModal({
 
         {editTool && (
           <div style={{ border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, padding: 12, marginBottom: 16 }}>
-            <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.6)', fontSize: 13, marginBottom: 8 }}>
+            <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 8 }}>
               اختبار الأداة
             </div>
             <TextArea
@@ -304,7 +304,7 @@ function McpModal({
   return (
     <Modal
       title={
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.9)' }}>
+        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
           {editServer ? 'تعديل خادم MCP' : 'إضافة خادم MCP'}
         </span>
       }
@@ -424,7 +424,7 @@ export function AgentPage() {
       dataIndex: 'name_ar',
       render: (v: string, r: any) => (
         <div>
-          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.85)', fontSize: 13 }}>{v}</span>
+          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 13 }}>{v}</span>
           {r.is_default && <Tag style={{ marginRight: 8, background: `${GOLD}20`, color: GOLD, border: `1px solid ${GOLD}40`, fontSize: 10 }}>افتراضي</Tag>}
         </div>
       ),
@@ -432,7 +432,7 @@ export function AgentPage() {
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>بالفرنسية</span>,
       dataIndex: 'name_fr',
-      render: (v: string) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>{v}</span>,
+      render: (v: string) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-tertiary)', fontSize: 12 }}>{v}</span>,
     },
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>مفعّل</span>,
@@ -458,8 +458,8 @@ export function AgentPage() {
       dataIndex: 'name_ar',
       render: (v: string, r: any) => (
         <div>
-          <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.85)', fontSize: 13 }}>{v}</div>
-          <div style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>{r.name}</div>
+          <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 13 }}>{v}</div>
+          <div style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-quaternary)', fontSize: 11 }}>{r.name}</div>
         </div>
       ),
     },
@@ -467,7 +467,7 @@ export function AgentPage() {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>يتطلب اشتراك</span>,
       dataIndex: 'requires_subscription',
       render: (v: boolean) => (
-        <Tag style={{ background: v ? 'rgba(201,168,76,0.15)' : 'rgba(255,255,255,0.05)', color: v ? GOLD : 'rgba(255,255,255,0.3)', border: 'none', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
+        <Tag style={{ background: v ? 'rgba(201,168,76,0.15)' : 'var(--color-surface-soft)', color: v ? GOLD : 'var(--color-text-quaternary)', border: 'none', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
           {v ? 'نعم' : 'لا'}
         </Tag>
       ),
@@ -475,7 +475,7 @@ export function AgentPage() {
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المهلة</span>,
       dataIndex: 'timeout_ms',
-      render: (v: number) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>{v}ms</span>,
+      render: (v: number) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-tertiary)', fontSize: 12 }}>{v}ms</span>,
     },
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>مفعّل</span>,
@@ -499,12 +499,12 @@ export function AgentPage() {
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الخادم</span>,
       dataIndex: 'name_ar',
-      render: (v: string) => <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.85)', fontSize: 13 }}>{v}</span>,
+      render: (v: string) => <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 13 }}>{v}</span>,
     },
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الرابط</span>,
       dataIndex: 'endpoint_url',
-      render: (v: string) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.4)', fontSize: 11, direction: 'ltr', display: 'inline-block' }}>{v}</span>,
+      render: (v: string) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-tertiary)', fontSize: 11, direction: 'ltr', display: 'inline-block' }}>{v}</span>,
     },
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>النقل</span>,
@@ -514,7 +514,7 @@ export function AgentPage() {
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الأدوات</span>,
       dataIndex: 'tools_count',
-      render: (v: number) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.4)' }}>{v || 0}</span>,
+      render: (v: number) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-tertiary)' }}>{v || 0}</span>,
     },
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الحالة</span>,
@@ -594,13 +594,13 @@ export function AgentPage() {
       children: (
         <div style={{ maxWidth: 640 }}>
           <Card style={{ background: DARK_CARD, border: `1px solid ${BORDER_COLOR}`, borderRadius: 16 }} bodyStyle={{ padding: 24 }}>
-            <h3 style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.9)', marginBottom: 24 }}>
+            <h3 style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', marginBottom: 24 }}>
               إعدادات النموذج
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div>
-                <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.6)', fontSize: 13, marginBottom: 8 }}>النموذج</div>
+                <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 8 }}>النموذج</div>
                 <Select
                   value={agentConfig.model}
                   onChange={(v) => setAgentConfig({ ...agentConfig, model: v })}
@@ -616,7 +616,7 @@ export function AgentPage() {
 
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>درجة الإبداعية (Temperature)</span>
+                  <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13 }}>درجة الإبداعية (Temperature)</span>
                   <span style={{ fontFamily: "'Cairo', sans-serif", color: GOLD, fontSize: 13 }}>{agentConfig.temperature}</span>
                 </div>
                 <Slider
@@ -631,7 +631,7 @@ export function AgentPage() {
 
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>الحد الأقصى للرموز (Max Tokens)</span>
+                  <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13 }}>الحد الأقصى للرموز (Max Tokens)</span>
                   <span style={{ fontFamily: "'Cairo', sans-serif", color: GOLD, fontSize: 13 }}>{agentConfig.max_tokens}</span>
                 </div>
                 <Slider
@@ -645,7 +645,7 @@ export function AgentPage() {
               </div>
 
               <div>
-                <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.6)', fontSize: 13, marginBottom: 8 }}>المهارات النشطة</div>
+                <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 8 }}>المهارات النشطة</div>
                 <Select
                   mode="multiple"
                   value={agentConfig.active_skills}
@@ -656,7 +656,7 @@ export function AgentPage() {
               </div>
 
               <div>
-                <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.6)', fontSize: 13, marginBottom: 8 }}>الأدوات النشطة</div>
+                <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 8 }}>الأدوات النشطة</div>
                 <Select
                   mode="multiple"
                   value={agentConfig.active_tools}
@@ -667,7 +667,7 @@ export function AgentPage() {
               </div>
 
               <div>
-                <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.6)', fontSize: 13, marginBottom: 8 }}>خوادم MCP النشطة</div>
+                <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 8 }}>خوادم MCP النشطة</div>
                 <Select
                   mode="multiple"
                   value={agentConfig.active_mcp_servers}
@@ -696,7 +696,7 @@ export function AgentPage() {
     <div style={{ direction: 'rtl' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <RobotOutlined style={{ fontSize: 22, color: GOLD }} />
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'rgba(255,255,255,0.9)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
           إعداد الوكيل
         </h1>
       </div>

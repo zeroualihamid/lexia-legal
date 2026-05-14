@@ -19,7 +19,7 @@ import { RequireAccessLevel } from '../../../common/decorators/access-level.deco
 @ApiBearerAuth()
 @Controller('admin/users')
 @UseGuards(KeycloakGuard, AccessLevelGuard)
-@RequireAccessLevel('SUPERADMIN')
+@RequireAccessLevel('ADMIN')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -33,10 +33,54 @@ export class UsersController {
     return this.usersService.listUsers({ search, first: +first, max: +max });
   }
 
+  @Post()
+  @ApiOperation({ summary: 'Create a Keycloak user' })
+  async createUser(
+    @Body()
+    body: {
+      username?: string;
+      email: string;
+      name?: string;
+      password: string;
+      role?: string;
+      enabled?: boolean;
+    },
+  ) {
+    return this.usersService.createUser(body);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get user details' })
   getUser(@Param('id') id: string) {
     return this.usersService.getUser(id);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update user profile/status/role' })
+  async updateUser(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      email?: string;
+      name?: string;
+      enabled?: boolean;
+      is_active?: boolean;
+      role?: string;
+    },
+  ) {
+    await this.usersService.updateUser(id, body);
+    return { success: true };
+  }
+
+  @Patch(':id/password')
+  @ApiOperation({ summary: 'Set user password' })
+  async setPassword(
+    @Param('id') id: string,
+    @Body('password') password: string,
+    @Body('temporary') temporary?: boolean,
+  ) {
+    await this.usersService.setPassword(id, password, !!temporary);
+    return { success: true };
   }
 
   @Post(':id/roles')
@@ -66,6 +110,13 @@ export class UsersController {
     @Body('enabled') enabled: boolean,
   ) {
     await this.usersService.setUserStatus(id, enabled);
+    return { success: true };
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete user' })
+  async deleteUser(@Param('id') id: string) {
+    await this.usersService.deleteUser(id);
     return { success: true };
   }
 }

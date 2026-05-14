@@ -122,7 +122,7 @@ function UploadModal({ open, onClose }: { open: boolean; onClose: () => void }) 
   return (
     <Modal
       title={
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.9)' }}>
+        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
           رفع وثيقة جديدة
         </span>
       }
@@ -140,20 +140,20 @@ function UploadModal({ open, onClose }: { open: boolean; onClose: () => void }) 
             accept=".pdf"
             beforeUpload={() => false}
             maxCount={1}
-            style={{ background: 'rgba(255,255,255,0.02)', borderColor: BORDER_COLOR }}
+            style={{ background: 'var(--color-surface-faint)', borderColor: BORDER_COLOR }}
           >
             <p className="ant-upload-drag-icon">
               <InboxOutlined style={{ color: GOLD }} />
             </p>
             <p
               className="ant-upload-text"
-              style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.7)' }}
+              style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}
             >
               اسحب ملف PDF هنا أو انقر للاختيار
             </p>
             <p
               className="ant-upload-hint"
-              style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.35)' }}
+              style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-quaternary)' }}
             >
               الحد الأقصى: 200 ميغابايت
             </p>
@@ -162,7 +162,7 @@ function UploadModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
         <Form.Item
           name="title_ar"
-          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.7)' }}>العنوان بالعربية (اختياري - يُصنَّف تلقائياً)</span>}
+          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}>العنوان بالعربية (اختياري - يُصنَّف تلقائياً)</span>}
         >
           <Input
             placeholder="سيتم التصنيف التلقائي إذا تُرك فارغاً"
@@ -172,7 +172,7 @@ function UploadModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
         <Form.Item
           name="collection"
-          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.7)' }}>المجموعة</span>}
+          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}>المجموعة</span>}
           rules={[{ required: true, message: 'يرجى اختيار المجموعة' }]}
         >
           <Select
@@ -184,7 +184,7 @@ function UploadModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
         <Form.Item
           name="visibility"
-          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.7)' }}>إمكانية الوصول</span>}
+          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}>إمكانية الوصول</span>}
           initialValue="public"
         >
           <Select
@@ -205,14 +205,14 @@ function UploadModal({ open, onClose }: { open: boolean; onClose: () => void }) 
               items={PROCESSING_STEPS.map((s, i) => ({
                 title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 13 }}>{s.title}</span>,
                 description: (
-                  <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+                  <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 11, color: 'var(--color-text-tertiary)' }}>
                     {s.description}
                   </span>
                 ),
                 status: i < currentStep ? 'finish' : i === currentStep ? 'process' : 'wait',
               }))}
             />
-            <Progress percent={Math.round(progress)} strokeColor={GOLD} trailColor="rgba(255,255,255,0.08)" />
+            <Progress percent={Math.round(progress)} strokeColor={GOLD} trailColor="var(--color-border-subtle)" />
           </div>
         )}
 
@@ -321,7 +321,7 @@ export function DocumentsPage() {
       render: (v: string) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <FileTextOutlined style={{ color: GOLD }} />
-          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
+          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 13 }}>
             {v}
           </span>
         </div>
@@ -360,7 +360,7 @@ export function DocumentsPage() {
       dataIndex: 'owner_type',
       key: 'owner_type',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>{v}</span>
+        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-tertiary)', fontSize: 12 }}>{v}</span>
       ),
     },
     {
@@ -368,7 +368,7 @@ export function DocumentsPage() {
       dataIndex: 'created_at',
       key: 'created_at',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
+        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-tertiary)', fontSize: 12 }}>
           {dayjs(v).format('DD/MM/YYYY')}
         </span>
       ),
@@ -434,7 +434,7 @@ export function DocumentsPage() {
       label: (
         <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
           جميع الوثائق
-          <Badge count={allDocs.length} style={{ marginRight: 8, background: 'rgba(255,255,255,0.1)' }} />
+          <Badge count={allDocs.length} style={{ marginRight: 8, background: 'var(--color-border-subtle)' }} />
         </span>
       ),
       children: (
@@ -476,7 +476,7 @@ export function DocumentsPage() {
   return (
     <div style={{ direction: 'rtl' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'rgba(255,255,255,0.9)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
           إدارة الوثائق
         </h1>
         <Button

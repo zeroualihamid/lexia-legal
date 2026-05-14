@@ -72,7 +72,7 @@ function ResultCard({
             style={{
               fontSize: 15,
               fontWeight: 600,
-              color: 'rgba(255,255,255,0.9)',
+              color: 'var(--color-text-primary)',
               fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
               marginBottom: 6,
               lineHeight: 1.4,
@@ -86,7 +86,7 @@ function ResultCard({
               <span
                 style={{
                   fontSize: 11,
-                  color: 'rgba(255,255,255,0.4)',
+                  color: 'var(--color-text-tertiary)',
                   fontFamily: "'Cairo', sans-serif",
                 }}
               >
@@ -94,7 +94,7 @@ function ResultCard({
               </span>
             )}
             {result.date && (
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: "'Cairo', sans-serif" }}>
+              <span style={{ fontSize: 11, color: 'var(--color-text-quaternary)', fontFamily: "'Cairo', sans-serif" }}>
                 {result.date}
               </span>
             )}
@@ -103,7 +103,7 @@ function ResultCard({
             <div
               style={{
                 fontSize: 13,
-                color: 'rgba(255,255,255,0.55)',
+                color: 'var(--color-text-secondary)',
                 fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
                 lineHeight: 1.65,
                 display: '-webkit-box',
@@ -117,7 +117,7 @@ function ResultCard({
         </div>
       </div>
       {result.score !== undefined && (
-        <div style={{ textAlign: 'left', fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>
+        <div style={{ textAlign: 'left', fontSize: 11, color: 'var(--color-text-quaternary)' }}>
           {(result.score * 100).toFixed(0)}% تطابق
         </div>
       )}
@@ -133,7 +133,7 @@ function DetailPanel({ result, onClose }: { result: SearchResult; onClose: () =>
           type="text"
           icon={<CloseOutlined />}
           onClick={onClose}
-          style={{ color: 'rgba(255,255,255,0.5)' }}
+          style={{ color: 'var(--color-text-secondary)' }}
         />
         <div style={{ flex: 1, textAlign: 'right' }}>
           <CollectionTag collection={result.collection} />
@@ -144,7 +144,7 @@ function DetailPanel({ result, onClose }: { result: SearchResult; onClose: () =>
         style={{
           fontSize: 20,
           fontWeight: 700,
-          color: 'rgba(255,255,255,0.9)',
+          color: 'var(--color-text-primary)',
           fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
           marginBottom: 12,
           lineHeight: 1.5,
@@ -158,7 +158,7 @@ function DetailPanel({ result, onClose }: { result: SearchResult; onClose: () =>
         <div
           style={{
             fontSize: 14,
-            color: 'rgba(255,255,255,0.4)',
+            color: 'var(--color-text-tertiary)',
             marginBottom: 12,
             fontFamily: "'Cairo', sans-serif",
             textAlign: 'right',
@@ -170,12 +170,12 @@ function DetailPanel({ result, onClose }: { result: SearchResult; onClose: () =>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         {result.jurisdiction && (
-          <Tag style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>
+          <Tag style={{ background: 'var(--color-surface-soft)', border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-secondary)' }}>
             {result.jurisdiction}
           </Tag>
         )}
         {result.date && (
-          <Tag style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>
+          <Tag style={{ background: 'var(--color-surface-soft)', border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-secondary)' }}>
             {result.date}
           </Tag>
         )}
@@ -206,7 +206,7 @@ function DetailPanel({ result, onClose }: { result: SearchResult; onClose: () =>
       <div
         style={{
           fontSize: 14,
-          color: 'rgba(255,255,255,0.7)',
+          color: 'var(--color-text-secondary)',
           fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
           lineHeight: 1.8,
           whiteSpace: 'pre-wrap',
@@ -293,7 +293,7 @@ export function SearchPage() {
               fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
               height: 52,
               direction: 'rtl',
-              color: 'rgba(255,255,255,0.85)',
+              color: 'var(--color-text-primary)',
             }}
             allowClear
           />
@@ -301,7 +301,7 @@ export function SearchPage() {
 
         {/* Filters row */}
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <FilterOutlined style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+          <FilterOutlined style={{ color: 'var(--color-text-tertiary)', flexShrink: 0 }} />
 
           <Select
             value={collection}
@@ -336,7 +336,7 @@ export function SearchPage() {
             <span
               style={{
                 fontSize: 13,
-                color: 'rgba(255,255,255,0.4)',
+                color: 'var(--color-text-tertiary)',
                 fontFamily: "'Cairo', sans-serif",
                 marginRight: 'auto',
               }}
@@ -360,11 +360,11 @@ export function SearchPage() {
               gap: 12,
             }}
           >
-            <SearchOutlined style={{ fontSize: 48, color: 'rgba(255,255,255,0.1)' }} />
+            <SearchOutlined style={{ fontSize: 48, color: 'var(--color-border-subtle)' }} />
             <div
               style={{
                 fontSize: 15,
-                color: 'rgba(255,255,255,0.3)',
+                color: 'var(--color-text-quaternary)',
                 fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
               }}
             >
@@ -378,8 +378,8 @@ export function SearchPage() {
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={
               <div style={{ direction: 'rtl', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
-                <div style={{ color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>لا توجد نتائج لـ "{query}"</div>
-                <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>
+                <div style={{ color: 'var(--color-text-secondary)', marginBottom: 8 }}>لا توجد نتائج لـ "{query}"</div>
+                <div style={{ color: 'var(--color-text-quaternary)', fontSize: 13 }}>
                   حاول تغيير كلمات البحث أو تصفية المجموعات
                 </div>
               </div>
@@ -409,7 +409,7 @@ export function SearchPage() {
                     search({ q: query, collection, mode, page: p })
                   }}
                   showTotal={(t) => (
-                    <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.5)' }}>
+                    <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}>
                       {t} نتيجة
                     </span>
                   )}
@@ -429,8 +429,8 @@ export function SearchPage() {
         title={null}
         closable={false}
         styles={{
-          body: { padding: 0, background: '#0a1628' },
-          mask: { background: 'rgba(0,0,0,0.5)' },
+          body: { padding: 0, background: 'var(--color-bg-sidebar)' },
+          mask: { background: 'var(--color-mask)' },
         }}
       >
         {selectedResult && (

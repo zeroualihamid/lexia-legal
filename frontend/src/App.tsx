@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ConfigProvider, theme, Spin } from 'antd'
+import { App as AntApp, ConfigProvider, theme, Spin } from 'antd'
 import Keycloak from 'keycloak-js'
 import { useAuthStore } from './shared/store/authStore'
 import { useThemeStore } from './shared/store/themeStore'
@@ -20,8 +20,42 @@ import { DARK, GOLD } from './shared/constants'
 
 const keycloakConfig = {
   url: import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8080',
-  realm: import.meta.env.VITE_KEYCLOAK_REALM || 'lexia',
-  clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'lexia-frontend',
+  realm: import.meta.env.VITE_KEYCLOAK_REALM || 'legal-ai',
+  clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'legal-ai-frontend',
+}
+
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const { token, accessLevel, keycloak } = useAuthStore()
+
+  useEffect(() => {
+    if (!token && keycloak) {
+      keycloak.login({ redirectUri: window.location.href })
+    }
+  }, [keycloak, token])
+
+  if (!token) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: DARK,
+          color: GOLD,
+          fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
+        }}
+      >
+        جارٍ تحويلك إلى تسجيل الدخول...
+      </div>
+    )
+  }
+
+  if (accessLevel !== 'ADMIN' && accessLevel !== 'SUPERADMIN') {
+    return <Navigate to="/" replace />
+  }
+
+  return <>{children}</>
 }
 
 export default function App() {
@@ -145,25 +179,27 @@ export default function App() {
         },
       }}
     >
-      <BrowserRouter>
-        <Routes>
-          <Route element={<UserLayout />}>
-            <Route path="/" element={<ChatPage />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/billing" element={<BillingPage />} />
-          </Route>
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="documents" element={<DocumentsPage />} />
-            <Route path="scraper" element={<ScraperPage />} />
-            <Route path="agent" element={<AgentPage />} />
-            <Route path="judgment-analysis" element={<JudgmentAnalysisPage />} />
-            <Route path="users" element={<UsersPage />} />
-            <Route path="analytics" element={<AnalyticsPage />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <AntApp>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<UserLayout />}>
+              <Route path="/" element={<ChatPage />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/billing" element={<BillingPage />} />
+            </Route>
+            <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="documents" element={<DocumentsPage />} />
+              <Route path="scraper" element={<ScraperPage />} />
+              <Route path="agent" element={<AgentPage />} />
+              <Route path="judgment-analysis" element={<JudgmentAnalysisPage />} />
+              <Route path="users" element={<UsersPage />} />
+              <Route path="analytics" element={<AnalyticsPage />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AntApp>
     </ConfigProvider>
   )
 }

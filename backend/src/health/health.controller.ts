@@ -20,10 +20,17 @@ export class HealthController {
     const redisConfig: any = {
       host: this.configService.get<string>('redis.host'),
       port: this.configService.get<number>('redis.port'),
+      lazyConnect: true,
+      connectTimeout: 500,
+      maxRetriesPerRequest: 1,
+      retryStrategy: () => null,
     };
     const password = this.configService.get<string>('redis.password');
     if (password) redisConfig.password = password;
     this.redis = new Redis(redisConfig);
+    this.redis.on('error', () => {
+      /* Health check reports Redis as false when unavailable. */
+    });
   }
 
   @Get()

@@ -1,5 +1,6 @@
 import React from 'react'
 import { Card, Row, Col, Table, Tag, Spin } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
 import {
   TeamOutlined,
   FileTextOutlined,
@@ -49,6 +50,14 @@ const MOCK_ANALYTICS = {
   ],
 }
 
+interface CostBreakdownRow {
+  provider: string
+  model: string
+  tokens_in: number
+  tokens_out: number
+  cost_usd: number
+}
+
 function OverviewCard({
   title,
   value,
@@ -71,14 +80,14 @@ function OverviewCard({
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginBottom: 6 }}>
+          <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginBottom: 6 }}>
             {title}
           </div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: 'rgba(255,255,255,0.9)', fontFamily: "'Cairo', sans-serif" }}>
+          <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: "'Cairo', sans-serif" }}>
             {typeof value === 'number' ? value.toLocaleString('ar-MA') : value}
           </div>
           {subtitle && (
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: 'var(--color-text-quaternary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginTop: 4 }}>
               {subtitle}
             </div>
           )}
@@ -140,7 +149,7 @@ function LineChart({ data, keys, colors }: { data: any[]; keys: string[]; colors
             x2={width - padX}
             y1={padY + chartH * (1 - pct)}
             y2={padY + chartH * (1 - pct)}
-            stroke="rgba(255,255,255,0.05)"
+            stroke="var(--color-surface-soft)"
             strokeWidth={1}
           />
         ))}
@@ -178,7 +187,7 @@ function LineChart({ data, keys, colors }: { data: any[]; keys: string[]; colors
             x={getX(i)}
             y={height - 4}
             textAnchor="middle"
-            fill="rgba(255,255,255,0.3)"
+            fill="var(--color-text-quaternary)"
             fontSize={10}
             fontFamily="Cairo"
           >
@@ -206,11 +215,11 @@ export function AnalyticsPage() {
 
   const a = analytics || MOCK_ANALYTICS
 
-  const costColumns = [
+  const costColumns: ColumnsType<CostBreakdownRow> = [
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المزوّد</span>,
       dataIndex: 'provider',
-      render: (v: string) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.8)' }}>{v}</span>,
+      render: (v: string) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>{v}</span>,
     },
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>النموذج</span>,
@@ -220,12 +229,12 @@ export function AnalyticsPage() {
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>رموز الإدخال</span>,
       dataIndex: 'tokens_in',
-      render: (v: number) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{(v / 1000000).toFixed(1)}M</span>,
+      render: (v: number) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 12 }}>{(v / 1000000).toFixed(1)}M</span>,
     },
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>رموز الإخراج</span>,
       dataIndex: 'tokens_out',
-      render: (v: number) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{(v / 1000000).toFixed(1)}M</span>,
+      render: (v: number) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 12 }}>{(v / 1000000).toFixed(1)}M</span>,
     },
     {
       title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>التكلفة ($)</span>,
@@ -244,7 +253,7 @@ export function AnalyticsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, direction: 'rtl' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: 'rgba(255,255,255,0.9)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
         الإحصائيات
       </h1>
 
@@ -270,7 +279,7 @@ export function AnalyticsPage() {
           <Card style={{ background: DARK_CARD, border: `1px solid rgba(22,119,255,0.25)`, borderRadius: 16 }} bodyStyle={{ padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginBottom: 4 }}>
                   المستخدمون النشطون (ساعة)
                 </div>
                 <div style={{ fontSize: 30, fontWeight: 700, color: '#1677ff', fontFamily: "'Cairo', sans-serif" }}>
@@ -288,7 +297,7 @@ export function AnalyticsPage() {
           <Card style={{ background: DARK_CARD, border: `1px solid rgba(201,168,76,0.25)`, borderRadius: 16 }} bodyStyle={{ padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginBottom: 4 }}>
                   الرسائل (ساعة أخيرة)
                 </div>
                 <div style={{ fontSize: 30, fontWeight: 700, color: GOLD, fontFamily: "'Cairo', sans-serif" }}>
@@ -305,7 +314,7 @@ export function AnalyticsPage() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
           <Card
-            title={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.85)' }}>الاستخدام الشهري</span>}
+            title={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>الاستخدام الشهري</span>}
             style={{ background: DARK_CARD, border: `1px solid ${BORDER_COLOR}`, borderRadius: 16 }}
             headStyle={{ borderBottom: `1px solid ${BORDER_COLOR}` }}
           >
@@ -322,7 +331,7 @@ export function AnalyticsPage() {
               ].map((item) => (
                 <div key={item.key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: 12, height: 3, background: item.color, borderRadius: 2 }} />
-                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>{item.key}</span>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>{item.key}</span>
                 </div>
               ))}
             </div>
@@ -331,7 +340,7 @@ export function AnalyticsPage() {
 
         <Col xs={24} lg={8}>
           <Card
-            title={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.85)' }}>توزيع المجموعات</span>}
+            title={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>توزيع المجموعات</span>}
             style={{ background: DARK_CARD, border: `1px solid ${BORDER_COLOR}`, borderRadius: 16 }}
             headStyle={{ borderBottom: `1px solid ${BORDER_COLOR}` }}
           >
@@ -339,14 +348,14 @@ export function AnalyticsPage() {
               {a.collections.map((item: any) => (
                 <div key={item.collection}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
                       {COLLECTION_LABELS[item.collection] || item.collection}
                     </span>
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: "'Cairo', sans-serif" }}>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: "'Cairo', sans-serif" }}>
                       {item.pct}%
                     </span>
                   </div>
-                  <div style={{ height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: 6, background: 'var(--color-surface-soft)', borderRadius: 3, overflow: 'hidden' }}>
                     <div
                       style={{
                         height: '100%',
@@ -366,11 +375,11 @@ export function AnalyticsPage() {
 
       {/* Cost breakdown */}
       <Card
-        title={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.85)' }}>تفصيل التكاليف (هذا الشهر)</span>}
+        title={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>تفصيل التكاليف (هذا الشهر)</span>}
         style={{ background: DARK_CARD, border: `1px solid ${BORDER_COLOR}`, borderRadius: 16 }}
         headStyle={{ borderBottom: `1px solid ${BORDER_COLOR}` }}
       >
-        <Table
+        <Table<CostBreakdownRow>
           dataSource={a.cost_breakdown}
           columns={costColumns}
           rowKey={(r) => `${r.provider}-${r.model}`}
@@ -381,7 +390,7 @@ export function AnalyticsPage() {
             return (
               <Table.Summary.Row>
                 <Table.Summary.Cell index={0} colSpan={4}>
-                  <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>الإجمالي</span>
+                  <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontWeight: 600 }}>الإجمالي</span>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={4}>
                   <span style={{ fontFamily: "'Cairo', sans-serif", color: GOLD, fontWeight: 700, fontSize: 15 }}>

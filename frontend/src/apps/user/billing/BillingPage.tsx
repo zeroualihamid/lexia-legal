@@ -120,7 +120,7 @@ function PlansTab({ currentPlanId }: { currentPlanId?: string }) {
         <span
           style={{
             fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
-            color: billing === 'monthly' ? GOLD : 'rgba(255,255,255,0.5)',
+            color: billing === 'monthly' ? GOLD : 'var(--color-text-secondary)',
             fontSize: 15,
             fontWeight: billing === 'monthly' ? 600 : 400,
           }}
@@ -135,7 +135,7 @@ function PlansTab({ currentPlanId }: { currentPlanId?: string }) {
         <span
           style={{
             fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
-            color: billing === 'yearly' ? GOLD : 'rgba(255,255,255,0.5)',
+            color: billing === 'yearly' ? GOLD : 'var(--color-text-secondary)',
             fontSize: 15,
             fontWeight: billing === 'yearly' ? 600 : 400,
           }}
@@ -174,7 +174,7 @@ function PlansTab({ currentPlanId }: { currentPlanId?: string }) {
             <div
               key={plan.id}
               style={{
-                background: isPro ? 'linear-gradient(135deg, #0f2040, #0a1628)' : DARK_CARD,
+                background: isPro ? 'linear-gradient(135deg, var(--color-bg-elevated), var(--color-bg-sidebar))' : DARK_CARD,
                 border: `1px solid ${isCurrent ? GOLD : isPro ? 'rgba(201,168,76,0.4)' : BORDER_COLOR}`,
                 borderRadius: 16,
                 padding: '28px 24px',
@@ -229,7 +229,7 @@ function PlansTab({ currentPlanId }: { currentPlanId?: string }) {
                   style={{
                     fontSize: 20,
                     fontWeight: 700,
-                    color: 'rgba(255,255,255,0.9)',
+                    color: 'var(--color-text-primary)',
                     margin: 0,
                     fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
                   }}
@@ -253,7 +253,7 @@ function PlansTab({ currentPlanId }: { currentPlanId?: string }) {
                   <span
                     style={{
                       fontSize: 14,
-                      color: 'rgba(255,255,255,0.4)',
+                      color: 'var(--color-text-tertiary)',
                       fontFamily: "'Cairo', sans-serif",
                       marginRight: 4,
                     }}
@@ -262,7 +262,7 @@ function PlansTab({ currentPlanId }: { currentPlanId?: string }) {
                   </span>
                 )}
                 {billing === 'yearly' && price > 0 && (
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: "'Cairo', sans-serif", marginTop: 4 }}>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-quaternary)', fontFamily: "'Cairo', sans-serif", marginTop: 4 }}>
                     يُدفع {plan.price_yearly} درهم سنوياً
                   </div>
                 )}
@@ -277,7 +277,7 @@ function PlansTab({ currentPlanId }: { currentPlanId?: string }) {
                       alignItems: 'center',
                       gap: 8,
                       fontSize: 13,
-                      color: 'rgba(255,255,255,0.75)',
+                      color: 'var(--color-text-secondary)',
                       fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
                     }}
                   >
@@ -329,7 +329,7 @@ function CurrentSubscriptionTab() {
           padding: 60,
           textAlign: 'center',
           fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
-          color: 'rgba(255,255,255,0.4)',
+          color: 'var(--color-text-tertiary)',
         }}
       >
         لا يوجد اشتراك نشط. اختر خطة مناسبة من تبويب "خطط الاشتراك"
@@ -346,7 +346,7 @@ function CurrentSubscriptionTab() {
         bodyStyle={{ padding: 28 }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 20, fontWeight: 700, color: 'rgba(255,255,255,0.9)', margin: 0 }}>
+          <h3 style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 20, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>
             {sub.plan_name_ar}
           </h3>
           <Badge
@@ -361,16 +361,16 @@ function CurrentSubscriptionTab() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14 }}>
+            <span style={{ color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14 }}>
               دورة الفوترة
             </span>
-            <span style={{ color: 'rgba(255,255,255,0.8)', fontFamily: "'Cairo', sans-serif", fontSize: 14 }}>
+            <span style={{ color: 'var(--color-text-primary)', fontFamily: "'Cairo', sans-serif", fontSize: 14 }}>
               {sub.billing_cycle === 'monthly' ? 'شهري' : 'سنوي'}
             </span>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14 }}>
+            <span style={{ color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14 }}>
               السعر
             </span>
             <span style={{ color: GOLD, fontFamily: "'Cairo', sans-serif", fontSize: 16, fontWeight: 600 }}>
@@ -379,10 +379,10 @@ function CurrentSubscriptionTab() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14 }}>
+            <span style={{ color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14 }}>
               تاريخ الانتهاء
             </span>
-            <span style={{ color: 'rgba(255,255,255,0.8)', fontFamily: "'Cairo', sans-serif", fontSize: 14 }}>
+            <span style={{ color: 'var(--color-text-primary)', fontFamily: "'Cairo', sans-serif", fontSize: 14 }}>
               {dayjs(sub.expires_at).format('DD/MM/YYYY')}
             </span>
           </div>
@@ -390,7 +390,7 @@ function CurrentSubscriptionTab() {
           <Divider style={{ borderColor: BORDER_COLOR, margin: '8px 0' }} />
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14 }}>
+            <span style={{ color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14 }}>
               التجديد التلقائي
             </span>
             <Switch
@@ -421,7 +421,7 @@ function CurrentSubscriptionTab() {
 
       <Modal
         title={
-          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.9)' }}>
+          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
             إلغاء الاشتراك
           </span>
         }
@@ -441,7 +441,7 @@ function CurrentSubscriptionTab() {
         okButtonProps={{ danger: true, loading: cancelling }}
         centered
       >
-        <p style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", direction: 'rtl', color: 'rgba(255,255,255,0.7)' }}>
+        <p style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", direction: 'rtl', color: 'var(--color-text-secondary)' }}>
           هل أنت متأكد من إلغاء الاشتراك؟ ستفقد الوصول إلى المزايا المتقدمة في نهاية الفترة الحالية (
           {dayjs(sub.expires_at).format('DD/MM/YYYY')}).
         </p>
@@ -480,7 +480,7 @@ function UsageTab() {
       {/* Progress bars */}
       <Card
         title={
-          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.85)' }}>
+          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
             الاستهلاك اليومي
           </span>
         }
@@ -490,8 +490,8 @@ function UsageTab() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>الرسائل</span>
-              <span style={{ fontFamily: "'Cairo', sans-serif", fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+              <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14, color: 'var(--color-text-secondary)' }}>الرسائل</span>
+              <span style={{ fontFamily: "'Cairo', sans-serif", fontSize: 13, color: 'var(--color-text-secondary)' }}>
                 {mockUsage.messages_today} / {mockUsage.messages_limit === -1 ? '∞' : mockUsage.messages_limit}
               </span>
             </div>
@@ -499,15 +499,15 @@ function UsageTab() {
               percent={mockUsage.messages_limit === -1 ? 0 : (mockUsage.messages_today / mockUsage.messages_limit) * 100}
               showInfo={false}
               strokeColor={GOLD}
-              trailColor="rgba(255,255,255,0.08)"
+              trailColor="var(--color-border-subtle)"
               strokeLinecap="round"
             />
           </div>
 
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>عمليات البحث</span>
-              <span style={{ fontFamily: "'Cairo', sans-serif", fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+              <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14, color: 'var(--color-text-secondary)' }}>عمليات البحث</span>
+              <span style={{ fontFamily: "'Cairo', sans-serif", fontSize: 13, color: 'var(--color-text-secondary)' }}>
                 {mockUsage.searches_today} / {mockUsage.searches_limit === -1 ? '∞' : mockUsage.searches_limit}
               </span>
             </div>
@@ -515,15 +515,15 @@ function UsageTab() {
               percent={mockUsage.searches_limit === -1 ? 0 : (mockUsage.searches_today / mockUsage.searches_limit) * 100}
               showInfo={false}
               strokeColor="#1677ff"
-              trailColor="rgba(255,255,255,0.08)"
+              trailColor="var(--color-border-subtle)"
               strokeLinecap="round"
             />
           </div>
 
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>الرفع (شهرياً)</span>
-              <span style={{ fontFamily: "'Cairo', sans-serif", fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+              <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 14, color: 'var(--color-text-secondary)' }}>الرفع (شهرياً)</span>
+              <span style={{ fontFamily: "'Cairo', sans-serif", fontSize: 13, color: 'var(--color-text-secondary)' }}>
                 {mockUsage.uploads_this_month} / {mockUsage.uploads_limit === -1 ? '∞' : mockUsage.uploads_limit}
               </span>
             </div>
@@ -531,7 +531,7 @@ function UsageTab() {
               percent={mockUsage.uploads_limit === 0 ? 100 : mockUsage.uploads_limit === -1 ? 0 : (mockUsage.uploads_this_month / mockUsage.uploads_limit) * 100}
               showInfo={false}
               strokeColor="#52c41a"
-              trailColor="rgba(255,255,255,0.08)"
+              trailColor="var(--color-border-subtle)"
               strokeLinecap="round"
             />
           </div>
@@ -541,7 +541,7 @@ function UsageTab() {
       {/* History chart */}
       <Card
         title={
-          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.85)' }}>
+          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
             الاستهلاك الشهري (آخر 6 أشهر)
           </span>
         }
@@ -574,7 +574,7 @@ function UsageTab() {
                   }}
                 />
               </div>
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: "'Cairo', sans-serif", whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)', fontFamily: "'Cairo', sans-serif", whiteSpace: 'nowrap' }}>
                 {item.month}
               </span>
             </div>
@@ -583,11 +583,11 @@ function UsageTab() {
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 12, height: 12, background: GOLD, borderRadius: 2 }} />
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>رسائل</span>
+            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>رسائل</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 12, height: 12, background: '#1677ff', borderRadius: 2 }} />
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>بحث</span>
+            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>بحث</span>
           </div>
         </div>
       </Card>
@@ -617,7 +617,7 @@ function InvoicesTab() {
       dataIndex: 'number',
       key: 'number',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>{v}</span>
+        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 13 }}>{v}</span>
       ),
     },
     {
@@ -625,7 +625,7 @@ function InvoicesTab() {
       dataIndex: 'date',
       key: 'date',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
+        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13 }}>
           {dayjs(v).format('DD/MM/YYYY')}
         </span>
       ),
@@ -683,7 +683,7 @@ function InvoicesTab() {
       style={{ direction: 'rtl' }}
       locale={{
         emptyText: (
-          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.3)' }}>
+          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-quaternary)' }}>
             لا توجد فواتير
           </span>
         ),
@@ -732,7 +732,7 @@ export function BillingPage() {
         style={{
           fontSize: 24,
           fontWeight: 700,
-          color: 'rgba(255,255,255,0.9)',
+          color: 'var(--color-text-primary)',
           fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
           marginBottom: 24,
         }}

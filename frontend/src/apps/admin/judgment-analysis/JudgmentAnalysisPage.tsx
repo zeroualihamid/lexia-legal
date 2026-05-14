@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import {
+  App,
   Upload,
   Button,
   Card,
@@ -8,7 +9,6 @@ import {
   Drawer,
   Space,
   Tooltip,
-  message,
   Spin,
 } from 'antd'
 import {
@@ -58,6 +58,7 @@ function StatusTag({ status }: { status: AnalysisStatus }) {
 }
 
 export function JudgmentAnalysisPage() {
+  const { message } = App.useApp()
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [drawerId, setDrawerId] = useState<string | null>(null)

@@ -30,8 +30,6 @@ export function AdminLayout() {
   const themeMode = useThemeStore((s) => s.mode)
   const [collapsed, setCollapsed] = useState(false)
 
-  const isSuperAdmin = accessLevel === 'SUPERADMIN'
-
   const menuItems = [
     {
       key: '/admin',
@@ -58,15 +56,11 @@ export function AdminLayout() {
       icon: <FileSearchOutlined />,
       label: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>تحليل الأحكام</span>,
     },
-    ...(isSuperAdmin
-      ? [
-          {
-            key: '/admin/users',
-            icon: <TeamOutlined />,
-            label: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المستخدمون</span>,
-          },
-        ]
-      : []),
+    {
+      key: '/admin/users',
+      icon: <TeamOutlined />,
+      label: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المستخدمون</span>,
+    },
     {
       key: '/admin/analytics',
       icon: <BarChartOutlined />,

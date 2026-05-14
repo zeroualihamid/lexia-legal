@@ -111,7 +111,7 @@ function SourceModal({
   return (
     <Modal
       title={
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.9)' }}>
+        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
           {editSource ? 'تعديل المصدر' : 'إضافة مصدر جديد'}
         </span>
       }
@@ -236,7 +236,7 @@ export function ScraperPage() {
       dataIndex: 'name_ar',
       key: 'name_ar',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>
+        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontWeight: 500 }}>
           {v}
         </span>
       ),
@@ -263,7 +263,7 @@ export function ScraperPage() {
       dataIndex: 'docs_count',
       key: 'docs_count',
       render: (v: number) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.5)' }}>
+        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}>
           {v?.toLocaleString() || '0'}
         </span>
       ),
@@ -273,7 +273,7 @@ export function ScraperPage() {
       dataIndex: 'last_scraped_at',
       key: 'last_scraped_at',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>
+        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-quaternary)', fontSize: 12 }}>
           {v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '-'}
         </span>
       ),
@@ -334,7 +334,7 @@ export function ScraperPage() {
       dataIndex: 'type',
       key: 'type',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>{v}</span>
+        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 12 }}>{v}</span>
       ),
     },
     {
@@ -342,7 +342,7 @@ export function ScraperPage() {
       dataIndex: 'source_name_ar',
       key: 'source_name_ar',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>{v}</span>
+        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13 }}>{v}</span>
       ),
     },
     {
@@ -367,7 +367,7 @@ export function ScraperPage() {
           percent={v}
           size="small"
           strokeColor={JOB_STATUS_CONFIG[r.status]?.color || GOLD}
-          trailColor="rgba(255,255,255,0.08)"
+          trailColor="var(--color-border-subtle)"
           style={{ minWidth: 100 }}
         />
       ),
@@ -377,7 +377,7 @@ export function ScraperPage() {
       dataIndex: 'created_at',
       key: 'created_at',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>
+        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-quaternary)', fontSize: 12 }}>
           {dayjs(v).format('HH:mm DD/MM')}
         </span>
       ),
@@ -478,7 +478,7 @@ export function ScraperPage() {
     <div style={{ direction: 'rtl' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <CloudDownloadOutlined style={{ fontSize: 22, color: GOLD }} />
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'rgba(255,255,255,0.9)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
           استخراج البيانات
         </h1>
       </div>

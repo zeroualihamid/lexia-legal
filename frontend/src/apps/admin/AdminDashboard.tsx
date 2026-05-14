@@ -42,7 +42,7 @@ function StatCard({
           <div
             style={{
               fontSize: 13,
-              color: 'rgba(255,255,255,0.5)',
+              color: 'var(--color-text-secondary)',
               fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
               marginBottom: 8,
             }}
@@ -52,10 +52,10 @@ function StatCard({
           {loading ? (
             <Spin size="small" />
           ) : (
-            <div style={{ fontSize: 28, fontWeight: 700, color: 'rgba(255,255,255,0.9)', fontFamily: "'Cairo', sans-serif" }}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: "'Cairo', sans-serif" }}>
               {typeof value === 'number' ? value.toLocaleString('ar-MA') : value}
               {suffix && (
-                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginRight: 4 }}>{suffix}</span>
+                <span style={{ fontSize: 14, color: 'var(--color-text-tertiary)', marginRight: 4 }}>{suffix}</span>
               )}
             </div>
           )}
@@ -120,14 +120,14 @@ function CollectionPieChart({ data }: { data: Array<{ collection: string; count:
             key={i}
             d={describeArc(seg.start * 3.6, (seg.start + seg.pct) * 3.6)}
             fill={COLLECTION_COLORS[seg.collection] || '#8c8c8c'}
-            stroke="#060d18"
+            stroke="var(--color-bg-base)"
             strokeWidth={2}
           />
         ))}
-        <text x={cx} y={cy - 6} textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize={12} fontFamily="Cairo">
+        <text x={cx} y={cy - 6} textAnchor="middle" fill="var(--color-text-secondary)" fontSize={12} fontFamily="Cairo">
           إجمالي
         </text>
-        <text x={cx} y={cy + 12} textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize={16} fontWeight="700" fontFamily="Cairo">
+        <text x={cx} y={cy + 12} textAnchor="middle" fill="var(--color-text-primary)" fontSize={16} fontWeight="700" fontFamily="Cairo">
           {total.toLocaleString()}
         </text>
       </svg>
@@ -144,11 +144,11 @@ function CollectionPieChart({ data }: { data: Array<{ collection: string; count:
                   flexShrink: 0,
                 }}
               />
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
+              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
                 {COLLECTION_LABELS[seg.collection] || seg.collection}
               </span>
             </div>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: "'Cairo', sans-serif" }}>
+            <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: "'Cairo', sans-serif" }}>
               {seg.count.toLocaleString()} ({seg.pct.toFixed(1)}%)
             </span>
           </div>
@@ -207,7 +207,7 @@ export function AdminDashboard() {
         style={{
           fontSize: 22,
           fontWeight: 700,
-          color: 'rgba(255,255,255,0.9)',
+          color: 'var(--color-text-primary)',
           fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
           margin: 0,
         }}
@@ -240,7 +240,7 @@ export function AdminDashboard() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginBottom: 4 }}>
                   المستخدمون النشطون (ساعة)
                 </div>
                 <div style={{ fontSize: 32, fontWeight: 700, color: '#1677ff', fontFamily: "'Cairo', sans-serif" }}>
@@ -261,7 +261,7 @@ export function AdminDashboard() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginBottom: 4 }}>
                   الرسائل (ساعة أخيرة)
                 </div>
                 <div style={{ fontSize: 32, fontWeight: 700, color: GOLD, fontFamily: "'Cairo', sans-serif" }}>
@@ -279,7 +279,7 @@ export function AdminDashboard() {
         <Col xs={24} lg={14}>
           <Card
             title={
-              <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.85)', fontSize: 15 }}>
+              <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 15 }}>
                 الاستخدام الشهري
               </span>
             }
@@ -311,7 +311,7 @@ export function AdminDashboard() {
                       }}
                     />
                   </div>
-                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontFamily: "'Cairo', sans-serif" }}>
+                  <span style={{ fontSize: 10, color: 'var(--color-text-quaternary)', fontFamily: "'Cairo', sans-serif" }}>
                     {item.month}
                   </span>
                 </div>
@@ -320,11 +320,11 @@ export function AdminDashboard() {
             <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 12, height: 12, background: GOLD, borderRadius: 2 }} />
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>رسائل</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>رسائل</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 12, height: 12, background: '#1677ff', borderRadius: 2 }} />
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>بحث</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>بحث</span>
               </div>
             </div>
           </Card>
@@ -333,7 +333,7 @@ export function AdminDashboard() {
         <Col xs={24} lg={10}>
           <Card
             title={
-              <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.85)', fontSize: 15 }}>
+              <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 15 }}>
                 توزيع الوثائق
               </span>
             }

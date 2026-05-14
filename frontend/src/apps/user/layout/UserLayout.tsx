@@ -23,8 +23,12 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../../../shared/store/authStore'
-import { GOLD, DARK, NAVY, BORDER_COLOR } from '../../../shared/constants'
+import { GOLD, DARK, NAVY, BORDER_COLOR, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_TERTIARY, TEXT_QUATERNARY, GOLD_TINT, GOLD_BORDER } from '../../../shared/constants'
+import { ThemeToggle } from '../../../shared/components/ThemeToggle'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+
+dayjs.extend(relativeTime)
 
 interface Conversation {
   id: string
@@ -126,7 +130,7 @@ export function UserLayout() {
       <div
         style={{
           fontSize: 12,
-          color: 'rgba(255,255,255,0.4)',
+          color: TEXT_TERTIARY,
           textTransform: 'uppercase',
           padding: '4px 8px',
           letterSpacing: 0.5,
@@ -146,8 +150,8 @@ export function UserLayout() {
               padding: '8px 10px',
               cursor: 'pointer',
               borderRadius: 8,
-              background: activeConvId === conv.id ? 'rgba(201,168,76,0.12)' : 'transparent',
-              border: activeConvId === conv.id ? `1px solid rgba(201,168,76,0.3)` : '1px solid transparent',
+              background: activeConvId === conv.id ? GOLD_TINT : 'transparent',
+              border: activeConvId === conv.id ? `1px solid ${GOLD_BORDER}` : '1px solid transparent',
               marginBottom: 4,
               display: 'flex',
               alignItems: 'center',
@@ -164,7 +168,7 @@ export function UserLayout() {
               <div
                 style={{
                   fontSize: 13,
-                  color: activeConvId === conv.id ? GOLD : 'rgba(255,255,255,0.75)',
+                  color: activeConvId === conv.id ? GOLD : TEXT_PRIMARY,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -177,7 +181,7 @@ export function UserLayout() {
               <div
                 style={{
                   fontSize: 11,
-                  color: 'rgba(255,255,255,0.35)',
+                  color: TEXT_TERTIARY,
                   marginTop: 2,
                   fontFamily: "'Cairo', sans-serif",
                   textAlign: 'right',
@@ -191,7 +195,7 @@ export function UserLayout() {
                 type="text"
                 size="small"
                 icon={<DeleteOutlined />}
-                style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}
+                style={{ color: TEXT_QUATERNARY, flexShrink: 0 }}
                 onClick={(e) => {
                   e.stopPropagation()
                 }}
@@ -260,9 +264,9 @@ export function UserLayout() {
                 fontSize: 14,
                 fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
                 fontWeight: 500,
-                color: location.pathname === item.key ? GOLD : 'rgba(255,255,255,0.7)',
-                background: location.pathname === item.key ? 'rgba(201,168,76,0.12)' : 'transparent',
-                border: location.pathname === item.key ? `1px solid rgba(201,168,76,0.3)` : '1px solid transparent',
+                color: location.pathname === item.key ? GOLD : TEXT_SECONDARY,
+                background: location.pathname === item.key ? GOLD_TINT : 'transparent',
+                border: location.pathname === item.key ? `1px solid ${GOLD_BORDER}` : '1px solid transparent',
                 transition: 'all 0.2s',
               }}
             >
@@ -274,12 +278,14 @@ export function UserLayout() {
 
         {/* Right side */}
         <Space style={{ flexShrink: 0 }}>
+          <ThemeToggle />
+
           {isPro && (
             <Tooltip title="المحادثات السابقة">
               <Button
                 type="text"
                 icon={<HistoryOutlined />}
-                style={{ color: 'rgba(255,255,255,0.6)' }}
+                style={{ color: TEXT_SECONDARY }}
                 onClick={() => setSidebarOpen(true)}
               />
             </Tooltip>
@@ -325,7 +331,7 @@ export function UserLayout() {
           <Button
             type="text"
             icon={<MenuOutlined />}
-            style={{ color: 'rgba(255,255,255,0.6)', display: isPro ? 'none' : undefined }}
+            style={{ color: TEXT_SECONDARY, display: isPro ? 'none' : undefined }}
             onClick={() => setSidebarOpen(true)}
           />
         </Space>
@@ -369,7 +375,7 @@ export function UserLayout() {
         styles={{
           body: { padding: 0, background: NAVY },
           header: { background: NAVY, borderBottom: `1px solid ${BORDER_COLOR}` },
-          mask: { background: 'rgba(0,0,0,0.6)' },
+          mask: { background: 'var(--color-mask)' },
         }}
       >
         {Sidebar}

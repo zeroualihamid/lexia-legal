@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import {
+  App,
   Table,
   Tag,
   Button,
@@ -10,7 +11,6 @@ import {
   Modal,
   Form,
   Tooltip,
-  message,
   Popconfirm,
   Badge,
 } from 'antd'
@@ -22,6 +22,7 @@ import {
   CrownOutlined,
   LockOutlined,
   UnlockOutlined,
+  PlusOutlined,
 } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import apiClient from '../../../shared/api/client'
@@ -52,6 +53,7 @@ function EditUserModal({
   user: any | null
   onClose: () => void
 }) {
+  const { message } = App.useApp()
   const [form] = Form.useForm()
   const qc = useQueryClient()
 
@@ -62,7 +64,9 @@ function EditUserModal({
 
   const { mutate: save, isPending } = useMutation({
     mutationFn: async (values: any) => {
-      await apiClient.patch(`/admin/users/${user?.id}`, values)
+      const { password, ...profile } = values
+      await apiClient.patch(`/admin/users/${user?.id}`, profile)
+      if (password) await apiClient.patch(`/admin/users/${user?.id}/password`, { password })
     },
     onSuccess: () => {
       message.success('تم تحديث المستخدم')
@@ -75,7 +79,7 @@ function EditUserModal({
   return (
     <Modal
       title={
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.9)' }}>
+        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
           تعديل المستخدم
         </span>
       }
@@ -101,29 +105,100 @@ function EditUserModal({
             ]}
           />
         </Form.Item>
+        <Form.Item name="password" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>كلمة مرور جديدة</span>}>
+          <Input.Password placeholder="اتركها فارغة بدون تغيير" />
+        </Form.Item>
+      </Form>
+    </Modal>
+  )
+}
+
+function CreateUserModal({
+  open,
+  onClose,
+}: {
+  open: boolean
+  onClose: () => void
+}) {
+  const { message } = App.useApp()
+  const [form] = Form.useForm()
+  const qc = useQueryClient()
+
+  const { mutate: create, isPending } = useMutation({
+    mutationFn: async (values: any) => {
+      await apiClient.post('/admin/users', values)
+    },
+    onSuccess: () => {
+      message.success('تم إنشاء المستخدم')
+      qc.invalidateQueries({ queryKey: ['admin-users'] })
+      form.resetFields()
+      onClose()
+    },
+    onError: (err: any) => message.error(err?.response?.data?.message || 'حدث خطأ'),
+  })
+
+  return (
+    <Modal
+      title={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>إضافة مستخدم</span>}
+      open={open}
+      onCancel={onClose}
+      onOk={() => form.submit()}
+      okText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إنشاء</span>}
+      cancelText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إلغاء</span>}
+      okButtonProps={{ loading: isPending, style: { background: GOLD, borderColor: GOLD, color: '#000' } }}
+      centered
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{ role: 'ADMIN', enabled: true }}
+        onFinish={(v) => create(v)}
+        style={{ direction: 'rtl', marginTop: 16 }}
+      >
+        <Form.Item name="username" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>اسم المستخدم</span>} rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="email" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>البريد الإلكتروني</span>} rules={[{ required: true, type: 'email' }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="name" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الاسم الكامل</span>}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="password" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>كلمة المرور</span>} rules={[{ required: true }]}>
+          <Input.Password />
+        </Form.Item>
+        <Form.Item name="role" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الدور</span>} rules={[{ required: true }]}>
+          <Select
+            options={[
+              { value: 'PUBLIC', label: 'عام' },
+              { value: 'PRO', label: 'محترف' },
+              { value: 'ADMIN', label: 'مشرف' },
+              { value: 'SUPERADMIN', label: 'مشرف عام' },
+            ]}
+          />
+        </Form.Item>
       </Form>
     </Modal>
   )
 }
 
 export function UsersPage() {
+  const { message } = App.useApp()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('')
   const [editUser, setEditUser] = useState<any | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
   const qc = useQueryClient()
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users', search, roleFilter],
     queryFn: async () => {
       try {
-        const res = await apiClient.get('/admin/users', { params: { q: search, role: roleFilter } })
-        return res.data
-      } catch {
-        return MOCK_USERS.filter((u) => {
-          const matchSearch = !search || u.name.includes(search) || u.email.includes(search)
-          const matchRole = !roleFilter || u.role === roleFilter
-          return matchSearch && matchRole
-        })
+        const res = await apiClient.get('/admin/users', { params: { search } })
+        const data = res.data
+        return roleFilter ? data.filter((u: any) => u.role === roleFilter) : data
+      } catch (err) {
+        throw err
       }
     },
   })
@@ -160,10 +235,10 @@ export function UsersPage() {
             {r.name?.[0] || r.email?.[0]?.toUpperCase()}
           </Avatar>
           <div>
-            <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: 500 }}>
+            <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 13, fontWeight: 500 }}>
               {r.name}
             </div>
-            <div style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.35)', fontSize: 11 }}>
+            <div style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-quaternary)', fontSize: 11 }}>
               {r.email}
             </div>
           </div>
@@ -194,7 +269,7 @@ export function UsersPage() {
             {v === 'pro' ? 'محترف' : v === 'enterprise' ? 'مؤسسي' : v}
           </Tag>
         ) : (
-          <span style={{ color: 'rgba(255,255,255,0.25)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 12 }}>بدون اشتراك</span>
+          <span style={{ color: 'var(--color-text-quaternary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 12 }}>بدون اشتراك</span>
         )
       ),
     },
@@ -203,7 +278,7 @@ export function UsersPage() {
       dataIndex: 'messages_today',
       key: 'messages_today',
       render: (v: number) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: v > 50 ? GOLD : 'rgba(255,255,255,0.4)', fontWeight: v > 50 ? 600 : 400 }}>
+        <span style={{ fontFamily: "'Cairo', sans-serif", color: v > 50 ? GOLD : 'var(--color-text-tertiary)', fontWeight: v > 50 ? 600 : 400 }}>
           {v}
         </span>
       ),
@@ -213,7 +288,7 @@ export function UsersPage() {
       dataIndex: 'last_login',
       key: 'last_login',
       render: (v: string | null) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>
+        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-quaternary)', fontSize: 12 }}>
           {v ? dayjs(v).format('DD/MM HH:mm') : 'لم يسجل دخولاً'}
         </span>
       ),
@@ -271,21 +346,29 @@ export function UsersPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <UserOutlined style={{ fontSize: 22, color: GOLD }} />
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'rgba(255,255,255,0.9)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
             إدارة المستخدمين
           </h1>
           <Badge
             count={displayUsers.length}
-            style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', boxShadow: 'none' }}
+            style={{ background: 'var(--color-border-subtle)', color: 'var(--color-text-secondary)', boxShadow: 'none' }}
           />
         </div>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => setCreateOpen(true)}
+          style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}
+        >
+          إضافة مستخدم
+        </Button>
       </div>
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <Input
           placeholder="بحث بالاسم أو البريد..."
-          prefix={<SearchOutlined style={{ color: 'rgba(255,255,255,0.3)' }} />}
+          prefix={<SearchOutlined style={{ color: 'var(--color-text-quaternary)' }} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
@@ -340,12 +423,13 @@ export function UsersPage() {
         columns={columns}
         rowKey="id"
         loading={isLoading}
-        pagination={{ pageSize: 20, showTotal: (t) => <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'rgba(255,255,255,0.4)' }}>{t} مستخدم</span> }}
+        pagination={{ pageSize: 20, showTotal: (t) => <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-tertiary)' }}>{t} مستخدم</span> }}
         style={{ direction: 'rtl' }}
         locale={{ emptyText: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>لا توجد نتائج</span> }}
       />
 
       <EditUserModal open={!!editUser} user={editUser} onClose={() => setEditUser(null)} />
+      <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   )
 }

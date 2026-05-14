@@ -1,0 +1,43 @@
+# ─── Dependencies & build ───────────────────────────────────
+**/node_modules/
+**/dist/
+**/build/
+**/out/
+coverage/
+*.tsbuildinfo
+
+# ─── Secrets & env (keep .env*.example tracked) ───────────────
+.env
+.env.*
+!.env.example
+
+# ─── Logs & runtime ──────────────────────────────────────────
+**/logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-store/
+
+# ─── OS / editor ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+*.orig
+
+# ─── SSL / credentials (often mounted locally; keep out of Git) ─
+infra/nginx/certs/*.pem
+infra/nginx/certs/*.key
+
+# ─── Puppeteer / browser cache (if used locally) ───────────────
+.cache/
+.puppeteer/
+
+# ─── Optional local tooling ──────────────────────────────────
+.turbo/
+
+agent/

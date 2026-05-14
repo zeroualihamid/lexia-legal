@@ -12,6 +12,9 @@ import { JUDGMENT_PROMPT } from './prompts';
 
 export const ANALYSIS_CHANNEL = (id: string) => `judgment-analysis:${id}`;
 const FLUSH_INTERVAL_MS = 500;
+const FRENCH_RESULT_HEADING = 'Analyse juridique structurée - Version française';
+const ARABIC_RESULT_HEADING = 'التحليل القانوني المنظم - النسخة العربية';
+const ARABIC_TEXT_PATTERN = /[\u0600-\u06FF]/;
 
 @Processor('judgment-analysis')
 export class JudgmentAnalysisProcessor {
@@ -43,6 +46,7 @@ export class JudgmentAnalysisProcessor {
       await this.pubsub.publish(channel, { type: 'status', status: 'running' });
 
       const buffer = await this.runClaude(analysisId, channel, tmpDir, job);
+      this.assertBilingualResult(buffer);
 
       await this.postgres.query(
         `UPDATE judgment_analyses
@@ -153,5 +157,17 @@ export class JudgmentAnalysisProcessor {
         }
       });
     });
+  }
+
+  private assertBilingualResult(markdown: string): void {
+    const hasFrenchSection = markdown.includes(FRENCH_RESULT_HEADING);
+    const hasArabicSection = markdown.includes(ARABIC_RESULT_HEADING);
+    const hasArabicText = ARABIC_TEXT_PATTERN.test(markdown);
+
+    if (!hasFrenchSection || !hasArabicSection || !hasArabicText) {
+      throw new Error(
+        'La sortie Claude est invalide: le rapport doit contenir une version française complète et une version arabe complète.',
+      );
+    }
   }
 }

@@ -15,10 +15,68 @@ export class AnalyticsService {
     const redisConfig: any = {
       host: this.configService.get<string>('redis.host'),
       port: this.configService.get<number>('redis.port'),
+      lazyConnect: true,
+      connectTimeout: 500,
+      maxRetriesPerRequest: 1,
+      retryStrategy: () => null,
     };
     const password = this.configService.get<string>('redis.password');
     if (password) redisConfig.password = password;
     this.redis = new Redis(redisConfig);
+    this.redis.on('error', () => {
+      /* Redis is optional for analytics; health endpoints report it separately. */
+    });
+  }
+
+  async getDashboardStats(): Promise<any> {
+    const [users, documents, revenue, subscriptions, realtime, collections, monthly] =
+      await Promise.all([
+        this.postgresService.queryOne<any>(
+          `SELECT COUNT(DISTINCT user_id) AS total
+           FROM (
+             SELECT user_id FROM conversations
+             UNION
+             SELECT user_id FROM subscriptions
+           ) u`,
+        ),
+        this.postgresService.queryOne<any>(`SELECT COUNT(*) AS total FROM documents`),
+        this.postgresService.queryOne<any>(
+          `SELECT COALESCE(SUM(sp.price_monthly_mad), 0) AS total
+           FROM subscriptions s
+           JOIN subscription_plans sp ON sp.id = s.plan_id
+           WHERE s.status = 'active'`,
+        ),
+        this.postgresService.queryOne<any>(
+          `SELECT COUNT(*) AS total FROM subscriptions WHERE status = 'active'`,
+        ),
+        this.getRealtime(),
+        this.postgresService.query<any>(
+          `SELECT collection, COUNT(*)::int AS count
+           FROM documents
+           GROUP BY collection
+           ORDER BY count DESC`,
+        ),
+        this.postgresService.query<any>(
+          `SELECT to_char(month, 'YYYY-MM') AS month,
+                  COALESCE(SUM(messages_count), 0)::int AS messages,
+                  COALESCE(SUM(searches_count), 0)::int AS searches
+           FROM usage_records
+           GROUP BY month
+           ORDER BY month ASC
+           LIMIT 12`,
+        ),
+      ]);
+
+    return {
+      total_users: parseInt(users?.total || '0', 10),
+      total_documents: parseInt(documents?.total || '0', 10),
+      total_revenue: parseFloat(revenue?.total || '0'),
+      active_subscriptions: parseInt(subscriptions?.total || '0', 10),
+      active_users_hour: realtime.activeUsersLastHour,
+      messages_hour: realtime.messagesLastHour,
+      collections,
+      monthly_usage: monthly,
+    };
   }
 
   async getOverview(): Promise<any> {

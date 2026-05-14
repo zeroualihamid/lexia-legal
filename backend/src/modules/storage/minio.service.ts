@@ -12,6 +12,9 @@ const BUCKETS = [
   'invoices',
 ];
 
+const getErrorMessage = (err: unknown): string =>
+  err instanceof Error ? err.message : String(err);
+
 @Injectable()
 export class MinioService implements OnModuleInit {
   private client: Minio.Client;
@@ -32,6 +35,16 @@ export class MinioService implements OnModuleInit {
   }
 
   async initBuckets(): Promise<void> {
+    try {
+      await this.client.listBuckets();
+    } catch (err) {
+      this.logger.warn(
+        `Skipping MinIO bucket init: ${getErrorMessage(err)}. ` +
+          'Check MINIO_ACCESS_KEY/MINIO_SECRET_KEY or create buckets manually.',
+      );
+      return;
+    }
+
     for (const bucket of BUCKETS) {
       try {
         const exists = await this.client.bucketExists(bucket);
@@ -40,7 +53,7 @@ export class MinioService implements OnModuleInit {
           this.logger.log(`Created MinIO bucket: ${bucket}`);
         }
       } catch (err) {
-        this.logger.error(`Failed to init bucket ${bucket}: ${err.message}`);
+        this.logger.warn(`Skipping MinIO bucket ${bucket}: ${getErrorMessage(err)}`);
       }
     }
   }
