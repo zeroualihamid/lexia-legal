@@ -12,6 +12,7 @@ import { JUDGMENT_PROMPT } from './prompts';
 
 export const ANALYSIS_CHANNEL = (id: string) => `judgment-analysis:${id}`;
 const FLUSH_INTERVAL_MS = 500;
+const CLAUDE_TIMEOUT_MS = 10 * 60 * 1000;
 const FRENCH_RESULT_HEADING = 'Analyse juridique structurée - Version française';
 const ARABIC_RESULT_HEADING = 'التحليل القانوني المنظم - النسخة العربية';
 const ARABIC_TEXT_PATTERN = /[\u0600-\u06FF]/;
@@ -96,12 +97,22 @@ export class JudgmentAnalysisProcessor {
       const args = ['-p', JUDGMENT_PROMPT, '--add-dir', cwd];
       this.logger.log(`spawn: claude ${args.slice(0, 1).join(' ')} <prompt> --add-dir ${cwd}`);
 
-      const child = spawn('claude', args, { cwd, env });
+      const child = spawn('claude', args, {
+        cwd,
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
 
       let stdoutBuffer = '';
       let stderrBuffer = '';
       let lastFlush = Date.now();
       let flushPending: Promise<void> = Promise.resolve();
+      let settled = false;
+      const timeout = setTimeout(() => {
+        if (settled) return;
+        child.kill('SIGTERM');
+        reject(new Error('La CLI claude a dépassé le délai maximal de 10 minutes'));
+      }, CLAUDE_TIMEOUT_MS);
 
       const flushToDb = async () => {
         const snapshot = stdoutBuffer;
@@ -142,10 +153,14 @@ export class JudgmentAnalysisProcessor {
       });
 
       child.on('error', (err) => {
+        settled = true;
+        clearTimeout(timeout);
         reject(new Error(`Échec du lancement de la CLI claude: ${err.message}`));
       });
 
       child.on('exit', async (code) => {
+        settled = true;
+        clearTimeout(timeout);
         await flushPending;
         if (code === 0) {
           // Final flush of complete buffer
