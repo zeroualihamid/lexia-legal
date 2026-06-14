@@ -1,0 +1,15 @@
+{
+  "audit": {
+    "name": "Audit",
+    "primary_sources": [],
+    "output_dir": "data/subagents/audit",
+    "prompt_module": "__custom__:audit",
+    "system_prompt": "tu est specialisé dans l'audit des quittances",
+    "code_prompt": "",
+    "custom": true,
+    "description": "",
+    "welcome_message": "Bienvenue dans l'espace Audit.",
+    "sample_questions": [],
+    "icon": "Bot"
+  }
+}

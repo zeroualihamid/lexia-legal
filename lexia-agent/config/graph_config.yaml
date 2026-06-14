@@ -1,0 +1,20 @@
+# config/graph_config.yaml
+# Reasoning Graph Settings
+
+graph:
+  backend: "networkx"
+  storage_path: "./data/graph"
+  
+embeddings:
+  enabled: true
+  model: "microsoft/codebert-base"
+  dimension: 768
+  
+search:
+  similarity_threshold: 0.75
+  top_k: 5
+  min_executions: 3
+  
+quality:
+  min_success_rate: 0.70
+  recency_weight: 0.1

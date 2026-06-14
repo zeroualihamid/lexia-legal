@@ -1,0 +1,26 @@
+data_sources:
+- source_id: oracle_env
+  type: oracle
+  enabled: true
+  description: Oracle atl3snd
+  host: ${ORACLE_HOST}
+  port: ${ORACLE_PORT}
+  username: ${ORACLE_USER}
+  password: ${ORACLE_PASSWORD}
+  service_name: ${ORACLE_SERVICE_NAME}
+  refresh_policy: manual
+  tables: []
+  foreign_keys: []
+  user: ${ORACLE_USER}
+- source_id: minio_env
+  type: minio
+  enabled: true
+  description: MinIO connection
+  refresh_policy: manual
+  host: ${MINIO_HOST}
+  port: ${MINIO_PORT}
+  access_key: ${MINIO_ACCESS_KEY}
+  secret_key: ${MINIO_SECRET_KEY}
+  bucket: ${MINIO_BUCKET}
+  secure: ${MINIO_SECURE}
+  tables: []

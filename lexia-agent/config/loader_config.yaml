@@ -1,0 +1,8 @@
+# Data Loader Flow Configuration
+# Controls scheduled and startup data refresh behavior
+
+refresh:
+  enabled: true
+  interval_seconds: 1800        # 30 minutes
+  run_on_startup: true           # Run full load on first boot
+  incremental_by_default: true   # Use incremental for scheduled refreshes

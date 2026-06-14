@@ -1,0 +1,145 @@
+# config/llm_config.yaml
+# LLM Provider Configurations
+#
+# temperature: Per-model sampling temperature (0.0–2.0). Used when the API supports it.
+# Models that do NOT support custom temperature (e.g. gpt-5-mini, o3, o4-mini) use API default (1).
+# For those models, the temperature value here is documentation only.
+
+providers:
+  anthropic:
+    enabled: true
+    default_model: "claude-sonnet-4-6"
+    models:
+      sonnet:
+        name: "claude-sonnet-4-6"
+        max_tokens: 8192
+        temperature: 0.2
+      opus:
+        name: "claude-opus-4-6"
+        max_tokens: 8192
+        temperature: 0.2
+      haiku:
+        name: "claude-haiku-4-5-20251001"
+        max_tokens: 4096
+        temperature: 0.2
+    settings:
+      timeout: 120
+      max_retries: 3
+
+  groq:
+    enabled: true
+    default_model: "llama-3.3-70b-versatile"
+    models:
+      llama33:
+        name: "llama-3.3-70b-versatile"
+        max_tokens: 8000
+        temperature: 0.2
+      kimi-k2:
+        name: "moonshotai/kimi-k2-instruct"
+        max_tokens: 8192
+        temperature: 0.2
+    settings:
+      timeout: 60
+      max_retries: 3
+
+  openai:
+    enabled: true
+    default_model: "gpt-5-mini"
+    models:
+      gpt-5.4:
+        name: "gpt-5.4"
+        max_tokens: 8192
+        temperature: 0.2
+      gpt-5-mini:
+        name: "gpt-5-mini"
+        max_tokens: 8192
+        temperature: 1  # API default only; custom value not supported
+      gpt4o:
+        name: "gpt-4o"
+        max_tokens: 8192
+        temperature: 0.2
+      gpt4o-mini:
+        name: "gpt-4o-mini"
+        max_tokens: 4096
+        temperature: 0.2
+      o3:
+        name: "o3"
+        max_tokens: 8192
+        temperature: 1
+      o4-mini:
+        name: "o4-mini"
+        max_tokens: 8192
+        temperature: 1
+    settings:
+      timeout: 120
+      max_retries: 3
+
+  deepseek:
+    enabled: true
+    default_model: "deepseek-chat"
+    models:
+      chat:
+        name: "deepseek-chat"
+        max_tokens: 8192
+        temperature: 0.2
+      reasoner:
+        name: "deepseek-reasoner"
+        max_tokens: 8192
+        temperature: 0.6
+    settings:
+      base_url: "https://api.deepseek.com"
+      timeout: 120
+      max_retries: 3  
+
+  openrouter:
+    enabled: true
+    default_model: "google/gemma-4-26b-a4b-it"
+    models:
+      claude-sonnet:
+        name: "anthropic/claude-sonnet-4"
+        max_tokens: 8192
+        temperature: 0.2
+      gpt-4o:
+        name: "openai/gpt-4o"
+        max_tokens: 8192
+        temperature: 0.2
+      claude-haiku:
+        name: "anthropic/claude-haiku-4"
+        max_tokens: 4096
+        temperature: 0.2
+      step-3.5-flash:
+        name: "stepfun/step-3.5-flash"
+        max_tokens: 8192
+        temperature: 0.2
+      gpt-oss-120b:
+        name: "openai/gpt-oss-120b"
+        max_tokens: 8192
+        temperature: 0.2
+      kimi-k2.5:
+        name: "moonshotai/kimi-k2.5"
+        max_tokens: 8192
+        temperature: 0.2
+      gemma-4-26b:
+        name: "google/gemma-4-26b-a4b-it"
+        max_tokens: 8192
+        temperature: 0.2
+    settings:
+      base_url: "https://openrouter.ai/api/v1"
+      timeout: 120
+      max_retries: 3
+
+  vllm:
+    enabled: true
+    default_model: "openai/gpt-oss-120b"
+    models:
+      gpt-oss-120b:
+        name: "openai/gpt-oss-120b"
+        max_tokens: 8192
+        temperature: 0.2
+    settings:
+      base_url: "${VLLM_BASE_URL}"
+      timeout: 120
+      max_retries: 3
+
+# Task routing moved to config.yaml (provider only).
+# Model is resolved from each provider's default_model above.

@@ -1,0 +1,7 @@
+# Report data contract: ledger parquet + DuckDB source view + pickle CTE graph.
+# The render pipeline reads block SQL exclusively from the pickle graph below
+# (data/cte_graphs/<cte_graph>.pkl); there are no on-disk .sql fragments.
+report: comex_report
+parquet: data/parquet/Analytics_Final.parquet
+source_view: Analytics_Final
+cte_graph: cte-report-comex-report

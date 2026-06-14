@@ -1,0 +1,1 @@
+/command/with-contenv /usr/local/bin/auth-migrate.sh

@@ -1,0 +1,177 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "IBM Plex Sans", sans-serif;
+    background: white;
+  }
+}
+
+@layer utilities {
+  .settings-display {
+    font-family: "Inter", system-ui, sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+  }
+
+  .settings-ui {
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  .settings-mono {
+    font-family: "JetBrains Mono", "IBM Plex Mono", monospace;
+  }
+
+  .settings-warm-bg {
+    background-color: #F8F7F4;
+  }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Studio polish: warm text selection + softer warm scrollbars within Données. */
+.donnees-atelier ::selection {
+  background: rgba(13, 115, 119, 0.18);
+}
+.donnees-atelier ::-webkit-scrollbar-thumb {
+  background: rgba(43, 43, 43, 0.16);
+}
+.donnees-atelier ::-webkit-scrollbar-thumb:hover {
+  background: rgba(13, 115, 119, 0.5);
+}
+
+/* Markdown Styles */
+.prose {
+  @apply text-xs sm:text-sm leading-relaxed max-w-full;
+  word-break: break-word;
+}
+
+.prose table {
+  @apply min-w-full border-collapse my-4 rounded-xl border border-border/50 bg-background/50;
+}
+
+.prose th {
+  @apply bg-muted/50 px-4 py-2 text-left font-bold border-b border-border/50 text-[10px] uppercase tracking-wider h-10;
+  white-space: nowrap;
+}
+
+.prose td {
+  @apply px-4 py-2 border-b border-border/20 text-xs font-medium tabular-nums;
+  white-space: nowrap;
+}
+
+.prose tr:last-child td {
+  @apply border-b-0;
+}
+
+.prose tr:hover td {
+  @apply bg-muted/20;
+}
+
+.prose ul {
+  @apply pl-6 my-2 list-disc;
+}
+
+.prose ol {
+  @apply pl-6 my-2 list-decimal;
+}
+
+.prose p {
+  @apply my-2;
+}
+
+.prose strong {
+  @apply font-bold text-foreground;
+}
+
+/* Radix ScrollArea injects a `display:table` content wrapper that sizes to its
+   widest child, so wide content (Markdown tables with a min-width, long tokens)
+   makes the panel scroll/stretch horizontally. Opt a scroll area into block
+   layout via `.sa-block` so that content wraps — or scrolls inside its own
+   bounded card — instead of widening the panel. */
+.sa-block [data-radix-scroll-area-viewport] > div {
+  display: block !important;
+  min-width: 0 !important;
+}

@@ -1,0 +1,29 @@
+# Default LLM provider — model/base_url/timeout resolved from llm_config.yaml
+llm:
+  provider: deepseek
+  max_tokens: 4096
+
+# Per-task provider routing (provider only — model comes from llm_config.yaml)
+task_routing:
+  code_generation: deepseek
+  code_review: deepseek
+  card_generation: deepseek
+  agent_proposal: deepseek
+  agent_challenge: deepseek
+  agent: deepseek
+
+embedding:
+  provider: deepseek
+codegen:
+  provider: deepseek
+chart:
+  enabled: true
+  timeout: 30
+  wait_timeout: 30
+  default_chart_type: bar
+performance:
+  enabled: true
+  log_dir: logs/performance
+  log_per_query: true
+  console_output: false
+  include_summary: true

@@ -1,0 +1,26 @@
+# Netlify config for qclick-chat (Vite + React)
+# Base directory in Netlify UI:
+#   - If repo root is qclick-onmt: use "qclick-chat"
+#   - If repo root is parent of qclick-onmt: use "qclick-onmt/qclick-chat"
+#   - NO SPACE: "qclick-onmt /qclick-chat" causes "Base directory does not exist"
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback: serve index.html for client-side routes (Netlify serves existing files first)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Ensure correct MIME types for JS modules (fixes application/octet-stream error)
+[[headers]]
+  for = "/assets/*.js"
+  [headers.values]
+    Content-Type = "application/javascript; charset=utf-8"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Content-Type = "application/javascript; charset=utf-8"

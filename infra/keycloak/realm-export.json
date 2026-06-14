@@ -6,7 +6,7 @@
   "enabled": true,
   "sslRequired": "none",
   "registrationAllowed": true,
-  "registrationEmailAsUsername": false,
+  "registrationEmailAsUsername": true,
   "rememberMe": true,
   "verifyEmail": false,
   "loginWithEmailAllowed": true,
@@ -38,7 +38,7 @@
   "actionTokenGeneratedByUserLifespan": 300,
   "oauth2DeviceCodeLifespan": 600,
   "oauth2DevicePollingInterval": 5,
-  "bruteForceProtected": true,
+  "bruteForceProtected": false,
   "permanentLockout": false,
   "maxFailureWaitSeconds": 900,
   "minimumQuickLoginWaitSeconds": 60,
@@ -103,14 +103,16 @@
       "clientId": "legal-ai-frontend",
       "name": "Lexia Legal Frontend",
       "description": "Application frontend React / تطبيق الواجهة الأمامية",
-      "rootUrl": "http://localhost:3000",
+      "rootUrl": "http://localhost/lexia",
       "adminUrl": "",
-      "baseUrl": "http://localhost:3000",
+      "baseUrl": "http://localhost/lexia",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
+        "http://localhost/lexia/*",
+        "http://localhost/lexia",
         "http://localhost:3000/*",
         "http://127.0.0.1:3000/*",
         "http://localhost:5173/*",
@@ -121,13 +123,13 @@
         "https://*.lexia-legal.ma/*"
       ],
       "webOrigins": [
+        "http://localhost",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:5174",
-        "http://127.0.0.1:5174",
-        "http://localhost"
+        "http://127.0.0.1:5174"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -141,7 +143,7 @@
       "protocol": "openid-connect",
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:3000/*##http://127.0.0.1:3000/*##http://localhost:5173/*##http://127.0.0.1:5173/*##http://localhost:5174/*##http://127.0.0.1:5174/*##http://localhost/*##https://*.lexia-legal.ma/*",
+        "post.logout.redirect.uris": "http://localhost/lexia/*##http://localhost:3000/*##http://127.0.0.1:3000/*##http://localhost:5173/*##http://127.0.0.1:5173/*##http://localhost:5174/*##http://127.0.0.1:5174/*##http://localhost/*##https://*.lexia-legal.ma/*",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "backchannel.logout.session.required": "true",
@@ -174,7 +176,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "KEYCLOAK_CLIENT_SECRET_PLACEHOLDER",
+      "secret": "lexia_dev_keycloak_client_secret",
       "redirectUris": [],
       "webOrigins": [],
       "notBefore": 0,
@@ -560,5 +562,23 @@
       }
     ]
   },
-  "userManagedAccessAllowed": false
+  "userManagedAccessAllowed": false,
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "Lexia",
+      "email": "admin@lexia.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin", "superadmin", "pro", "user"]
+    }
+  ]
 }

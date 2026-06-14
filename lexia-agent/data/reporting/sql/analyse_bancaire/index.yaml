@@ -1,0 +1,43 @@
+version: 1
+ctes:
+- name: pnb_par_agence
+  description: PNB approximé par agence (Client Agence) avec nombre de clients, encours, capitaux créditeurs/débiteurs, trié
+    par PNB décroissant.
+  file: pnb_par_agence.sql
+  depends_on: []
+- name: pnb_par_periode
+  description: PNB approximé par période (Year, MonthName).
+  file: pnb_par_periode.sql
+  depends_on:
+  - pnb_par_agence
+- name: mni_par_agence
+  description: Marge nette d'intérêt estimée par agence (Client Agence) basée sur capitaux créditeurs/débiteurs pondérés par
+    NbJour_Month.
+  file: mni_par_agence.sql
+  depends_on:
+  - pnb_par_periode
+- name: structure_financiere
+  description: 'Synthèse financière globale : capitaux créditeurs, débiteurs, encours total, solde net.'
+  file: structure_financiere.sql
+  depends_on:
+  - mni_par_agence
+- name: qualite_portefeuille
+  description: 'Qualité du portefeuille par agence : encours sains vs douteux.'
+  file: qualite_portefeuille.sql
+  depends_on:
+  - structure_financiere
+- name: productivite_clients
+  description: 'Productivité clients par agence : nombre de clients, clients actifs, encours moyen par client.'
+  file: productivite_clients.sql
+  depends_on:
+  - qualite_portefeuille
+- name: repartition_geographique
+  description: Répartition géographique des encours et dépôts par Direction Régionale et Ville.
+  file: repartition_geographique.sql
+  depends_on:
+  - productivite_clients
+- name: evolution_temporelle
+  description: Évolution temporelle des encours et dépôts par Year, Quarter, MonthName.
+  file: evolution_temporelle.sql
+  depends_on:
+  - repartition_geographique

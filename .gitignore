@@ -40,4 +40,8 @@ infra/nginx/certs/*.key
 # ─── Optional local tooling ──────────────────────────────────
 .turbo/
 
-agent/
+# ─── Local test fixtures (upload via API → MinIO instead) ────
+/data/
+
+# ─── Legacy duplicate (canonical Python agent is lexia-agent/) ─
+/agent/

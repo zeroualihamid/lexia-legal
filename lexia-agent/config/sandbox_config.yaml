@@ -1,0 +1,33 @@
+# config/sandbox_config.yaml
+# Sandbox Security Settings
+
+execution:
+  timeout: 30  # seconds
+  max_memory_mb: 512
+  max_cpu_percent: 80
+  
+security:
+  allow_network: false
+  allow_file_write: true
+  allow_subprocess: false
+  
+  blocked_imports:
+    - os.system
+    - subprocess.call
+    - eval
+    - exec
+    - __import__
+  
+  allowed_imports:
+    - pandas
+    - numpy
+    - pyarrow
+    - datetime
+    - json
+    - csv
+    - pathlib
+
+resource_limits:
+  max_file_size_mb: 100
+  max_files_created: 10
+  disk_quota_mb: 500

@@ -1,0 +1,19 @@
+# config/agents_config.yaml
+# Adversarial Agents Configuration
+
+debate:
+  max_rounds: 4
+  consensus_threshold: 0.90
+  timeout_per_round: 120
+  
+proposer:
+  strategy: "reuse_first"
+  confidence_threshold: 0.80
+  
+challenger:
+  strategy: "thorough"
+  min_issues_threshold: 1
+  
+consensus:
+  quality_threshold: "medium"
+  require_improvement: true

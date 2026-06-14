@@ -68,19 +68,19 @@ Variables obligatoires à changer :
 ### 3. Démarrer la plateforme / تشغيل المنصة
 
 ```bash
-docker compose up -d
+docker compose -f deploy/docker-compose.yml up -d
 ```
 
 Pour suivre les logs :
 
 ```bash
-docker compose logs -f
+docker compose -f deploy/docker-compose.yml logs -f
 ```
 
 ### 4. Vérifier le démarrage / التحقق من بدء التشغيل
 
 ```bash
-docker compose ps
+docker compose -f deploy/docker-compose.yml ps
 ```
 
 Tous les services doivent afficher le statut `running` ou `healthy`.
@@ -97,6 +97,8 @@ Tous les services doivent afficher le statut `running` ou `healthy`.
 | Keycloak Admin | http://localhost:8080/admin | Console d'administration IAM |
 | MinIO Console | http://localhost:9001 | Console de gestion des fichiers |
 | Bull Board | http://localhost:3001 | Tableau de bord des files de tâches |
+| Lexia Admin | http://localhost:5175 | Interface admin agent (lexia-admin) |
+| Lexia Agent API | http://localhost:6002 | API unifiée better-auth + proxy agent |
 
 ---
 
@@ -173,27 +175,27 @@ Tous les services doivent afficher le statut `running` ou `healthy`.
 
 ```bash
 # Arrêter la plateforme / إيقاف المنصة
-docker compose down
+docker compose -f deploy/docker-compose.yml down
 
 # Arrêter et supprimer les volumes (ATTENTION : perte de données)
-docker compose down -v
+docker compose -f deploy/docker-compose.yml down -v
 
 # Reconstruire un service spécifique
-docker compose build backend
-docker compose up -d backend
+docker compose -f deploy/docker-compose.yml build lexia-backend
+docker compose -f deploy/docker-compose.yml up -d lexia-backend
 
 # Voir les logs d'un service
-docker compose logs -f backend
-docker compose logs -f keycloak
+docker compose -f deploy/docker-compose.yml logs -f lexia-backend
+docker compose -f deploy/docker-compose.yml logs -f keycloak
 
 # Accéder au shell PostgreSQL
-docker compose exec postgres psql -U legal_ai -d legal_ai
+docker compose -f deploy/docker-compose.yml exec postgres psql -U legal_ai -d legal_ai
 
 # Accéder au shell Redis
-docker compose exec redis redis-cli -a ${REDIS_PASSWORD}
+docker compose -f deploy/docker-compose.yml exec redis redis-cli -a ${REDIS_PASSWORD}
 
 # Sauvegarder la base de données
-docker compose exec postgres pg_dump -U legal_ai legal_ai > backup_$(date +%Y%m%d).sql
+docker compose -f deploy/docker-compose.yml exec postgres pg_dump -U legal_ai legal_ai > backup_$(date +%Y%m%d).sql
 ```
 
 ---

@@ -1,0 +1,107 @@
+# ─── Stage 1: Compile with Cython ────────────────────────────────────────────
+# Target linux/amd64 by default; override with `docker buildx build --platform ...`
+FROM --platform=linux/amd64 python:3.12-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc g++ unixodbc-dev curl gnupg2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv for fast dependency resolution
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
+WORKDIR /build
+
+# Install CPU-only torch first (saves ~1.5GB of unused CUDA libs in the image)
+RUN uv pip install --system --no-cache \
+    --index-url https://download.pytorch.org/whl/cpu torch
+
+# Install Python dependencies (cached layer) + build extras (cython, setuptools)
+COPY pyproject.toml ./
+RUN uv pip install --system --no-cache -r pyproject.toml \
+    && uv pip install --system --no-cache cython>=3.0.0 setuptools>=70.0.0
+
+# Copy source code
+COPY . .
+
+# Run the release build pipeline:
+#   1. Copy source to temp dir
+#   2. Encrypt .md prompts → .md.enc
+#   3. Cython compile all .py → .so
+#   4. Remove .py source files
+ARG LEXIA_BUILD_KEY=""
+ENV LEXIA_BUILD_KEY=${LEXIA_BUILD_KEY}
+
+RUN python scripts/build_release.py --output /build/release
+
+# ─── Stage 2: Clean runtime image (no source code) ──────────────────────────
+FROM --platform=linux/amd64 python:3.12-slim
+
+# libaio was renamed to libaio1t64 in Debian's t64 ABI transition (trixie/sid).
+# Install whichever one this base image provides, then create a compat symlink
+# libaio.so.1 -> libaio.so.1t64 because Oracle Instant Client is hard-linked to
+# the classic SONAME and would otherwise fail with
+#   DPI-1047: libaio.so.1: cannot open shared object file
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        unixodbc-dev curl ca-certificates unzip \
+    && (apt-get install -y --no-install-recommends libaio1t64 \
+        || apt-get install -y --no-install-recommends libaio1) \
+    && rm -rf /var/lib/apt/lists/* \
+    && LIBDIR=$(dirname "$(find /usr/lib /lib -name 'libaio.so.1*' 2>/dev/null | head -n1)") \
+    && if [ -n "$LIBDIR" ] && [ ! -e "$LIBDIR/libaio.so.1" ] && [ -e "$LIBDIR/libaio.so.1t64" ]; then \
+           ln -sf "$LIBDIR/libaio.so.1t64" "$LIBDIR/libaio.so.1"; \
+       fi \
+    && ldconfig
+
+# ─── Oracle Instant Client (Basic Lite, ~40MB) ──────────────────────────────
+# Required so python-oracledb can run in THICK mode. Thin mode (the default
+# pure-Python path) rejects legacy password verifiers like 0x939 used by
+# Oracle 11g / some 12c deployments with error DPY-3015.
+ENV ORACLE_CLIENT_LIB_DIR=/opt/oracle/instantclient
+ENV LD_LIBRARY_PATH=/opt/oracle/instantclient
+
+RUN mkdir -p /opt/oracle && cd /opt/oracle \
+    && curl -fsSLo ic.zip https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linuxx64.zip \
+    && unzip -q ic.zip \
+    && rm ic.zip \
+    && mv instantclient_* instantclient \
+    && echo /opt/oracle/instantclient > /etc/ld.so.conf.d/oracle.conf \
+    && ldconfig
+
+# Install uv and Python dependencies
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+WORKDIR /app
+
+# Install CPU-only torch first to match the builder stage
+RUN uv pip install --system --no-cache \
+    --index-url https://download.pytorch.org/whl/cpu torch
+
+COPY pyproject.toml /app/
+RUN uv pip install --system --no-cache -r pyproject.toml
+
+# Copy ONLY compiled artifacts from builder (no .py source)
+COPY --from=builder /build/release/ /app/
+
+# Read-only seeds (named volume mounted at /app/data hides image files — entrypoint merges these)
+COPY --from=builder /build/release/data/reporting /opt/brikz-seed/data/reporting
+COPY --from=builder /build/release/data/cte_graph_profiles.json /opt/brikz-seed/data/cte_graph_profiles.json
+
+COPY scripts/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Copy editable config files (overridden by volume mount at runtime)
+COPY config/*.yaml /app/config/
+
+# Create runtime directories
+RUN mkdir -p data/subagents data/outputs data/parquet data/memory \
+    data/embeddings data/graph data/conversations data/query_cache \
+    data/cte_graphs logs
+
+# Production defaults
+ENV LEXIA_ENV=production
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

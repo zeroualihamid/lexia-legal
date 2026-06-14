@@ -1,0 +1,135 @@
+# ============================================================
+# Tableau de bord — Audit des quittances (oracle_env_ca_view)
+# Période : Février 2027 vs Mars 2027 (Exercice 2027)
+# Généré par sous-agent Audit
+# ============================================================
+
+dashboard:
+  title: "Audit des quittances — Exercice 2027"
+  subtitle: "Comparaison Février 2027 → Mars 2027"
+  source: "oracle_env_ca_view.parquet"
+  generated_at: "2025-07-16"
+
+  kpi_cards:
+
+    - id: kpi_quit_volume
+      title: "Quittances émises"
+      current_month:
+        value: 367
+        month: "Mars 2027"
+      previous_month:
+        value: 1 240
+        month: "Février 2027"
+      variation:
+        absolute: -873
+        percent: -70,4 %
+        direction: down
+      interpretation: "Chute brutale de 70,4 % du volume de quittances entre février et mars 2027. Signal d'alerte nécessitant investigation."
+
+    - id: kpi_total_prime
+      title: "Prime nette totale"
+      current_month:
+        value: 76 129,04
+        unit: "MAD"
+        month: "Mars 2027"
+      previous_month:
+        value: 267 196,82
+        unit: "MAD"
+        month: "Février 2027"
+      variation:
+        absolute: -191 067,78
+        percent: -71,5 %
+        direction: down
+      interpretation: "La prime nette totale chute de 71,5 %, cohérente avec la baisse du volume de quittances."
+
+    - id: kpi_avg_prime
+      title: "Prime moyenne par quittance"
+      current_month:
+        value: 207,44
+        unit: "MAD"
+        month: "Mars 2027"
+      previous_month:
+        value: 214,96
+        unit: "MAD"
+        month: "Février 2027"
+      variation:
+        absolute: -7,52
+        percent: -3,5 %
+        direction: down
+      interpretation: "La prime moyenne baisse légèrement (-3,5 %), indiquant un mix produit ou une tarification stable malgré la chute des volumes."
+
+    - id: kpi_activity_rate
+      title: "Taux d'activité (STATQUIT = 1)"
+      current_month:
+        value: 0,00
+        unit: "%"
+        month: "Mars 2027"
+      previous_month:
+        value: 0,00
+        unit: "%"
+        month: "Février 2027"
+      variation:
+        absolute: 0,00
+        percent: 0,0 %
+        direction: stable
+      interpretation: "Aucune quittance avec STATQUIT = 1. Les statuts observés sont 10 (actif/encaissé) et 55 (annulation). Le STATQUIT=1 n'est pas utilisé dans cette base."
+
+    - id: kpi_annulations
+      title: "Quittances annulées (STATQUIT = 55)"
+      current_month:
+        value: 3
+        unit: "quittances"
+        period: "Fév–Mars 2027"
+      previous_month:
+        value: 0
+        unit: "quittances"
+      total_impact:
+        value: -290,55
+        unit: "MAD"
+      interpretation: "3 quittances annulées sur la période cumulée, représentant -290,55 MAD de prime nette. Impact marginal (< 0,1 % du total)."
+
+    - id: kpi_status_10
+      title: "Quittances actives (STATQUIT = 10)"
+      current_month:
+        value: 367
+        month: "Mars 2027"
+      previous_month:
+        value: 1 240
+        month: "Février 2027"
+      total_both_months:
+        value: 1 607
+      interpretation: "L'intégralité des quittances valides porte le statut 10. Aucune quittance en statut impayé ou suspendu n'est observée."
+
+  analysis_cards:
+
+    - id: analysis_volume_crash
+      title: "Analyse de la baisse de volume"
+      severity: "Élevée"
+      findings:
+        - "Le volume de quittances passe de 1 240 (février) à 367 (mars), soit une chute de 70,4 %."
+        - "La prime nette totale suit la même tendance : -71,5 % (267 196,82 → 76 129,04 MAD)."
+        - "Cette baisse est trop brutale pour être saisonnière normale. Hypothèses :"
+        - "  1. Données partielles pour mars 2027 (mois non clos au moment de l'extraction)."
+        - "  2. Problème d'alimentation ETL ou de périmètre d'extraction."
+        - "  3. Arrêt temporaire de production ou migration système."
+      recommendation: "Vérifier la complétude des données mars 2027 auprès de l'équipe technique. Si l'extraction est complète, investiguer les causes métier de cette chute."
+
+    - id: analysis_status_observed
+      title: "Analyse des statuts de quittance"
+      severity: "Moyenne"
+      findings:
+        - "Deux statuts distincts observés sur la période : STATQUIT = 10 (1 607 quittances, 343 616,41 MAD) et STATQUIT = 55 (3 quittances, -290,55 MAD)."
+        - "STATQUIT = 10 : statut actif/encaissé représentant 99,8 % des quittances et 100,1 % des primes (les annulations étant négatives)."
+        - "STATQUIT = 55 : annulations, volume négligeable (0,2 % des quittances, -0,08 % des primes)."
+        - "Aucune quittance en statut impayé (STATQUIT = 1 ou autre) n'est présente dans la base."
+      recommendation: "Documenter la signification des codes STATQUIT (10 = émis/encaissé, 55 = annulé). Vérifier si l'absence de statuts impayés est normale ou si un filtre amont les exclut."
+
+    - id: analysis_prime_stability
+      title: "Analyse de la stabilité des primes"
+      severity: "Faible"
+      findings:
+        - "La prime moyenne reste stable entre février (214,96 MAD) et mars (207,44 MAD), soit une baisse de seulement 3,5 %."
+        - "Cette stabilité malgré la chute des volumes suggère que le mix produit et la tarification n'ont pas significativement changé."
+        - "Le ratio prime totale / nombre de quittances est cohérent : la structure du portefeuille est homogène."
+        - "Les annulations (STATQUIT=55) concernent des primes faibles (-96,85 MAD en moyenne), sans impact significatif sur la prime moyenne globale."
+      recommendation: "Surveiller l'évolution de la prime moyenne sur les prochains mois. Une baisse prolongée pourrait indiquer une érosion tarifaire ou un glissement de mix vers des produits moins premiums."

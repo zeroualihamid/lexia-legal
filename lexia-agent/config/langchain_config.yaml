@@ -1,0 +1,106 @@
+# config/langchain_config.yaml
+# LangChain agent configuration.
+# Loaded by agent.config.load_langchain_config() and consumed by:
+#   - agent/langchain_agent.py  (AgentExecutor)
+#   - agent/preloop.py          (pre-loop reasoning pipeline)
+#   - agent/cte_retriever.py    (CTE search-or-create)
+#   - agent/chart_async.py      (decoupled chart generation)
+
+agent:
+  type: "tool_calling"        # create_tool_calling_agent
+  # Designing + persisting a brand-new CTE from a skill formula (e.g. MNI) takes
+  # several tool calls: list_accounting_ctes → describe_table / semantic_search
+  # to ground columns → save_accounting_cte → final answer. 10 was too tight and
+  # surfaced as "Agent stopped due to max iterations"; 14 gives complex
+  # diagnostic queries room to converge while still bounding runaway loops.
+  # On exhaustion, _finalize_answer synthesizes an answer from gathered data.
+  max_iterations: 14
+  early_stopping_method: "force"
+  verbose: true
+  return_intermediate_steps: true
+
+preloop:
+  dto_cache:
+    warm_on_start: true
+    parquet_dir: "data/parquet"
+  query_augmentation:
+    enabled: true
+  embedding_column_search:
+    enabled: true
+    threshold: 0.30
+    top_k_per_column: 5
+  plan_decomposition:
+    enabled: true
+
+cte:
+  # Library-CTE retrieval (catalog under data/reporting/sql/).
+  library_search:
+    enabled: true
+    top_k: 7
+    neighborhood_max: 12
+    # libraries: env LEXIA_CTE_GRAPH_LIBRARIES overrides; default = ["accounting"]
+  # Persisted custom CTE graphs (pickled NetworkX DiGraph under data/cte_graphs/).
+  graph_dir: "data/cte_graphs"
+  semantic_search:
+    threshold: 0.55
+    top_k: 5
+  # Fast-path: when a query maps to a library CTE with high confidence, execute
+  # that CTE directly and stream a grounded answer — skipping query
+  # augmentation, plan decomposition, and the multi-turn tool-calling loop
+  # (≈3 LLM round-trips saved). Falls back to the full agent on a weak match,
+  # an execution error, or zero rows. Set enabled:false to always run the
+  # full agent.
+  fast_path:
+    enabled: true
+    # Minimum similarity to take the fast path. Defaults to semantic_search
+    # threshold (0.55) — i.e. trigger whenever the library considers it a hit.
+    threshold: 0.55
+    max_rows: 200          # row cap for the direct CTE execution
+    summary_max_rows: 30   # rows shown to the summarizer LLM / table fallback
+    summarize: "llm"       # "llm" (one streamed grounded call) | "deterministic"
+  # On miss: try to generate a new CTE and append to the graph.
+  create_on_miss:
+    enabled: true
+    # When generation succeeds but postgres execution returns no rows,
+    # refuse the request with this message instead of fabricating data.
+    no_data_refusal: >
+      Je n'ai pas pu résoudre l'extraction de données pour votre requête :
+      ni la bibliothèque CTE ni une CTE générée n'ont produit de résultat
+      depuis PostgreSQL. Reformulez votre question ou précisez la période,
+      la dimension métier ou la source attendue.
+
+tools:
+  # Whitelist of tools exposed to the agent. Keep this small and focused.
+  # Comment a name to hide that tool from the LLM (it still works via direct call).
+  #
+  # Accounting-CTE tools FIRE the CTE chains catalogued under
+  # data/reporting/sql/accounting and persisted under data/cte_graphs. They
+  # are listed first to match the system prompt's "library-first" orientation.
+  enabled:
+    - list_accounting_ctes    # catalogue of library CTEs (start here)
+    - read_accounting_cte     # raw SQL + dependency chain of one CTE
+    - execute_accounting_cte  # FIRE a library CTE + its parent chain on DuckDB
+    - save_accounting_cte     # draft + persist a NEW reusable CTE then execute it
+    - render_report_template  # render a full reporting template (cascade of CTEs)
+    # Grounding-only tools — used to DESIGN a CTE (exact values / columns),
+    # never to produce a generic-SQL answer.
+    - list_tables             # list data sources / tables
+    - describe_table          # schema of one table
+    - semantic_search         # resolve a label → exact categorical value
+    # Visualisation — async so it never blocks token streaming.
+    - chart
+    # NOTE: `sql_query` (generic ad-hoc DuckDB SQL) is intentionally NOT enabled.
+    # The agent must answer exclusively through the accounting-CTE library
+    # (execute an existing CTE, or create + persist a new one for reuse).
+
+chart:
+  # Charts run async so they never block the data-token stream.
+  async_generation: true
+  # Where rendered charts (PNG/JSON) are written for the frontend to pick up.
+  output_dir: "data/charts"
+
+streaming:
+  # Stream agent events through FastAPI /chat/.
+  enabled: true
+  # Forward LangChain "on_chat_model_stream" + "on_tool_start/end" events.
+  forward_tool_events: true

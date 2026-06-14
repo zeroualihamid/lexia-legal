@@ -1,0 +1,13 @@
+# Build output
+dist/
+
+# Dependencies
+node_modules/
+
+# Local env (secrets)
+.env
+.env.*
+!.env.template
+
+# Logs
+*.log

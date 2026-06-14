@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Rapport COMEX Bancaire | Analytics Final</title>
+  <style>
+    :root {
+      --ink: #122033;
+      --muted: #607086;
+      --paper: #f5f7fb;
+      --panel: #ffffff;
+      --line: #dce3ee;
+      --navy: #102a43;
+      --blue: #1769aa;
+      --teal: #1b8a82;
+      --gold: #b8872d;
+      --red: #b94035;
+      --green: #2f7d4f;
+      --shadow: 0 18px 48px rgba(18, 32, 51, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: "Aptos", "Helvetica Neue", Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+    .cover {
+      background:
+        linear-gradient(110deg, rgba(16, 42, 67, 0.97), rgba(23, 105, 170, 0.88)),
+        repeating-linear-gradient(90deg, transparent 0 24px, rgba(255,255,255,0.06) 24px 25px);
+      color: #fff;
+      padding: 56px 36px 44px;
+    }
+    .cover-inner, main, footer { max-width: 1180px; margin: 0 auto; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: #d9ebff;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--gold);
+      display: inline-block;
+    }
+    h1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(42px, 7vw, 84px);
+      line-height: 0.95;
+      letter-spacing: 0;
+      margin: 28px 0 20px;
+      max-width: 920px;
+    }
+    .cover-copy {
+      color: rgba(255,255,255,0.82);
+      max-width: 780px;
+      font-size: 18px;
+      margin: 0 0 30px;
+    }
+    .cover-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 12px;
+    }
+    .cover-stat {
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.08);
+      padding: 16px;
+      min-height: 104px;
+    }
+    .cover-stat strong { display: block; font-size: 24px; line-height: 1.1; color: #fff; }
+    .cover-stat span { color: rgba(255,255,255,0.75); font-size: 13px; }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: rgba(245, 247, 251, 0.94);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: flex;
+      gap: 8px;
+      padding: 10px 28px;
+      overflow-x: auto;
+    }
+    .nav-inner a {
+      color: var(--muted);
+      text-decoration: none;
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 8px 10px;
+      border: 1px solid transparent;
+    }
+    .nav-inner a:hover { color: var(--blue); border-color: var(--line); background: #fff; }
+    main { padding: 42px 28px 68px; }
+    section { margin: 0 0 54px; }
+    .section-kicker {
+      color: var(--blue);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1.05;
+      margin: 0 0 12px;
+      letter-spacing: 0;
+    }
+    .section-intro { color: var(--muted); max-width: 760px; margin: 0 0 24px; font-size: 17px; }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 14px;
+    }
+    .kpi-card, .chart-card, .table-panel, .insight-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+    .kpi-card { padding: 20px; min-height: 132px; }
+    .kpi-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .kpi-value { font-size: 34px; line-height: 1; font-weight: 800; letter-spacing: 0; }
+    .kpi-unit { color: var(--muted); font-size: 14px; font-weight: 700; margin-left: 4px; }
+    .kpi-foot { color: var(--muted); margin-top: 12px; font-size: 13px; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.7fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+    .grid-even {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .chart-card { padding: 20px; }
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 14px;
+    }
+    .chart-title { font-weight: 800; font-size: 18px; }
+    .chart-sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #cfe1f4;
+      color: var(--blue);
+      background: #f1f7ff;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 7px 10px;
+      white-space: nowrap;
+    }
+    .chart-box { height: 340px; position: relative; }
+    .chart-box.tall { height: 430px; }
+    canvas { width: 100%; height: 100%; display: block; }
+    .insight-panel {
+      padding: 22px;
+      border-left: 4px solid var(--blue);
+      background: #f9fbff;
+    }
+    .insight-panel strong { display: block; font-size: 18px; margin-bottom: 8px; }
+    .insight-panel p { margin: 0; color: #2c3d52; }
+    .callout-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 12px;
+    }
+    .callout-list li {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .callout-list li:last-child { border-bottom: 0; }
+    .callout-list b { display: block; margin-bottom: 3px; }
+    .table-panel { overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    th, td { padding: 15px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; background: #f7f9fc; }
+    td:first-child { font-weight: 800; color: var(--navy); }
+    .priority {
+      display: inline-flex;
+      font-weight: 800;
+      font-size: 12px;
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .priority.high { color: var(--red); border-color: #efc8c2; background: #fff5f3; }
+    .priority.medium { color: var(--gold); border-color: #ecdab5; background: #fff9ec; }
+    .priority.struct { color: var(--teal); border-color: #bee4de; background: #eefaf8; }
+    footer {
+      color: var(--muted);
+      padding: 30px 28px 50px;
+      border-top: 1px solid var(--line);
+    }
+    @media (max-width: 860px) {
+      .cover { padding: 42px 22px 32px; }
+      main { padding: 32px 16px 52px; }
+      .cover-grid, .kpi-grid, .grid-2, .grid-even { grid-template-columns: 1fr; }
+      .chart-head { flex-direction: column; }
+      .chart-box, .chart-box.tall { height: 300px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="cover">
+    <div class="cover-inner">
+      <div class="eyebrow">Comité Exécutif · Banque · {{report_period}}</div>
+      <h1>Diagnostic bancaire du portefeuille clients</h1>
+      <p class="cover-copy">Lecture COMEX issue de <strong>Analytics_Final.parquet</strong> et des CTEs <strong>analyse_bancaire</strong> : PNB proxy, encours, concentration, réseau, segmentation et qualité de données.</p>
+      <div class="cover-grid" data-block="bank_executive_kpis">
+        <div class="cover-stat"><strong>{{pnb_total}}</strong><span>Md MGA · PNB proxy</span></div>
+        <div class="cover-stat"><strong>{{encours_total}}</strong><span>Md MGA · encours absolu</span></div>
+        <div class="cover-stat"><strong>{{active_clients}}</strong><span>clients actifs sur {{client_count}}</span></div>
+        <div class="cover-stat"><strong>{{agencies_count}}</strong><span>agences couvertes</span></div>
+      </div>
+    </div>
+  </header>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="#synthese">Synthèse</a>
+      <a href="#tendance">Tendance</a>
+      <a href="#reseau">Réseau</a>
+      <a href="#segments">Segments</a>
+      <a href="#risque">Risque</a>
+      <a href="#actions">Actions</a>
+    </div>
+  </nav>
+
+  <main>
+    <section id="synthese">
+      <div class="section-kicker">Synthèse exécutive</div>
+      <h2>PNB, encours et équipement client</h2>
+      <p class="section-intro">Le reporting reconstitue les indicateurs bancaires depuis les CTEs de normalisation et d’agrégation. Les montants sont exprimés en milliards MGA, la devise dominante de la source.</p>
+      <div class="kpi-grid" data-block="bank_executive_kpis">
+        <div class="kpi-card">
+          <div class="kpi-label">PNB proxy</div>
+          <div class="kpi-value">{{pnb_total}}<span class="kpi-unit">Md MGA</span></div>
+          <div class="kpi-foot">solde moyen pondéré + capitaux</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Encours</div>
+          <div class="kpi-value">{{encours_total}}<span class="kpi-unit">Md MGA</span></div>
+          <div class="kpi-foot">exposition absolue du portefeuille</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Ratio PNB / encours</div>
+          <div class="kpi-value">{{pnb_encours_ratio}}<span class="kpi-unit">%</span></div>
+          <div class="kpi-foot">proxy de rendement commercial</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Équipement moyen</div>
+          <div class="kpi-value">{{avg_equipment}}</div>
+          <div class="kpi-foot">produits distincts par client</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tendance" data-block="bank_trend_chart">
+      <div class="section-kicker">Trajectoire financière</div>
+      <h2>PNB proxy et encours par période</h2>
+      <p class="section-intro">{{trend_narrative}}</p>
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title">PNB proxy vs encours</div>
+              <div class="chart-sub">Séries mensuelles et cumul YTD · Md MGA</div>
+            </div>
+            <span class="badge">{{latest_month}}</span>
+          </div>
+          <div class="chart-box"><canvas id="trendCanvas"></canvas></div>
+        </div>
+        <div class="insight-panel">
+          <strong>Lecture COMEX</strong>
+          <p>Sur {{latest_month}}, le PNB proxy ressort à <strong>{{pnb_month}} Md MGA</strong> pour <strong>{{encours_month}} Md MGA</strong> d’encours. La priorité n’est pas seulement la croissance, mais la qualité des poches d’encours et leur concentration.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="reseau" data-block="bank_network_chart">
+      <div class="section-kicker">Réseau commercial</div>
+      <h2>Agences et gestionnaires contributeurs</h2>
+      <p class="section-intro">L’agrégation réseau permet d’isoler les centres de production de PNB et les portefeuilles gestionnaires nécessitant une gouvernance dédiée.</p>
+      <div class="grid-even">
+        <div class="chart-card">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title">Top agences par PNB proxy</div>
+              <div class="chart-sub">Contribution en Md MGA</div>
+            </div>
+            <span class="badge">{{top_agency_pnb}} Md</span>
+          </div>
+          <div class="chart-box tall"><canvas id="agencyCanvas"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title">Top gestionnaires par PNB proxy</div>
+              <div class="chart-sub">Contribution en Md MGA</div>
+            </div>
+            <span class="badge">{{top_manager_pnb}} Md</span>
+          </div>
+          <div class="chart-box tall"><canvas id="managerCanvas"></canvas></div>
+        </div>
+      </div>
+      <div class="insight-panel" style="margin-top:16px">
+        <strong>Point d’attention</strong>
+        <p>L’agence <strong>{{top_agency_name}}</strong> et le gestionnaire <strong>{{top_manager_name}}</strong> concentrent les plus fortes contributions. Ces poches doivent être suivies avec des seuils de concentration et des revues qualité portefeuille.</p>
+      </div>
+    </section>
+
+    <section id="segments" data-block="bank_segment_chart">
+      <div class="section-kicker">Segmentation client</div>
+      <h2>Marchés, qualité et poches de valeur</h2>
+      <p class="section-intro">La segmentation relie PNB, encours et qualité client pour arbitrer entre développement commercial, désensibilisation et allocation des efforts réseau.</p>
+      <div class="grid-even">
+        <div class="chart-card">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title">PNB proxy par marché client</div>
+              <div class="chart-sub">Top segments · Md MGA</div>
+            </div>
+            <span class="badge">{{top_market_pnb}} Md</span>
+          </div>
+          <div class="chart-box tall"><canvas id="marketCanvas"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title">Encours par bucket qualité</div>
+              <div class="chart-sub">Qualité bancaire centrale · Md MGA</div>
+            </div>
+            <span class="badge">{{top_quality_bucket}}</span>
+          </div>
+          <div class="chart-box tall"><canvas id="qualityCanvas"></canvas></div>
+        </div>
+      </div>
+      <div class="insight-panel" style="margin-top:16px">
+        <strong>Signal stratégique</strong>
+        <p>Le segment <strong>{{top_market_name}}</strong> porte le premier gisement de PNB. La part des clients sensibles ou provisionnés atteint <strong>{{sensitive_clients_pct}}%</strong>, ce qui impose une lecture croisée rentabilité-risque avant toute accélération commerciale.</p>
+      </div>
+    </section>
+
+    <section id="risque" data-block="bank_risk_quality">
+      <div class="section-kicker">Risque et qualité</div>
+      <h2>Alertes portefeuille et fiabilité des données</h2>
+      <p class="section-intro">Les contrôles consolident les signaux commerciaux et les points de qualité qui peuvent biaiser l’interprétation COMEX.</p>
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title">Risque commercial</div>
+              <div class="chart-sub">Clients inactifs, sensibles et concentration</div>
+            </div>
+            <span class="badge">Top 10 : {{top10_concentration}}%</span>
+          </div>
+          <div class="chart-box"><canvas id="riskCanvas"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title">Contrôles qualité</div>
+              <div class="chart-sub">Alertes exploitables avant diffusion</div>
+            </div>
+            <span class="badge">{{data_quality_alerts}} alertes</span>
+          </div>
+          <ul class="callout-list">
+            <li><b>{{inactive_clients}} clients inactifs</b><span>À filtrer dans les plans d’activation et les prévisions de PNB.</span></li>
+            <li><b>{{sensitive_clients}} clients sensibles / provisionnés</b><span>À traiter dans une trajectoire risque séparée des actions commerciales.</span></li>
+            <li><b>{{top10_concentration}}% du PNB sur les 10 premiers clients</b><span>À suivre avec limites d’exposition et plans relationnels nominaux.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="actions">
+      <div class="section-kicker">Plan d’actions COMEX</div>
+      <h2>Décisions recommandées</h2>
+      <div class="table-panel">
+        <table>
+          <thead>
+            <tr><th>Priorité</th><th>Décision</th><th>Rationale data</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><span class="priority high">Haute</span></td><td>Créer une revue mensuelle des clients sensibles / provisionnés.</td><td>Le bucket qualité porte une part significative de l’encours et peut masquer le rendement réel.</td></tr>
+            <tr><td><span class="priority high">Haute</span></td><td>Mettre sous gouvernance les 10 premiers contributeurs PNB.</td><td>La concentration top 10 atteint {{top10_concentration}}% du PNB proxy.</td></tr>
+            <tr><td><span class="priority medium">Moyenne</span></td><td>Déployer un pilotage agence par productivité client et encours.</td><td>Les agences top PNB n’ont pas toujours la même profondeur clients.</td></tr>
+            <tr><td><span class="priority struct">Structurant</span></td><td>Stabiliser les référentiels produit et période avant industrialisation.</td><td>{{data_quality_alerts}} alertes qualité doivent être arbitrées pour fiabiliser les comparaisons.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <strong>Rapport COMEX Bancaire</strong><br>
+    Source : Analytics_Final.parquet · CTE graph : analyse_bancaire · Document confidentiel
+  </footer>
+
+  <script>
+    const BANK_DATA = {
+      trend: /* {{bank_trend_json}} */,
+      network: /* {{bank_network_json}} */,
+      segment: /* {{bank_segment_json}} */,
+      risk: /* {{bank_risk_json}} */
+    };
+
+    const COLORS = {
+      navy: '#102a43',
+      blue: '#1769aa',
+      teal: '#1b8a82',
+      gold: '#b8872d',
+      red: '#b94035',
+      green: '#2f7d4f',
+      grid: '#dce3ee',
+      text: '#122033',
+      muted: '#607086'
+    };
+
+    function setupCanvas(canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(320, rect.width || 640);
+      const height = Math.max(240, rect.height || 320);
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+      ctx.font = '12px Aptos, Helvetica Neue, Arial, sans-serif';
+      ctx.textBaseline = 'middle';
+      return { ctx, width, height };
+    }
+
+    function drawGrid(ctx, x, y, width, height) {
+      ctx.strokeStyle = COLORS.grid;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= 4; i += 1) {
+        const py = y + (height / 4) * i;
+        ctx.moveTo(x, py);
+        ctx.lineTo(x + width, py);
+      }
+      ctx.stroke();
+    }
+
+    function drawLineChart(id, labels, series) {
+      const { ctx, width, height } = setupCanvas(document.getElementById(id));
+      const pad = { l: 58, r: 22, t: 18, b: 42 };
+      const area = { x: pad.l, y: pad.t, w: width - pad.l - pad.r, h: height - pad.t - pad.b };
+      const max = Math.max(1, ...series.flatMap(s => s.values)) * 1.12;
+      drawGrid(ctx, area.x, area.y, area.w, area.h);
+      series.forEach((s) => {
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        s.values.forEach((v, i) => {
+          const x = area.x + (labels.length <= 1 ? 0 : (i / (labels.length - 1)) * area.w);
+          const y = area.y + area.h - (v / max) * area.h;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        ctx.fillStyle = s.color;
+        s.values.forEach((v, i) => {
+          const x = area.x + (labels.length <= 1 ? 0 : (i / (labels.length - 1)) * area.w);
+          const y = area.y + area.h - (v / max) * area.h;
+          ctx.beginPath();
+          ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      });
+      ctx.fillStyle = COLORS.muted;
+      labels.forEach((label, i) => {
+        const x = area.x + (labels.length <= 1 ? 0 : (i / (labels.length - 1)) * area.w);
+        ctx.fillText(label, Math.max(4, x - 18), height - 18);
+      });
+      series.forEach((s, i) => {
+        ctx.fillStyle = s.color;
+        ctx.fillRect(area.x + i * 120, 4, 18, 4);
+        ctx.fillStyle = COLORS.text;
+        ctx.fillText(s.label, area.x + 24 + i * 120, 8);
+      });
+    }
+
+    function drawHorizontalBars(id, labels, values, options = {}) {
+      const { ctx, width, height } = setupCanvas(document.getElementById(id));
+      const pad = { l: options.left || 170, r: 28, t: 18, b: 18 };
+      const area = { x: pad.l, y: pad.t, w: width - pad.l - pad.r, h: height - pad.t - pad.b };
+      const max = Math.max(1, ...values) * 1.12;
+      const row = area.h / Math.max(1, labels.length);
+      drawGrid(ctx, area.x, area.y, area.w, area.h);
+      labels.forEach((label, i) => {
+        const y = area.y + i * row + row * 0.5;
+        const barW = (values[i] / max) * area.w;
+        ctx.fillStyle = COLORS.muted;
+        ctx.fillText(String(label).slice(0, options.labelLength || 26), 8, y);
+        ctx.fillStyle = options.color || COLORS.blue;
+        ctx.fillRect(area.x, y - row * 0.28, Math.max(2, barW), row * 0.55);
+        ctx.fillStyle = COLORS.text;
+        ctx.fillText(String(values[i]), area.x + Math.max(4, barW) + 8, y);
+      });
+    }
+
+    function drawMetricBars(id, labels, values) {
+      const { ctx, width, height } = setupCanvas(document.getElementById(id));
+      const pad = { l: 54, r: 18, t: 22, b: 58 };
+      const area = { x: pad.l, y: pad.t, w: width - pad.l - pad.r, h: height - pad.t - pad.b };
+      const max = Math.max(1, ...values) * 1.15;
+      const gap = 12;
+      const barW = (area.w - gap * Math.max(0, values.length - 1)) / Math.max(1, values.length);
+      drawGrid(ctx, area.x, area.y, area.w, area.h);
+      values.forEach((v, i) => {
+        const h = (v / max) * area.h;
+        const x = area.x + i * (barW + gap);
+        ctx.fillStyle = [COLORS.red, COLORS.gold, COLORS.blue, COLORS.teal][i % 4];
+        ctx.fillRect(x, area.y + area.h - h, barW, h);
+        ctx.save();
+        ctx.translate(x + barW / 2, height - 16);
+        ctx.rotate(-Math.PI / 8);
+        ctx.fillStyle = COLORS.muted;
+        ctx.textAlign = 'center';
+        ctx.fillText(String(labels[i]).slice(0, 18), 0, 0);
+        ctx.restore();
+      });
+    }
+
+    function renderCharts() {
+      drawLineChart('trendCanvas', BANK_DATA.trend.labels || [], [
+        { label: 'PNB proxy', values: BANK_DATA.trend.pnb || [], color: COLORS.blue },
+        { label: 'Encours', values: BANK_DATA.trend.encours || [], color: COLORS.gold }
+      ]);
+      drawHorizontalBars('agencyCanvas', BANK_DATA.network.agencies.labels || [], BANK_DATA.network.agencies.pnb || [], { color: COLORS.blue, labelLength: 28 });
+      drawHorizontalBars('managerCanvas', BANK_DATA.network.managers.labels || [], BANK_DATA.network.managers.pnb || [], { color: COLORS.teal, labelLength: 30 });
+      drawHorizontalBars('marketCanvas', BANK_DATA.segment.markets.labels || [], BANK_DATA.segment.markets.pnb || [], { color: COLORS.navy, labelLength: 30 });
+      drawHorizontalBars('qualityCanvas', BANK_DATA.segment.quality.labels || [], BANK_DATA.segment.quality.encours || [], { color: COLORS.red, labelLength: 32 });
+      drawMetricBars('riskCanvas', BANK_DATA.risk.risk.labels || [], BANK_DATA.risk.risk.metric_values || []);
+    }
+
+    window.addEventListener('load', renderCharts);
+    window.addEventListener('resize', () => window.requestAnimationFrame(renderCharts));
+  </script>
+</body>
+</html>

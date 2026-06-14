@@ -1,0 +1,5 @@
+#!/command/with-contenv sh
+exec 2>&1
+cd /app
+echo "[auth] starting node server on :3000"
+exec node /app/dist/server.js

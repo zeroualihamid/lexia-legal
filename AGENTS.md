@@ -8,10 +8,10 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Repo layout
 
-- `backend/` — NestJS 10 API (TypeScript). Entry: `src/main.ts` → `src/app.module.ts`. Domain modules live under `src/modules/`.
+- `lexia-backend/` — unified NestJS API (TypeScript): legal platform (`src/modules/`), better-auth, agent proxy. Entry: `src/main.ts` → `src/app.module.ts`.
 - `frontend/` — React 18 + Vite + Ant Design (RTL). Entry: `src/main.tsx` → `src/App.tsx`. Two apps mounted under one router: `src/apps/user/` and `src/apps/admin/`. Cross-app code in `src/shared/`.
 - `infra/` — `postgres/init.sql` (full schema, ~570 lines, single source of truth — there is no migration tool), `keycloak/realm-export.json` (auto-imported on Keycloak boot), `nginx/nginx.conf` (reverse proxy + SSE passthrough).
-- `docker-compose.yml` — orchestrates everything (nginx, frontend, backend, postgres ×2, keycloak, qdrant, minio, redis, bull-board).
+- `deploy/docker-compose.yml` — orchestrates everything (legal platform + agent stack: nginx, frontend, lexia-backend, lexia-admin, lexia-agent, postgres ×2, keycloak, qdrant, minio, redis, bull-board, pgadmin).
 - `.env.example` — copy to `.env` before first run; the backend reads it via `@nestjs/config` (`src/config/configuration.ts`).
 
 ## Commands
@@ -20,26 +20,26 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ```bash
 cp .env.example .env             # then fill in secrets
-docker compose up -d
-docker compose logs -f backend   # or: frontend, keycloak, etc.
-docker compose down              # add -v to wipe volumes (DESTROYS DATA)
+docker compose -f deploy/docker-compose.yml up -d
+docker compose -f deploy/docker-compose.yml logs -f lexia-backend   # or: frontend, keycloak, etc.
+docker compose -f deploy/docker-compose.yml down              # add -v to wipe volumes (DESTROYS DATA)
 ```
 
-URLs after boot: Frontend `http://localhost`, API `http://localhost/api`, Swagger `http://localhost/docs` (i.e. `api/docs` proxied), Keycloak admin `http://localhost:8080/admin`, MinIO console `http://localhost:9001`, Bull Board `http://localhost:3001`.
+URLs after boot: Frontend `http://localhost`, API `http://localhost/api`, Swagger `http://localhost/docs` (i.e. `api/docs` proxied), Keycloak admin `http://localhost:8080/admin`, MinIO console `http://localhost:9001`, Bull Board `http://localhost:3001`, Lexia admin UI `http://localhost:5175`, Lexia agent API (via proxy) `http://localhost:6002`.
 
 ### Backend dev (outside Docker)
 
 ```bash
-cd backend
+cd lexia-backend
 npm install
 npm run dev          # nest start --watch (port 4000)
 npm run build        # nest build → dist/
 npm run lint         # eslint src --ext .ts
 ```
 
-There is **no test runner configured** in `backend/package.json` — do not invent `npm test` commands. If asked to add tests, propose the framework first.
+There is **no test runner configured** in `lexia-backend/package.json` — do not invent `npm test` commands. If asked to add tests, propose the framework first.
 
-The backend expects all infra services (postgres, redis, qdrant, minio, keycloak) to be reachable. The simplest local workflow is `docker compose up -d postgres redis qdrant minio keycloak postgres-keycloak` and then `npm run dev` against those.
+The backend expects all infra services (postgres, redis, qdrant, minio, keycloak) to be reachable. The simplest local workflow is `docker compose -f deploy/docker-compose.yml up -d postgres redis qdrant minio keycloak postgres-keycloak` and then `npm run dev` against those.
 
 ### Frontend dev
 
@@ -56,16 +56,16 @@ No lint or test scripts exist on the frontend.
 ### DB / cache shells
 
 ```bash
-docker compose exec postgres psql -U legal_ai -d legal_ai
-docker compose exec redis redis-cli -a ${REDIS_PASSWORD}
-docker compose exec postgres pg_dump -U legal_ai legal_ai > backup_$(date +%Y%m%d).sql
+docker compose -f deploy/docker-compose.yml exec postgres psql -U legal_ai -d legal_ai
+docker compose -f deploy/docker-compose.yml exec redis redis-cli -a ${REDIS_PASSWORD}
+docker compose -f deploy/docker-compose.yml exec postgres pg_dump -U legal_ai legal_ai > backup_$(date +%Y%m%d).sql
 ```
 
 ## Architecture — what spans multiple files
 
 ### Auth & access levels (read this before touching any controller)
 
-Authentication is **Keycloak OIDC**, verified per request by `KeycloakGuard` (`backend/src/common/guards/keycloak.guard.ts`) which fetches JWKS from Keycloak and decodes the bearer token (or `?token=` query param, used for SSE). It assigns `request.user: AuthUser` with one of four `accessLevel` values derived from realm roles:
+Authentication is **Keycloak OIDC**, verified per request by `KeycloakGuard` (`lexia-backend/src/common/guards/keycloak.guard.ts`) which fetches JWKS from Keycloak and decodes the bearer token (or `?token=` query param, used for SSE). It assigns `request.user: AuthUser` with one of four `accessLevel` values derived from realm roles:
 
 `PUBLIC` (no token / no role) < `PRO` < `ADMIN` < `SUPERADMIN`
 
@@ -87,7 +87,7 @@ The same `accessLevel` propagates into the RAG layer to filter Qdrant payloads (
 
 ### RAG / chat pipeline
 
-`POST /api/chat/stream/:conversationId?q=…` is an **SSE** endpoint. The orchestration in `AgentService.streamChat` (`backend/src/modules/chat/agent/agent.service.ts`) is the chain:
+`POST /api/chat/stream/:conversationId?q=…` is an **SSE** endpoint. The orchestration in `AgentService.streamChat` (`lexia-backend/src/modules/chat/agent/agent.service.ts`) is the chain:
 
 1. Load active agent config (system prompt + skills) from Postgres via admin-managed tables.
 2. Load conversation history (PRO+ only — PUBLIC has no persistence).
@@ -102,15 +102,15 @@ SSE has special infra concerns: nginx must not buffer (set `X-Accel-Buffering: n
 
 ### Async jobs (BullMQ)
 
-Three Bull queues are wired in `main.ts` and exposed through Bull Board: `document-processing`, `scraping`, `embedding`. Processors live in `backend/src/modules/queue/`. Anything that touches OCR, web scraping, or vector indexing should be enqueued — never run inline in a request handler.
+Three Bull queues are wired in `main.ts` and exposed through Bull Board: `document-processing`, `scraping`, `embedding`. Processors live in `lexia-backend/src/modules/queue/`. Anything that touches OCR, web scraping, or vector indexing should be enqueued — never run inline in a request handler.
 
 ### Scrapers
 
-Strategy pattern under `backend/src/modules/scraper/`: `base.scraper.ts` defines the contract, `adala.scraper.ts` and `sgg.scraper.ts` are concrete implementations, `scraper-factory.service.ts` selects one. New legal sources = new scraper class + register in the factory; the admin scraper controller (`modules/admin/scraper/`) is what triggers runs.
+Strategy pattern under `lexia-backend/src/modules/scraper/`: `base.scraper.ts` defines the contract, `adala.scraper.ts` and `sgg.scraper.ts` are concrete implementations, `scraper-factory.service.ts` selects one. New legal sources = new scraper class + register in the factory; the admin scraper controller (`modules/admin/scraper/`) is what triggers runs.
 
 ### Database
 
-PostgreSQL 16 schema is defined entirely in `infra/postgres/init.sql` and applied **only at first boot** via `docker-entrypoint-initdb.d`. There is **no migration framework**. To change schema in dev: `docker compose down -v` and start fresh, OR write the ALTER manually and apply via `psql`. Coordinate with the user before introducing a migration tool.
+PostgreSQL 16 schema is defined entirely in `infra/postgres/init.sql` and applied **only at first boot** via `docker-entrypoint-initdb.d`. There is **no migration framework**. To change schema in dev: `docker compose -f deploy/docker-compose.yml down -v` and start fresh, OR write the ALTER manually and apply via `psql`. Coordinate with the user before introducing a migration tool.
 
 The backend uses raw SQL through `PostgresService.query()` (a thin `pg` wrapper) — no ORM. Queries are parameterized with `$1, $2, …`.
 
@@ -125,7 +125,7 @@ Two separate Postgres instances run: `postgres` (app data) and `postgres-keycloa
 
 ### Admin module
 
-`backend/src/modules/admin/` is a dense area: `agent-config/`, `skills/`, `tools/`, `mcp/`, `users/`, `scraper/`, `analytics/`. The agent's behavior at runtime (system prompt, available tools, enabled skills, MCP servers) is **data-driven from these tables**, not hardcoded. When the user mentions "the agent" they often mean a row in `agent_configs`, not the code in `chat/agent/`.
+`lexia-backend/src/modules/admin/` is a dense area: `agent-config/`, `skills/`, `tools/`, `mcp/`, `users/`, `scraper/`, `analytics/`. The agent's behavior at runtime (system prompt, available tools, enabled skills, MCP servers) is **data-driven from these tables**, not hardcoded. When the user mentions "the agent" they often mean a row in `agent_configs`, not the code in `chat/agent/`.
 
 ## Conventions
 

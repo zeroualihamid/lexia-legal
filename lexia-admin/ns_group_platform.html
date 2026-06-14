@@ -1,0 +1,3164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NS Group — Plateforme de Pilotage Intégré</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700;800;900&family=Archivo+Narrow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f7fa;
+  --s1: #ffffff;
+  --s2: #ffffff;
+  --s3: #f0f3f8;
+  --border: #dde3ee;
+  --border2: #c5cfdf;
+  --factory: #1a6fd4;
+  --mobili: #c27000;
+  --accent: #7a8a00;
+  --green: #0a9e5e;
+  --red: #d42030;
+  --purple: #7040d0;
+  --pink: #c0308a;
+  --text: #1a2035;
+  --muted: #8090b0;
+  --muted2: #5a6888;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Archivo Narrow',sans-serif; min-height:100vh; overflow-x:hidden; }
+
+/* GRID TEXTURE */
+body::after {
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image: radial-gradient(circle at 20% 50%, #3a8ef508 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, #f0a03006 0%, transparent 40%);
+}
+
+/* TOPBAR */
+.topbar {
+  position:sticky; top:0; z-index:100;
+  background:var(--s1); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:0;
+  height:52px;
+}
+.brand {
+  padding:0 24px; border-right:1px solid var(--border);
+  display:flex; align-items:center; gap:10px; height:100%; flex-shrink:0;
+}
+.brand-logo {
+  font-family:'Archivo',sans-serif; font-weight:900; font-size:18px;
+  background:linear-gradient(135deg,var(--factory),var(--accent));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.brand-sub { font-size:9px; color:var(--muted2); letter-spacing:0.15em; text-transform:uppercase; }
+
+.nav-tabs { display:flex; align-items:center; flex:1; overflow-x:auto; height:100%; }
+.nav-tabs::-webkit-scrollbar { height:2px; }
+.nav-tab {
+  height:100%; padding:0 18px; display:flex; align-items:center; gap:8px;
+  font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;
+  cursor:pointer; color:var(--muted2); border:none; background:none;
+  border-bottom:2px solid transparent; white-space:nowrap; transition:all 0.2s;
+  font-family:'Archivo',sans-serif;
+}
+.nav-tab:hover { color:var(--text); }
+.nav-tab.active { color:var(--factory); border-bottom-color:var(--factory); background:var(--factory)0d; }
+.nav-tab .tab-icon { font-size:14px; }
+
+.topbar-right {
+  padding:0 20px; border-left:1px solid var(--border);
+  display:flex; align-items:center; gap:12px; flex-shrink:0;
+}
+.entity-badge {
+  font-size:9px; font-weight:700; padding:3px 8px; border-radius:3px;
+  letter-spacing:0.1em; font-family:'Archivo',sans-serif;
+}
+.badge-factory { background:var(--factory)22; color:var(--factory); border:1px solid var(--factory)44; }
+.badge-mobili  { background:var(--mobili)22;  color:var(--mobili);  border:1px solid var(--mobili)44;  }
+.badge-group   { background:var(--accent)15;  color:var(--accent);  border:1px solid var(--accent)44;  }
+
+/* MAIN */
+main { position:relative; z-index:1; }
+.view { display:none; animation:fadeUp 0.3s ease; }
+.view.active { display:block; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+/* COMMON LAYOUT */
+.page { padding:24px 28px; max-width:1600px; margin:0 auto; }
+.page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; }
+.page-title { font-family:'Archivo',sans-serif; font-weight:900; font-size:22px; line-height:1.1; }
+.page-sub { font-size:11px; color:var(--muted2); margin-top:4px; }
+
+/* UPLOAD ZONE */
+.upload-zone {
+  border:1.5px dashed var(--border2); border-radius:10px; padding:28px 20px;
+  text-align:center; cursor:pointer; transition:all 0.2s; background:var(--s2);
+  position:relative; overflow:hidden;
+}
+.upload-zone:hover, .upload-zone.drag { border-color:var(--accent); background:var(--accent)06; }
+.upload-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; }
+.upload-icon { font-size:28px; margin-bottom:10px; }
+.upload-label { font-size:12px; color:var(--muted2); }
+.upload-label strong { color:var(--text); }
+.upload-formats { font-size:10px; color:var(--muted); margin-top:5px; letter-spacing:0.05em; }
+
+/* KPI GRID */
+.kpi-grid { display:grid; gap:12px; margin-bottom:20px; }
+.kpi-4 { grid-template-columns:repeat(4,1fr); }
+.kpi-5 { grid-template-columns:repeat(5,1fr); }
+.kpi-6 { grid-template-columns:repeat(6,1fr); }
+.kpi-3 { grid-template-columns:repeat(3,1fr); }
+
+.kpi {
+  background:var(--s2); border:1px solid var(--border); border-radius:8px;
+  padding:14px 16px; position:relative; overflow:hidden; transition:border-color 0.2s;
+}
+.kpi:hover { border-color:var(--border2); }
+.kpi::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+.kpi.c-factory::before { background:var(--factory); }
+.kpi.c-mobili::before  { background:var(--mobili); }
+.kpi.c-accent::before  { background:var(--accent); }
+.kpi.c-green::before   { background:var(--green); }
+.kpi.c-red::before     { background:var(--red); }
+.kpi.c-purple::before  { background:var(--purple); }
+.kpi-label { font-size:9px; color:var(--muted2); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:8px; font-weight:600; }
+.kpi-val { font-family:'Archivo',sans-serif; font-weight:900; font-size:20px; line-height:1; }
+.kpi-val.c-factory { color:var(--factory); }
+.kpi-val.c-mobili  { color:var(--mobili); }
+.kpi-val.c-accent  { color:var(--accent); }
+.kpi-val.c-green   { color:var(--green); }
+.kpi-val.c-red     { color:var(--red); }
+.kpi-val.c-purple  { color:var(--purple); }
+.kpi-delta { font-size:10px; color:var(--muted); margin-top:5px; }
+.kpi-delta .up   { color:var(--green); }
+.kpi-delta .down { color:var(--red); }
+
+/* PANELS */
+.panel { background:var(--s2); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:16px; }
+.panel-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 18px; border-bottom:1px solid var(--border);
+  background:var(--s3);
+}
+.panel-title { font-family:'Archivo',sans-serif; font-weight:700; font-size:13px; display:flex; align-items:center; gap:8px; }
+.panel-tag {
+  font-size:9px; letter-spacing:0.1em; text-transform:uppercase;
+  padding:2px 8px; border-radius:3px; font-weight:700;
+}
+.tag-f { background:var(--factory)20; color:var(--factory); border:1px solid var(--factory)40; }
+.tag-m { background:var(--mobili)20;  color:var(--mobili);  border:1px solid var(--mobili)40; }
+.tag-g { background:var(--accent)15;  color:var(--accent);  border:1px solid var(--accent)40; }
+.tag-gr { background:var(--green)15;  color:var(--green);   border:1px solid var(--green)40; }
+.tag-r { background:var(--red)15;     color:var(--red);     border:1px solid var(--red)40; }
+.tag-p { background:var(--purple)15;  color:var(--purple);  border:1px solid var(--purple)40; }
+.tag-pk{ background:var(--pink)15;    color:var(--pink);    border:1px solid var(--pink)40; }
+.panel-body { padding:18px; }
+
+/* GRID LAYOUTS */
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.g3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+.g-main { display:grid; grid-template-columns:2fr 1fr; gap:16px; }
+.g-main3 { display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:16px; }
+
+/* TABLE */
+.data-table { width:100%; border-collapse:collapse; font-size:11px; }
+.data-table th { text-align:left; padding:8px 12px; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); border-bottom:1px solid var(--border); font-weight:600; }
+.data-table td { padding:9px 12px; border-bottom:1px solid var(--border)55; }
+.data-table tr:hover td { background:var(--s3); }
+.data-table .num { text-align:right; font-family:'Archivo',sans-serif; font-weight:700; }
+.data-table .pct { text-align:right; font-size:10px; color:var(--muted2); }
+.data-table .pos { color:var(--green); }
+.data-table .neg { color:var(--red); }
+
+/* CHART AREA */
+.chart-area { padding:16px 18px; }
+
+/* PROGRESS */
+.progress { height:5px; background:var(--border); border-radius:3px; overflow:hidden; margin-top:5px; }
+.progress-fill { height:100%; border-radius:3px; transition:width 1s ease; }
+
+/* DONUT */
+.donut-wrap { display:flex; align-items:center; gap:20px; }
+.donut-legend { flex:1; }
+.donut-legend-item { display:flex; align-items:center; gap:8px; margin-bottom:7px; font-size:11px; }
+.donut-dot { width:9px; height:9px; border-radius:2px; flex-shrink:0; }
+
+/* ENTITY SWITCH */
+.entity-switch { display:flex; gap:6px; }
+.esw-btn {
+  font-size:10px; padding:5px 14px; border-radius:4px; cursor:pointer;
+  border:1px solid var(--border); background:transparent; color:var(--muted2);
+  font-family:'Archivo',sans-serif; font-weight:600; letter-spacing:0.06em;
+  transition:all 0.15s;
+}
+.esw-btn:hover { border-color:var(--border2); color:var(--text); }
+.esw-btn.active-f { background:var(--factory)20; border-color:var(--factory)60; color:var(--factory); }
+.esw-btn.active-m { background:var(--mobili)20;  border-color:var(--mobili)60;  color:var(--mobili); }
+.esw-btn.active-g { background:var(--accent)15;  border-color:var(--accent)60;  color:var(--accent); }
+
+/* TRANSACTION LIST */
+.tx-list { max-height:320px; overflow-y:auto; }
+.tx-list::-webkit-scrollbar { width:3px; }
+.tx-list::-webkit-scrollbar-thumb { background:var(--border2); }
+.tx-item { display:flex; align-items:center; gap:12px; padding:10px 18px; border-bottom:1px solid var(--border)44; transition:background 0.1s; }
+.tx-item:hover { background:var(--s3); }
+.tx-icon { width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.tx-body { flex:1; }
+.tx-desc { font-size:12px; font-weight:600; }
+.tx-date { font-size:10px; color:var(--muted2); margin-top:2px; }
+.tx-cat { font-size:9px; padding:1px 7px; border-radius:2px; margin-top:3px; display:inline-block; letter-spacing:0.06em; }
+.tx-amount { font-family:'Archivo',sans-serif; font-weight:900; font-size:14px; }
+
+/* ACCOUNT CARD */
+.account-card {
+  background:var(--s3); border:1px solid var(--border); border-radius:8px;
+  padding:16px; margin-bottom:10px;
+}
+.acc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+.acc-name { font-weight:700; font-size:13px; }
+.acc-num { font-size:10px; color:var(--muted2); margin-top:2px; font-family:'Archivo Narrow',monospace; }
+.acc-balance { font-family:'Archivo',sans-serif; font-weight:900; font-size:20px; }
+.acc-bars { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.acc-bar-item { }
+.acc-bar-label { font-size:10px; color:var(--muted2); margin-bottom:4px; }
+.acc-bar-val { font-size:12px; font-weight:700; margin-bottom:3px; }
+
+/* MARKETING METRICS */
+.platform-card {
+  background:var(--s3); border:1px solid var(--border); border-radius:8px;
+  padding:16px 18px; position:relative; overflow:hidden;
+}
+.platform-card::before { content:''; position:absolute; top:0; left:0; bottom:0; width:3px; }
+.platform-card.meta::before { background:linear-gradient(180deg,#1877f2,#e1306c); }
+.platform-card.google::before { background:linear-gradient(180deg,#4285f4,#34a853,#fbbc05,#ea4335); }
+.platform-card.tiktok::before { background:linear-gradient(180deg,#00f2ea,#ff0050); }
+.platform-name { font-family:'Archivo',sans-serif; font-weight:800; font-size:15px; margin-bottom:12px; padding-left:12px; }
+.metric-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+.metric-box { background:var(--bg); border-radius:5px; padding:9px 11px; }
+.metric-label { font-size:9px; color:var(--muted2); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:4px; }
+.metric-val { font-family:'Archivo',sans-serif; font-weight:800; font-size:16px; }
+.metric-sub { font-size:9px; color:var(--muted); margin-top:2px; }
+
+/* GRAND LIVRE */
+.gl-table { font-size:11px; }
+.gl-row { display:grid; grid-template-columns:80px 80px 1fr 100px 100px 100px; gap:0; border-bottom:1px solid var(--border)44; }
+.gl-row:hover { background:var(--s3); }
+.gl-row.gl-head { background:var(--s3); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); font-weight:600; }
+.gl-cell { padding:8px 10px; }
+.gl-cell.right { text-align:right; font-family:'Archivo',sans-serif; font-weight:600; }
+.gl-total { background:var(--s3)!important; font-weight:800; border-top:2px solid var(--border2)!important; }
+
+/* BALANCE SHEET */
+.balance-section { margin-bottom:20px; }
+.balance-section-title { font-family:'Archivo',sans-serif; font-weight:800; font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent); margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+.balance-row { display:flex; justify-content:space-between; padding:6px 10px; border-radius:4px; font-size:12px; transition:background 0.1s; }
+.balance-row:hover { background:var(--s3); }
+.balance-row.sub { padding-left:24px; color:var(--muted2); font-size:11px; }
+.balance-row.total { background:var(--s3); font-weight:800; border:1px solid var(--border); border-radius:5px; margin-top:6px; }
+.balance-row-val { font-family:'Archivo',sans-serif; font-weight:700; }
+
+/* ANALYTICS */
+.analytics-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+.pixel-card { background:var(--s3); border:1px solid var(--border); border-radius:8px; padding:14px; }
+.pixel-name { font-size:10px; color:var(--muted2); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px; }
+.pixel-val { font-family:'Archivo',sans-serif; font-weight:900; font-size:22px; }
+.pixel-trend { display:flex; align-items:center; gap:4px; font-size:10px; margin-top:5px; }
+
+/* FUNNEL */
+.funnel { display:flex; flex-direction:column; gap:3px; }
+.funnel-step { display:flex; align-items:center; gap:12px; }
+.funnel-bar-wrap { flex:1; height:28px; background:var(--bg); border-radius:4px; overflow:hidden; position:relative; }
+.funnel-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding-left:10px; }
+.funnel-label { width:120px; font-size:11px; text-align:right; color:var(--muted2); }
+.funnel-val { width:80px; font-family:'Archivo',sans-serif; font-weight:700; font-size:12px; text-align:right; }
+
+/* EBITDA BRIDGE */
+.bridge { display:flex; flex-direction:column; gap:4px; }
+.bridge-row { display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:5px; cursor:default; transition:background 0.15s; }
+.bridge-row:hover { background:var(--s3); }
+.bridge-label { flex:1; font-size:11px; }
+.bridge-label small { display:block; font-size:9px; color:var(--muted); margin-top:1px; }
+.bridge-bar-wrap { width:160px; height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+.bridge-bar { height:100%; border-radius:3px; }
+.bridge-amount { width:110px; text-align:right; font-family:'Archivo',sans-serif; font-weight:800; font-size:12px; }
+.bridge-sep { border:none; border-top:1px solid var(--border); margin:3px 8px; }
+.bridge-total { background:var(--s3); border:1px solid var(--border2); }
+
+/* SVG CHARTS */
+svg.chart { display:block; width:100%; overflow:visible; }
+
+/* CAMPAIGN TABLE */
+.camp-row {
+  display:grid; grid-template-columns:30px 1fr 90px 90px 70px 70px 80px 80px;
+  gap:0; border-bottom:1px solid var(--border)44; align-items:center;
+}
+.camp-row:hover { background:var(--s3); }
+.camp-cell { padding:9px 10px; font-size:11px; }
+.camp-cell.right { text-align:right; font-family:'Archivo',sans-serif; font-weight:700; }
+.camp-head { font-size:9px; color:var(--muted2); letter-spacing:0.1em; text-transform:uppercase; font-weight:600; background:var(--s3); }
+.status-dot { width:8px; height:8px; border-radius:50%; }
+
+/* SECTION LABEL */
+.section-label { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* ALERT BANNER */
+.alert-banner { display:flex; align-items:flex-start; gap:12px; padding:12px 16px; border-radius:7px; border:1px solid; margin-bottom:12px; }
+.alert-banner.warn { background:var(--mobili)10; border-color:var(--mobili)40; }
+.alert-banner.danger { background:var(--red)10; border-color:var(--red)40; }
+.alert-banner.good { background:var(--green)10; border-color:var(--green)40; }
+.alert-body { flex:1; }
+.alert-title { font-weight:700; font-size:12px; margin-bottom:3px; }
+.alert-desc { font-size:11px; color:var(--muted2); line-height:1.5; }
+
+/* TABS WITHIN PAGE */
+.inner-tabs { display:flex; gap:4px; margin-bottom:16px; }
+.inner-tab { font-size:10px; padding:5px 14px; border-radius:4px; cursor:pointer; border:1px solid var(--border); background:transparent; color:var(--muted2); font-family:'Archivo',sans-serif; font-weight:600; letter-spacing:0.06em; transition:all 0.15s; }
+.inner-tab:hover { color:var(--text); border-color:var(--border2); }
+.inner-tab.active { background:var(--accent)15; border-color:var(--accent)60; color:var(--accent); }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+.mb-16 { margin-bottom:16px; }
+.mt-16 { margin-top:16px; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div>
+      <div class="brand-logo">NS GROUP</div>
+      <div class="brand-sub">Pilotage Intégré · 2024</div>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showView('dashboard')"><span class="tab-icon">⬡</span>Dashboard</button>
+    <button class="nav-tab" onclick="showView('banque')"><span class="tab-icon">🏦</span>Relevés Bancaires</button>
+    <button class="nav-tab" onclick="showView('compta')"><span class="tab-icon">📒</span>Comptabilité</button>
+    <button class="nav-tab" onclick="showView('production')"><span class="tab-icon">🪵</span>Production &amp; Coûts</button>
+    <button class="nav-tab" onclick="showView('marketing')"><span class="tab-icon">📣</span>Marketing Digital</button>
+    <button class="nav-tab" onclick="showView('analytics')"><span class="tab-icon">📊</span>Analytics &amp; Pixels</button>
+    <button class="nav-tab" onclick="showView('ebitda')"><span class="tab-icon">⚡</span>EBITDA Consolidé</button>
+    <button class="nav-tab" onclick="showView('rentabilite')"><span class="tab-icon">🎯</span>Rentabilité Produits</button>
+  </div>
+  <div class="topbar-right">
+    <span class="entity-badge badge-factory">NSFactory</span>
+    <span class="entity-badge badge-mobili">NSMobili</span>
+    <span class="entity-badge badge-group">GROUPE</span>
+  </div>
+</div>
+
+<main>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- VIEW: DASHBOARD -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="view active" id="view-dashboard">
+<div class="page">
+
+  <div class="page-header">
+    <div>
+      <div class="page-title">Tableau de Bord Groupe</div>
+      <div class="page-sub">NSFactory (Fabrication) + NSMobili (Commercialisation) · Vue consolidée temps réel</div>
+    </div>
+    <div class="entity-switch">
+      <button class="esw-btn active-g" onclick="switchEntity('group',this)">Groupe</button>
+      <button class="esw-btn" onclick="switchEntity('factory',this)">NSFactory</button>
+      <button class="esw-btn" onclick="switchEntity('mobili',this)">NSMobili</button>
+    </div>
+  </div>
+
+  <!-- KPI STRIP -->
+  <div class="kpi-grid kpi-6 mb-16">
+    <div class="kpi c-accent">
+      <div class="kpi-label">CA Consolidé (MAD)</div>
+      <div class="kpi-val c-accent" id="dash-ca">2 847 500</div>
+      <div class="kpi-delta">Factory <span class="up">1 698 k</span> + Mobili <span class="up">1 149 k</span></div>
+    </div>
+    <div class="kpi c-green">
+      <div class="kpi-label">Trésorerie Nette</div>
+      <div class="kpi-val c-green" id="dash-tres">384 200</div>
+      <div class="kpi-delta">Comptes bancaires actifs <span class="up">+3</span></div>
+    </div>
+    <div class="kpi c-factory">
+      <div class="kpi-label">EBITDA Estimé</div>
+      <div class="kpi-val c-factory" id="dash-ebitda">427 125</div>
+      <div class="kpi-delta">Marge <span class="up">15.0%</span></div>
+    </div>
+    <div class="kpi c-mobili">
+      <div class="kpi-label">Budget Mkt Digital</div>
+      <div class="kpi-val c-mobili" id="dash-mkt">148 600</div>
+      <div class="kpi-delta">ROI Ads <span class="up">×3.2</span></div>
+    </div>
+    <div class="kpi c-purple">
+      <div class="kpi-label">Coût de Revient Moy.</div>
+      <div class="kpi-val c-purple">42.2%</div>
+      <div class="kpi-delta">MP 35.4% + MO 6.9%</div>
+    </div>
+    <div class="kpi c-red">
+      <div class="kpi-label">Charges Fixes Mois</div>
+      <div class="kpi-val c-red">186 400</div>
+      <div class="kpi-delta">Loyer + Salaires + OPEX</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="g-main mb-16">
+    <!-- EBITDA BRIDGE -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">⚡ Cascade EBITDA Consolidée — Données Réelles + Estimés</span>
+        <span class="panel-tag tag-g">CONSOLIDÉ</span>
+      </div>
+      <div class="panel-body">
+        <div class="bridge" id="dash-bridge"></div>
+      </div>
+    </div>
+
+    <!-- ENTITY SPLIT -->
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">🏭 NSFactory vs 🏪 NSMobili</span>
+          <span class="panel-tag tag-g">SPLIT</span>
+        </div>
+        <div class="panel-body">
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px">
+              <span style="color:var(--factory)">NSFactory — Fabrication</span>
+              <span style="font-family:Archivo,sans-serif;font-weight:800;color:var(--factory)">59.6%</span>
+            </div>
+            <div class="progress"><div class="progress-fill" style="width:59.6%;background:var(--factory)"></div></div>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px">MP + MO + Overhead industriel</div>
+          </div>
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px">
+              <span style="color:var(--mobili)">NSMobili — Commercialisation</span>
+              <span style="font-family:Archivo,sans-serif;font-weight:800;color:var(--mobili)">40.4%</span>
+            </div>
+            <div class="progress"><div class="progress-fill" style="width:40.4%;background:var(--mobili)"></div></div>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px">Ventes, marketing, livraison client</div>
+          </div>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+            <div class="section-label">Flux Inter-Sociétés</div>
+            <div style="background:var(--s3);border-radius:6px;padding:10px 12px;font-size:11px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <span style="color:var(--muted2)">Factory → Mobili (transfert stock)</span>
+                <span style="color:var(--accent);font-weight:700">1 698 822 MAD</span>
+              </div>
+              <div style="display:flex;justify-content:space-between">
+                <span style="color:var(--muted2)">Marge de distribution NSMobili</span>
+                <span style="color:var(--green);font-weight:700">+67.7%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALERTS -->
+      <div class="alert-banner warn">
+        <span style="font-size:18px">⚠️</span>
+        <div class="alert-body">
+          <div class="alert-title" style="color:var(--mobili)">Budget Marketing Élevé</div>
+          <div class="alert-desc">Dépenses Ads (Meta + Google) = 5.2% du CA. Surveiller le ROAS hebdomadaire.</div>
+        </div>
+      </div>
+      <div class="alert-banner good">
+        <span style="font-size:18px">✅</span>
+        <div class="alert-body">
+          <div class="alert-title" style="color:var(--green)">Marge Brute Directe Solide</div>
+          <div class="alert-desc">57.8% sur coûts directs (étude Trimo). Benchmark secteur : 45–55%.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM ROW -->
+  <div class="g3">
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">🏦 Trésorerie par Compte</span><span class="panel-tag tag-f">BANQUE</span></div>
+      <div class="panel-body" id="dash-accounts"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">📣 Performance Marketing</span><span class="panel-tag tag-pk">ADS</span></div>
+      <div class="panel-body" id="dash-mkt-summary"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">📊 Pixels & Conversions</span><span class="panel-tag tag-p">ANALYTICS</span></div>
+      <div class="panel-body" id="dash-pixels"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- VIEW: BANQUE -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="view" id="view-banque">
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Relevés Bancaires</div>
+      <div class="page-sub">NSFactory + NSMobili · Import CSV/Excel · Catégorisation automatique</div>
+    </div>
+    <div class="entity-switch">
+      <button class="esw-btn active-g" onclick="switchBankEntity('all',this)">Tous</button>
+      <button class="esw-btn" onclick="switchBankEntity('factory',this)">NSFactory</button>
+      <button class="esw-btn" onclick="switchBankEntity('mobili',this)">NSMobili</button>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="g2 mb-16">
+    <div class="upload-zone" ondragover="this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event,'bank-factory')">
+      <input type="file" accept=".csv,.xlsx,.xls" onchange="handleBankUpload(event,'factory')" multiple>
+      <div class="upload-icon">🏭</div>
+      <div class="upload-label"><strong>NSFactory</strong> — Importer relevé bancaire</div>
+      <div class="upload-formats">CSV · XLSX · Export banque (CIH, Attijariwafa, BMCE...)</div>
+    </div>
+    <div class="upload-zone" ondragover="this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event,'bank-mobili')">
+      <input type="file" accept=".csv,.xlsx,.xls" onchange="handleBankUpload(event,'mobili')" multiple>
+      <div class="upload-icon">🏪</div>
+      <div class="upload-label"><strong>NSMobili</strong> — Importer relevé bancaire</div>
+      <div class="upload-formats">CSV · XLSX · Export banque (CIH, Attijariwafa, BMCE...)</div>
+    </div>
+  </div>
+
+  <!-- ACCOUNT CARDS -->
+  <div class="kpi-grid kpi-4 mb-16">
+    <div class="kpi c-factory">
+      <div class="kpi-label">NSFactory — Solde Total</div>
+      <div class="kpi-val c-factory">247 850 MAD</div>
+      <div class="kpi-delta">2 comptes · Mis à jour <span class="up">aujourd'hui</span></div>
+    </div>
+    <div class="kpi c-mobili">
+      <div class="kpi-label">NSMobili — Solde Total</div>
+      <div class="kpi-val c-mobili">136 350 MAD</div>
+      <div class="kpi-delta">1 compte principal</div>
+    </div>
+    <div class="kpi c-green">
+      <div class="kpi-label">Entrées Mois (Global)</div>
+      <div class="kpi-val c-green">+892 400 MAD</div>
+      <div class="kpi-delta">Encaissements clients <span class="up">↑12%</span></div>
+    </div>
+    <div class="kpi c-red">
+      <div class="kpi-label">Sorties Mois (Global)</div>
+      <div class="kpi-val c-red">−728 160 MAD</div>
+      <div class="kpi-delta">Fournisseurs + Salaires + Ads</div>
+    </div>
+  </div>
+
+  <div class="g-main">
+    <!-- ACCOUNTS -->
+    <div>
+      <div class="section-label">Comptes Bancaires</div>
+
+      <!-- NSFactory accounts -->
+      <div class="account-card">
+        <div class="acc-head">
+          <div>
+            <div class="acc-name">🏭 NSFactory — Compte Principal</div>
+            <div class="acc-num">CIH · 007 480 0001234567 89</div>
+          </div>
+          <div class="acc-balance" style="color:var(--factory)">167 420 MAD</div>
+        </div>
+        <div class="acc-bars">
+          <div class="acc-bar-item">
+            <div class="acc-bar-label">Entrées Mois</div>
+            <div class="acc-bar-val" style="color:var(--green)">+542 800 MAD</div>
+            <div class="progress"><div class="progress-fill" style="width:75%;background:var(--green)"></div></div>
+          </div>
+          <div class="acc-bar-item">
+            <div class="acc-bar-label">Sorties Mois</div>
+            <div class="acc-bar-val" style="color:var(--red)">−487 600 MAD</div>
+            <div class="progress"><div class="progress-fill" style="width:67%;background:var(--red)"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="account-card">
+        <div class="acc-head">
+          <div>
+            <div class="acc-name">🏭 NSFactory — Compte Fournisseurs</div>
+            <div class="acc-num">Attijariwafa · 022 1234567890</div>
+          </div>
+          <div class="acc-balance" style="color:var(--factory)">80 430 MAD</div>
+        </div>
+        <div class="acc-bars">
+          <div class="acc-bar-item">
+            <div class="acc-bar-label">Entrées Mois</div>
+            <div class="acc-bar-val" style="color:var(--green)">+210 000 MAD</div>
+            <div class="progress"><div class="progress-fill" style="width:45%;background:var(--green)"></div></div>
+          </div>
+          <div class="acc-bar-item">
+            <div class="acc-bar-label">Sorties Mois</div>
+            <div class="acc-bar-val" style="color:var(--red)">−142 300 MAD</div>
+            <div class="progress"><div class="progress-fill" style="width:30%;background:var(--red)"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="account-card">
+        <div class="acc-head">
+          <div>
+            <div class="acc-name">🏪 NSMobili — Compte Commercial</div>
+            <div class="acc-num">BMCE · 011 9876543210</div>
+          </div>
+          <div class="acc-balance" style="color:var(--mobili)">136 350 MAD</div>
+        </div>
+        <div class="acc-bars">
+          <div class="acc-bar-item">
+            <div class="acc-bar-label">Entrées Mois</div>
+            <div class="acc-bar-val" style="color:var(--green)">+139 600 MAD</div>
+            <div class="progress"><div class="progress-fill" style="width:60%;background:var(--green)"></div></div>
+          </div>
+          <div class="acc-bar-item">
+            <div class="acc-bar-label">Sorties Mois</div>
+            <div class="acc-bar-val" style="color:var(--red)">−98 260 MAD</div>
+            <div class="progress"><div class="progress-fill" style="width:42%;background:var(--red)"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHART -->
+      <div class="panel mt-16">
+        <div class="panel-head"><span class="panel-title">📈 Flux Trésorerie — 6 Mois Glissants</span></div>
+        <div class="chart-area"><svg class="chart" height="140" id="bank-chart"></svg></div>
+      </div>
+    </div>
+
+    <!-- TRANSACTION FEED -->
+    <div>
+      <div class="section-label">Dernières Opérations</div>
+      <div class="panel" style="overflow:hidden">
+        <div class="panel-head">
+          <span class="panel-title">Mouvements Récents</span>
+          <select style="background:var(--s3);border:1px solid var(--border);color:var(--text);font-size:10px;padding:3px 8px;border-radius:4px;font-family:Archivo Narrow,sans-serif">
+            <option>Tous</option><option>Entrées</option><option>Sorties</option>
+          </select>
+        </div>
+        <div class="tx-list" id="tx-list"></div>
+      </div>
+
+      <!-- CATEGORY BREAKDOWN -->
+      <div class="panel mt-16">
+        <div class="panel-head"><span class="panel-title">🗂️ Répartition Catégories — Sorties</span><span class="panel-tag tag-r">ANALYSE</span></div>
+        <div class="panel-body" id="cat-breakdown"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- VIEW: COMPTABILITÉ -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="view" id="view-compta">
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Comptabilité</div>
+      <div class="page-sub">Grand Livre · Balance Générale · NSFactory + NSMobili</div>
+    </div>
+    <div class="inner-tabs">
+      <button class="inner-tab active" onclick="showCompta('balance')">Balance</button>
+      <button class="inner-tab" onclick="showCompta('grandlivre')">Grand Livre</button>
+      <button class="inner-tab" onclick="showCompta('upload')">Import Fichiers</button>
+    </div>
+  </div>
+
+  <!-- UPLOAD SECTION -->
+  <div id="compta-upload" style="display:none">
+    <div class="g2 mb-16">
+      <div class="upload-zone">
+        <input type="file" accept=".csv,.xlsx,.xls" onchange="handleComptaUpload(event,'factory')">
+        <div class="upload-icon">📒</div>
+        <div class="upload-label"><strong>NSFactory</strong> — Grand Livre / Balance</div>
+        <div class="upload-formats">Export Sage · Ciel · CSV comptable · Excel</div>
+      </div>
+      <div class="upload-zone">
+        <input type="file" accept=".csv,.xlsx,.xls" onchange="handleComptaUpload(event,'mobili')">
+        <div class="upload-icon">📗</div>
+        <div class="upload-label"><strong>NSMobili</strong> — Grand Livre / Balance</div>
+        <div class="upload-formats">Export Sage · Ciel · CSV comptable · Excel</div>
+      </div>
+    </div>
+    <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:16px 20px;font-size:11px;color:var(--muted2);line-height:1.8">
+      <strong style="color:var(--accent)">Format attendu CSV :</strong><br>
+      Colonnes : <code style="color:var(--factory)">Compte | Libellé | Date | Débit | Crédit | Solde</code><br>
+      Ou format Grand Livre : <code style="color:var(--factory)">N° Compte | Intitulé | Date pièce | Référence | Débit | Crédit</code>
+    </div>
+  </div>
+
+  <!-- BALANCE SHEET -->
+  <div id="compta-balance">
+    <div class="kpi-grid kpi-4 mb-16">
+      <div class="kpi c-green"><div class="kpi-label">Total Actif</div><div class="kpi-val c-green">4 280 000 MAD</div><div class="kpi-delta">Immobilisations + Stocks + Créances</div></div>
+      <div class="kpi c-factory"><div class="kpi-label">Total Passif</div><div class="kpi-val c-factory">4 280 000 MAD</div><div class="kpi-delta">Capitaux + Dettes</div></div>
+      <div class="kpi c-accent"><div class="kpi-label">Capitaux Propres</div><div class="kpi-val c-accent">1 840 000 MAD</div><div class="kpi-delta">Capital + Réserves + Résultat</div></div>
+      <div class="kpi c-red"><div class="kpi-label">Dettes Totales</div><div class="kpi-val c-red">2 440 000 MAD</div><div class="kpi-delta">Court + Long terme</div></div>
+    </div>
+
+    <div class="g2">
+      <!-- ACTIF -->
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">📋 Bilan — ACTIF</span><span class="panel-tag tag-f">FACTORY + MOBILI</span></div>
+        <div class="panel-body">
+          <div class="balance-section">
+            <div class="balance-section-title">Actif Immobilisé</div>
+            <div class="balance-row sub"><span>Machines & Équipements</span><span class="balance-row-val" style="color:var(--factory)">1 200 000</span></div>
+            <div class="balance-row sub"><span>Aménagements & Installations</span><span class="balance-row-val">380 000</span></div>
+            <div class="balance-row sub"><span>Matériel Informatique</span><span class="balance-row-val">45 000</span></div>
+            <div class="balance-row total"><span>Sous-total Immobilisé</span><span class="balance-row-val" style="color:var(--factory)">1 625 000</span></div>
+          </div>
+          <div class="balance-section">
+            <div class="balance-section-title">Actif Circulant</div>
+            <div class="balance-row sub"><span>Stocks Matières Premières</span><span class="balance-row-val">420 000</span></div>
+            <div class="balance-row sub"><span>Stocks Produits Finis</span><span class="balance-row-val">315 000</span></div>
+            <div class="balance-row sub"><span>Créances Clients</span><span class="balance-row-val" style="color:var(--mobili)">1 536 000</span></div>
+            <div class="balance-row sub"><span>Trésorerie & Équivalents</span><span class="balance-row-val" style="color:var(--green)">384 200</span></div>
+            <div class="balance-row total"><span>Sous-total Circulant</span><span class="balance-row-val" style="color:var(--green)">2 655 200</span></div>
+          </div>
+          <div class="balance-row total" style="border:2px solid var(--accent)44;margin-top:10px">
+            <span style="font-family:Archivo,sans-serif;font-weight:900">TOTAL ACTIF</span>
+            <span class="balance-row-val" style="color:var(--accent);font-size:16px;font-family:Archivo,sans-serif">4 280 200</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PASSIF -->
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">📋 Bilan — PASSIF</span><span class="panel-tag tag-m">FACTORY + MOBILI</span></div>
+        <div class="panel-body">
+          <div class="balance-section">
+            <div class="balance-section-title">Capitaux Propres</div>
+            <div class="balance-row sub"><span>Capital Social NSFactory</span><span class="balance-row-val">800 000</span></div>
+            <div class="balance-row sub"><span>Capital Social NSMobili</span><span class="balance-row-val">300 000</span></div>
+            <div class="balance-row sub"><span>Réserves & Report</span><span class="balance-row-val">313 000</span></div>
+            <div class="balance-row sub"><span>Résultat Exercice (estimé)</span><span class="balance-row-val" style="color:var(--green)">427 125</span></div>
+            <div class="balance-row total"><span>Sous-total Capitaux</span><span class="balance-row-val" style="color:var(--green)">1 840 125</span></div>
+          </div>
+          <div class="balance-section">
+            <div class="balance-section-title">Dettes</div>
+            <div class="balance-row sub"><span>Dettes Fournisseurs</span><span class="balance-row-val" style="color:var(--red)">840 000</span></div>
+            <div class="balance-row sub"><span>Dettes Fiscales & Sociales</span><span class="balance-row-val">186 000</span></div>
+            <div class="balance-row sub"><span>Emprunts Bancaires</span><span class="balance-row-val">980 000</span></div>
+            <div class="balance-row sub"><span>Autres Dettes</span><span class="balance-row-val">434 075</span></div>
+            <div class="balance-row total"><span>Sous-total Dettes</span><span class="balance-row-val" style="color:var(--red)">2 440 075</span></div>
+          </div>
+          <div class="balance-row total" style="border:2px solid var(--accent)44;margin-top:10px">
+            <span style="font-family:Archivo,sans-serif;font-weight:900">TOTAL PASSIF</span>
+            <span class="balance-row-val" style="color:var(--accent);font-size:16px;font-family:Archivo,sans-serif">4 280 200</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRAND LIVRE -->
+  <div id="compta-grandlivre" style="display:none">
+    <div class="kpi-grid kpi-4 mb-16">
+      <div class="kpi c-factory"><div class="kpi-label">Total Débits</div><div class="kpi-val c-factory">3 842 600 MAD</div></div>
+      <div class="kpi c-mobili"><div class="kpi-label">Total Crédits</div><div class="kpi-val c-mobili">3 842 600 MAD</div></div>
+      <div class="kpi c-green"><div class="kpi-label">Écritures du Mois</div><div class="kpi-val c-green">284</div></div>
+      <div class="kpi c-accent"><div class="kpi-label">Journaux Actifs</div><div class="kpi-val c-accent">8</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">📒 Grand Livre Général</span><span class="panel-tag tag-f">NSFactory + NSMobili</span></div>
+      <div style="overflow-x:auto">
+        <div class="gl-table">
+          <div class="gl-row gl-head">
+            <div class="gl-cell">Date</div>
+            <div class="gl-cell">N° Pièce</div>
+            <div class="gl-cell">Libellé</div>
+            <div class="gl-cell right">Débit (MAD)</div>
+            <div class="gl-cell right">Crédit (MAD)</div>
+            <div class="gl-cell right">Solde</div>
+          </div>
+          <div id="gl-rows"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- VIEW: PRODUCTION -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="view" id="view-production">
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Production & Coûts de Revient</div>
+      <div class="page-sub">Données réelles étude Trimo · 12 produits · 1 526 unités · MP + MO détaillés</div>
+    </div>
+    <div class="upload-zone" style="width:220px;padding:10px 16px">
+      <input type="file" accept=".csv,.xlsx" onchange="handleProdUpload(event)">
+      <div style="font-size:11px;color:var(--muted2)">📊 Mettre à jour l'étude</div>
+    </div>
+  </div>
+
+  <div class="kpi-grid kpi-5 mb-16">
+    <div class="kpi c-accent"><div class="kpi-label">CA Usine TTC</div><div class="kpi-val c-accent">1 698 822 MAD</div><div class="kpi-delta">12 références · 1 526 unités</div></div>
+    <div class="kpi c-factory"><div class="kpi-label">Matières Premières HT</div><div class="kpi-val c-factory">600 652 MAD</div><div class="kpi-delta">35.4% du CA</div></div>
+    <div class="kpi c-mobili"><div class="kpi-label">Main d'Œuvre Directe</div><div class="kpi-val c-mobili">116 508 MAD</div><div class="kpi-delta">6.9% du CA</div></div>
+    <div class="kpi c-green"><div class="kpi-label">Marge Brute Directe</div><div class="kpi-val c-green">981 661 MAD</div><div class="kpi-delta">57.8% — au-dessus benchmark</div></div>
+    <div class="kpi c-purple"><div class="kpi-label">Produit + Vendu</div><div class="kpi-val c-purple">Tiroir / lit</div><div class="kpi-delta">536 unités · 59.1% marge</div></div>
+  </div>
+
+  <div class="g-main3 mb-16">
+    <!-- MATIÈRES -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">🪵 Matières Premières par Famille</span><span class="panel-tag tag-f">RÉEL TRIMO</span></div>
+      <div class="panel-body" id="prod-mat-table"></div>
+    </div>
+    <!-- MO -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">👷 MO par Processus</span><span class="panel-tag tag-m">RÉEL</span></div>
+      <div class="panel-body" id="prod-mo-table"></div>
+    </div>
+    <!-- DONUT -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">◉ Structure Coûts</span><span class="panel-tag tag-g">RÉPARTITION</span></div>
+      <div class="panel-body">
+        <div class="donut-wrap">
+          <svg id="prod-donut" width="140" height="140"></svg>
+          <div class="donut-legend" id="prod-donut-legend"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCT TABLE -->
+  <div class="panel">
+    <div class="panel-head"><span class="panel-title">📦 Coût de Revient par Produit</span><span class="panel-tag tag-g">TRIMO · DONNÉES RÉELLES</span></div>
+    <div style="overflow-x:auto">
+      <table class="data-table" id="prod-table"></table>
+    </div>
+  </div>
+
+  <!-- ═══ RENTABILITÉ PAR PRODUIT ════════════════════════════ -->
+  <div style="margin-top:28px">
+    <div class="section-label" style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:0.12em">
+      ANALYSE DE RENTABILITÉ — FORMULES EXTRAITES DU FICHIER EXCEL TRIMO
+    </div>
+
+    <!-- FORMULE EXPLAINER BANNER -->
+    <div style="background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:16px 20px;margin-bottom:18px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+      <div>
+        <div style="font-size:8px;color:var(--muted2);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px">① Coût Revient MP+MO</div>
+        <div style="font-family:Archivo Narrow,monospace;font-size:10px;color:var(--mat-c, var(--factory));background:var(--s3);padding:6px 8px;border-radius:4px;line-height:1.7">
+          <span style="color:var(--factory)">CR = MP_TTC + MO</span><br>
+          <span style="color:var(--muted2)">MP_TTC = Σ(Qté×PU) × 1.2</span><br>
+          <span style="color:var(--muted2)">MO = Σ(Sal/208/60 × Tmin)</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:8px;color:var(--muted2);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px">② Ratio Charges Fixes</div>
+        <div style="font-family:Archivo Narrow,monospace;font-size:10px;color:var(--purple);background:var(--s3);padding:6px 8px;border-radius:4px;line-height:1.7">
+          <span style="color:var(--purple)">RCF = 160 000/660 × M²</span><br>
+          <span style="color:var(--muted2)">Loyer+Maintenance</span><br>
+          <span style="color:var(--muted2)">+Assurance+Charges</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:8px;color:var(--muted2);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px">③ Prix Vente Usine TTC</div>
+        <div style="font-family:Archivo Narrow,monospace;font-size:10px;color:var(--accent);background:var(--s3);padding:6px 8px;border-radius:4px;line-height:1.7">
+          <span style="color:var(--accent)">PVU = (CR+RCF) × 1.15</span><br>
+          <span style="color:var(--accent)">       + RBén</span><br>
+          <span style="color:var(--muted2)">RBén = 50 000/660 × M²</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:8px;color:var(--muted2);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px">④ Prix Public</div>
+        <div style="font-family:Archivo Narrow,monospace;font-size:10px;color:var(--green);background:var(--s3);padding:6px 8px;border-radius:4px;line-height:1.7">
+          <span style="color:var(--green)">PV_min = PVU × 1.25</span><br>
+          <span style="color:var(--green)">PV_cons = PV_min × 1.15</span><br>
+          <span style="color:var(--muted2)">Marge distrib. conseillée</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATUS LEGEND -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid #f04050;border-radius:4px;padding:4px 10px;font-size:10px"><span>🔴</span><strong style="color:#f04050">EN PERTE</strong><span style="color:var(--muted2)">PA &lt; CR (vente sous le coût direct)</span></div>
+      <div style="display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid #f0a030;border-radius:4px;padding:4px 10px;font-size:10px"><span>🟠</span><strong style="color:#f0a030">SOUS-VENDU</strong><span style="color:var(--muted2)">PA &lt; 85% PVU (couvre MP+MO mais pas les charges)</span></div>
+      <div style="display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid #e8f040;border-radius:4px;padding:4px 10px;font-size:10px"><span>🟡</span><strong style="color:#e8f040">LÉGÈREMENT −</strong><span style="color:var(--muted2)">PA légèrement sous PVU calculé</span></div>
+      <div style="display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid #30e090;border-radius:4px;padding:4px 10px;font-size:10px"><span>🟢</span><strong style="color:#30e090">RENTABLE</strong><span style="color:var(--muted2)">PA ≥ PVU calculé</span></div>
+      <div style="display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid #3a8ef5;border-radius:4px;padding:4px 10px;font-size:10px"><span>⭐</span><strong style="color:#3a8ef5">TRÈS RENTABLE</strong><span style="color:var(--muted2)">PA ≥ PV Public Min</span></div>
+    </div>
+
+    <!-- RENTABILITY KPIs -->
+    <div class="kpi-grid kpi-5 mb-16" id="rent-kpis"></div>
+
+    <!-- VISUAL PRICE LADDER CHART -->
+    <div class="panel mb-16">
+      <div class="panel-head">
+        <span class="panel-title">📊 Échelle de Prix — PA vs CR vs PVU vs PV Public (par produit)</span>
+        <div style="display:flex;gap:6px">
+          <span class="panel-tag tag-gr">RÉEL TRIMO</span>
+          <button onclick="sortRentability('marge')" style="font-size:9px;padding:3px 10px;border-radius:3px;cursor:pointer;background:transparent;border:1px solid var(--border2);color:var(--muted2);font-family:Archivo Narrow,sans-serif">↓ Marge%</button>
+          <button onclick="sortRentability('resultat')" style="font-size:9px;padding:3px 10px;border-radius:3px;cursor:pointer;background:transparent;border:1px solid var(--border2);color:var(--muted2);font-family:Archivo Narrow,sans-serif">↓ Résultat</button>
+          <button onclick="sortRentability('volume')" style="font-size:9px;padding:3px 10px;border-radius:3px;cursor:pointer;background:transparent;border:1px solid var(--border2);color:var(--muted2);font-family:Archivo Narrow,sans-serif">↓ Volume</button>
+        </div>
+      </div>
+      <div style="padding:12px 8px" id="price-ladder"></div>
+    </div>
+
+    <!-- FULL DETAIL TABLE -->
+    <div class="panel mb-16">
+      <div class="panel-head">
+        <span class="panel-title">🔬 Analyse Détaillée Rentabilité — Formules Trimo Appliquées</span>
+        <span class="panel-tag tag-r">22 PRODUITS</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="rent-table"></table>
+      </div>
+    </div>
+
+    <!-- WATERFALL: PROFITABLE vs LOSS -->
+    <div class="g2">
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">🏆 TOP — Produits les Plus Rentables</span><span class="panel-tag tag-gr">RÉSULTAT LIGNE</span></div>
+        <div class="panel-body" id="top-profitable"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">⚠️ ALERT — Produits à Revoir</span><span class="panel-tag tag-r">SOUS PV USINE</span></div>
+        <div class="panel-body" id="top-loss"></div>
+      </div>
+    </div>
+
+    <!-- PRICE GAP MATRIX -->
+    <div class="panel mt-16">
+      <div class="panel-head">
+        <span class="panel-title">🎯 Matrice d'Opportunité — Potentiel Hausse de Prix</span>
+        <span class="panel-tag tag-pk">LEVIER PRICING</span>
+      </div>
+      <div class="panel-body" id="price-matrix"></div>
+    </div>
+
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- VIEW: MARKETING -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="view" id="view-marketing">
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Marketing Digital</div>
+      <div class="page-sub">Meta (Instagram + Facebook) · Google Ads · Dépenses campagnes · ROAS</div>
+    </div>
+    <div class="inner-tabs">
+      <button class="inner-tab active" onclick="showMktTab('overview')">Vue Globale</button>
+      <button class="inner-tab" onclick="showMktTab('meta')">Meta Ads</button>
+      <button class="inner-tab" onclick="showMktTab('google')">Google Ads</button>
+      <button class="inner-tab" onclick="showMktTab('import')">Importer CSV</button>
+    </div>
+  </div>
+
+  <div id="mkt-overview">
+    <!-- KPI -->
+    <div class="kpi-grid kpi-6 mb-16">
+      <div class="kpi c-factory"><div class="kpi-label">Budget Total Ads</div><div class="kpi-val c-factory">148 600 MAD</div><div class="kpi-delta">5.2% du CA consolidé</div></div>
+      <div class="kpi c-green"><div class="kpi-label">Revenus Attribués</div><div class="kpi-val c-green">475 520 MAD</div><div class="kpi-delta">ROAS global <span class="up">×3.2</span></div></div>
+      <div class="kpi c-accent"><div class="kpi-label">Impressions</div><div class="kpi-val c-accent">4.2M</div><div class="kpi-delta">CPM <span class="up">35.4 MAD</span></div></div>
+      <div class="kpi c-mobili"><div class="kpi-label">Clics Total</div><div class="kpi-val c-mobili">38 400</div><div class="kpi-delta">CPC moy. <span class="up">3.87 MAD</span></div></div>
+      <div class="kpi c-purple"><div class="kpi-label">Conversions</div><div class="kpi-val c-purple">1 248</div><div class="kpi-delta">CPO <span class="up">119 MAD</span></div></div>
+      <div class="kpi c-red"><div class="kpi-label">Meta vs Google</div><div class="kpi-val c-red">68% / 32%</div><div class="kpi-delta">Répartition budget</div></div>
+    </div>
+
+    <!-- PLATFORM CARDS -->
+    <div class="g2 mb-16">
+      <div class="platform-card meta">
+        <div class="platform-name">📘 Meta Ads — Instagram & Facebook</div>
+        <div class="metric-grid">
+          <div class="metric-box"><div class="metric-label">Budget Dépensé</div><div class="metric-val" style="color:#1877f2">101 048 MAD</div><div class="metric-sub">68% du total ads</div></div>
+          <div class="metric-box"><div class="metric-label">Impressions</div><div class="metric-val">2.9M</div><div class="metric-sub">CPM 34.8 MAD</div></div>
+          <div class="metric-box"><div class="metric-label">Clics Lien</div><div class="metric-val">24 600</div><div class="metric-sub">CTR 0.85%</div></div>
+          <div class="metric-box"><div class="metric-label">Conversions</div><div class="metric-val" style="color:#e1306c">784</div><div class="metric-sub">CPO 128.9 MAD</div></div>
+          <div class="metric-box"><div class="metric-label">ROAS</div><div class="metric-val" style="color:#3cb854">×3.0</div><div class="metric-sub">Revenus attribués</div></div>
+          <div class="metric-box"><div class="metric-label">Reach</div><div class="metric-val">186 400</div><div class="metric-sub">Comptes uniques</div></div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="section-label">Répartition Instagram vs Facebook</div>
+          <div style="display:flex;gap:8px;align-items:center;font-size:11px">
+            <div class="progress" style="flex:1;height:10px"><div class="progress-fill" style="width:64%;background:linear-gradient(90deg,#e1306c,#f77737)"></div></div>
+            <span style="color:#e1306c;font-weight:700;width:100px">Instagram 64%</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;font-size:11px;margin-top:4px">
+            <div class="progress" style="flex:1;height:10px"><div class="progress-fill" style="width:36%;background:#1877f2"></div></div>
+            <span style="color:#1877f2;font-weight:700;width:100px">Facebook 36%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="platform-card google">
+        <div class="platform-name">🔍 Google Ads — Search & Display</div>
+        <div class="metric-grid">
+          <div class="metric-box"><div class="metric-label">Budget Dépensé</div><div class="metric-val" style="color:#4285f4">47 552 MAD</div><div class="metric-sub">32% du total ads</div></div>
+          <div class="metric-box"><div class="metric-label">Impressions</div><div class="metric-val">1.3M</div><div class="metric-sub">CPM 36.6 MAD</div></div>
+          <div class="metric-box"><div class="metric-label">Clics</div><div class="metric-val">13 800</div><div class="metric-sub">CTR 1.06%</div></div>
+          <div class="metric-box"><div class="metric-label">Conversions</div><div class="metric-val" style="color:#34a853">464</div><div class="metric-sub">CPO 102.5 MAD</div></div>
+          <div class="metric-box"><div class="metric-label">ROAS</div><div class="metric-val" style="color:#3cb854">×3.6</div><div class="metric-sub">Meilleur ROAS</div></div>
+          <div class="metric-box"><div class="metric-label">Quality Score</div><div class="metric-val" style="color:#fbbc05">7.4/10</div><div class="metric-sub">Moy. campagnes</div></div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="section-label">Répartition Search vs Display</div>
+          <div style="display:flex;gap:8px;align-items:center;font-size:11px">
+            <div class="progress" style="flex:1;height:10px"><div class="progress-fill" style="width:72%;background:#4285f4"></div></div>
+            <span style="color:#4285f4;font-weight:700;width:100px">Search 72%</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;font-size:11px;margin-top:4px">
+            <div class="progress" style="flex:1;height:10px"><div class="progress-fill" style="width:28%;background:#34a853"></div></div>
+            <span style="color:#34a853;font-weight:700;width:100px">Display 28%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAMPAIGN TABLE -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">📋 Campagnes Actives</span>
+        <span class="panel-tag tag-pk">EN COURS</span>
+      </div>
+      <div style="overflow-x:auto">
+        <div id="campaign-table"></div>
+      </div>
+    </div>
+
+    <!-- TREND CHART -->
+    <div class="panel mt-16">
+      <div class="panel-head"><span class="panel-title">📈 Évolution Dépenses & ROAS — 6 Mois</span></div>
+      <div class="chart-area"><svg class="chart" height="160" id="mkt-chart"></svg></div>
+    </div>
+  </div>
+
+  <!-- META IMPORT -->
+  <div id="mkt-meta" style="display:none">
+    <div class="upload-zone mb-16">
+      <input type="file" accept=".csv,.xlsx" onchange="handleMktUpload(event,'meta')">
+      <div class="upload-icon">📘</div>
+      <div class="upload-label"><strong>Meta Ads Manager</strong> — Importer rapport CSV</div>
+      <div class="upload-formats">Export Ads Manager : Campagne · Ensemble pub · Annonce · Insights pixel</div>
+    </div>
+    <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:16px 20px;font-size:11px;color:var(--muted2);line-height:2">
+      <strong style="color:var(--accent)">Colonnes attendues Meta CSV :</strong><br>
+      <code style="color:var(--factory)">Nom de la campagne | Budget | Dépenses | Impressions | Clics | CTR | CPM | CPC | ROAS | Conversions | Valeur conversions</code>
+    </div>
+  </div>
+
+  <!-- GOOGLE IMPORT -->
+  <div id="mkt-google" style="display:none">
+    <div class="upload-zone mb-16">
+      <input type="file" accept=".csv,.xlsx" onchange="handleMktUpload(event,'google')">
+      <div class="upload-icon">🔍</div>
+      <div class="upload-label"><strong>Google Ads</strong> — Importer rapport CSV</div>
+      <div class="upload-formats">Export Google Ads : Campagnes · Groupes d'annonces · Mots-clés · Conversions</div>
+    </div>
+  </div>
+
+  <!-- IMPORT TAB -->
+  <div id="mkt-import" style="display:none">
+    <div class="g2">
+      <div class="upload-zone">
+        <input type="file" accept=".csv,.xlsx" onchange="handleMktUpload(event,'meta')">
+        <div class="upload-icon">📘</div>
+        <div class="upload-label"><strong>Meta Ads Manager</strong> — CSV Export</div>
+        <div class="upload-formats">Campagne · Pub · Insights · Pixel events</div>
+      </div>
+      <div class="upload-zone">
+        <input type="file" accept=".csv,.xlsx" onchange="handleMktUpload(event,'google')">
+        <div class="upload-icon">🔍</div>
+        <div class="upload-label"><strong>Google Ads</strong> — CSV Export</div>
+        <div class="upload-formats">Campagnes · Keywords · Conversions · Analytics</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- VIEW: ANALYTICS & PIXELS -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="view" id="view-analytics">
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Analytics & Données Pixels</div>
+      <div class="page-sub">Meta Pixel · Google Analytics · Événements · Conversions · Comportement visiteurs</div>
+    </div>
+    <div class="upload-zone" style="width:240px;padding:10px 16px">
+      <input type="file" accept=".csv,.xlsx" onchange="handleAnalyticsUpload(event)">
+      <div style="font-size:11px;color:var(--muted2)">📊 Importer données Analytics</div>
+    </div>
+  </div>
+
+  <!-- PIXEL KPIs -->
+  <div class="analytics-grid mb-16">
+    <div class="pixel-card">
+      <div class="pixel-name">Sessions Web</div>
+      <div class="pixel-val" style="color:var(--factory)">48 240</div>
+      <div class="pixel-trend"><span style="color:var(--green)">↑ 18.4%</span><span style="color:var(--muted2)">vs mois préc.</span></div>
+    </div>
+    <div class="pixel-card">
+      <div class="pixel-name">Utilisateurs Uniques</div>
+      <div class="pixel-val" style="color:var(--mobili)">31 860</div>
+      <div class="pixel-trend"><span style="color:var(--green)">↑ 12.1%</span><span style="color:var(--muted2)">nouveaux 68%</span></div>
+    </div>
+    <div class="pixel-card">
+      <div class="pixel-name">Pages / Session</div>
+      <div class="pixel-val" style="color:var(--accent)">3.8</div>
+      <div class="pixel-trend"><span style="color:var(--green)">↑ 0.4</span><span style="color:var(--muted2)">engagement</span></div>
+    </div>
+    <div class="pixel-card">
+      <div class="pixel-name">Durée Moy. Session</div>
+      <div class="pixel-val" style="color:var(--green)">2m 48s</div>
+      <div class="pixel-trend"><span style="color:var(--green)">↑ 22s</span><span style="color:var(--muted2)">intention d'achat</span></div>
+    </div>
+    <div class="pixel-card">
+      <div class="pixel-name">Taux de Rebond</div>
+      <div class="pixel-val" style="color:var(--red)">62.4%</div>
+      <div class="pixel-trend"><span style="color:var(--red)">↑ 3.2%</span><span style="color:var(--muted2)">à optimiser</span></div>
+    </div>
+    <div class="pixel-card">
+      <div class="pixel-name">Événements Pixel</div>
+      <div class="pixel-val" style="color:var(--purple)">124 800</div>
+      <div class="pixel-trend"><span style="color:var(--green)">↑ 34%</span><span style="color:var(--muted2)">Meta + Google</span></div>
+    </div>
+    <div class="pixel-card">
+      <div class="pixel-name">Taux de Conversion</div>
+      <div class="pixel-val" style="color:var(--green)">2.58%</div>
+      <div class="pixel-trend"><span style="color:var(--green)">↑ 0.3%</span><span style="color:var(--muted2)">benchmark 2–3%</span></div>
+    </div>
+    <div class="pixel-card">
+      <div class="pixel-name">Panier Moyen</div>
+      <div class="pixel-val" style="color:var(--accent)">1 248 MAD</div>
+      <div class="pixel-trend"><span style="color:var(--green)">↑ 8%</span><span style="color:var(--muted2)">upsell efficace</span></div>
+    </div>
+  </div>
+
+  <div class="g-main mb-16">
+    <!-- FUNNEL -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">🎯 Entonnoir de Conversion — Pixel Meta</span><span class="panel-tag tag-pk">META PIXEL</span></div>
+      <div class="panel-body">
+        <div class="funnel" id="meta-funnel"></div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+          <div class="section-label">Événements Pixel Clés</div>
+          <div id="pixel-events"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRAFFIC SOURCES -->
+    <div>
+      <div class="panel mb-16">
+        <div class="panel-head"><span class="panel-title">🌐 Sources de Trafic</span><span class="panel-tag tag-gr">GA4</span></div>
+        <div class="panel-body" id="traffic-sources"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">📱 Devices</span><span class="panel-tag tag-p">PIXELS</span></div>
+        <div class="panel-body" id="devices-chart"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BEHAVIOUR TABLE -->
+  <div class="panel">
+    <div class="panel-head"><span class="panel-title">📄 Pages les Plus Vues — Comportement</span><span class="panel-tag tag-g">GA4 + PIXEL</span></div>
+    <div style="overflow-x:auto">
+      <table class="data-table" id="pages-table"></table>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- VIEW: EBITDA CONSOLIDÉ -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="view" id="view-ebitda">
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">EBITDA Consolidé — NS Group</div>
+      <div class="page-sub">NSFactory + NSMobili · Coûts réels (Trimo) + Estimés · Vision industrielle complète</div>
+    </div>
+    <div class="entity-switch">
+      <button class="esw-btn active-g" onclick="switchEbitda('consolidated')">Consolidé</button>
+      <button class="esw-btn" onclick="switchEbitda('factory')">NSFactory</button>
+      <button class="esw-btn" onclick="switchEbitda('mobili')">NSMobili</button>
+    </div>
+  </div>
+
+  <div class="kpi-grid kpi-5 mb-16">
+    <div class="kpi c-accent"><div class="kpi-label">CA Consolidé</div><div class="kpi-val c-accent">2 847 500 MAD</div><div class="kpi-delta">Factory + Mobili</div></div>
+    <div class="kpi c-factory"><div class="kpi-label">Matières Directes</div><div class="kpi-val c-factory">600 652 MAD</div><div class="kpi-delta">35.4% CA (réel Trimo)</div></div>
+    <div class="kpi c-mobili"><div class="kpi-label">Main d'Œuvre</div><div class="kpi-val c-mobili">278 400 MAD</div><div class="kpi-delta">9.8% CA (direct + indirect)</div></div>
+    <div class="kpi c-green"><div class="kpi-label">EBITDA Estimé</div><div class="kpi-val c-green">427 125 MAD</div><div class="kpi-delta">Marge 15.0%</div></div>
+    <div class="kpi c-red"><div class="kpi-label">Budget Mkt (Sortie)</div><div class="kpi-val c-red">148 600 MAD</div><div class="kpi-delta">5.2% CA</div></div>
+  </div>
+
+  <div class="g-main">
+    <!-- FULL BRIDGE -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">⚡ Cascade EBITDA Complète — Toutes Couches</span><span class="panel-tag tag-g">GROUPE</span></div>
+      <div class="panel-body">
+        <div class="bridge" id="full-bridge"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+      <div class="panel mb-16">
+        <div class="panel-head"><span class="panel-title">📊 Benchmarks Secteur</span><span class="panel-tag tag-gr">REF. MARO</span></div>
+        <div class="panel-body" id="benchmarks"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">🎯 Point Mort & Seuil</span><span class="panel-tag tag-r">SEUIL</span></div>
+        <div class="panel-body" id="breakeven"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONTHLY TREND -->
+  <div class="panel mt-16">
+    <div class="panel-head"><span class="panel-title">📈 Simulation EBITDA Mensuel — 12 Mois</span><span class="panel-tag tag-g">PROJECTION</span></div>
+    <div class="chart-area"><svg class="chart" height="180" id="ebitda-trend"></svg></div>
+  </div>
+
+  <!-- MERMAID INDUSTRIAL FLOW GRAPH -->
+  <div class="panel mt-16" id="mermaid-panel">
+    <div class="panel-head">
+      <span class="panel-title">🗺️ Graphe Industriel EBITDA — Flux Complet NSFactory + NSMobili</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="panel-tag tag-g">FLOWCHART</span>
+        <button onclick="toggleMermaidLabels()" style="font-size:9px;padding:3px 10px;border-radius:3px;cursor:pointer;background:transparent;border:1px solid var(--border2);color:var(--muted2);font-family:Archivo Narrow,sans-serif;letter-spacing:0.06em">◑ Montants</button>
+        <button onclick="zoomMermaid(1.15)" style="font-size:11px;padding:2px 9px;border-radius:3px;cursor:pointer;background:transparent;border:1px solid var(--border2);color:var(--muted2)">＋</button>
+        <button onclick="zoomMermaid(0.87)" style="font-size:11px;padding:2px 9px;border-radius:3px;cursor:pointer;background:transparent;border:1px solid var(--border2);color:var(--muted2)">－</button>
+      </div>
+    </div>
+    <div style="overflow:auto;background:var(--bg);padding:20px 10px;" id="mermaid-scroll">
+      <svg id="mermaid-svg" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;transition:transform 0.2s"></svg>
+    </div>
+    <!-- LEGEND -->
+    <div style="display:flex;flex-wrap:wrap;gap:14px;padding:12px 20px;border-top:1px solid var(--border);background:var(--s3)">
+      <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted2)"><div style="width:12px;height:12px;border-radius:2px;background:#3a8ef5"></div>Couche 1 — Revenus</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted2)"><div style="width:12px;height:12px;border-radius:2px;background:#30c8a8"></div>Couche 2 — Matières</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted2)"><div style="width:12px;height:12px;border-radius:2px;background:#f0a030"></div>Couche 3 — Main d'Œuvre</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted2)"><div style="width:12px;height:12px;border-radius:2px;background:#a060f0"></div>Couche 4 — Overhead Industriel</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted2)"><div style="width:12px;height:12px;border-radius:2px;background:#f050a0"></div>Couche 5 — OPEX Structure</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted2)"><div style="width:12px;height:12px;border-radius:2px;background:#f04050"></div>Pertes & Rebuts</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted2)"><div style="width:12px;height:12px;border-radius:2px;background:#e8f040"></div>Agrégats / EBITDA</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- VIEW: RENTABILITÉ PRODUITS -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="view" id="view-rentabilite">
+<div class="page">
+
+  <div class="page-header">
+    <div>
+      <div class="page-title">Rentabilité Produits — Analyse Réelle</div>
+      <div class="page-sub">Formules extraites du fichier Trimo · PV Actuel vs PV Minimum vs PV Conseillé · Impact CA par produit</div>
+    </div>
+    <div class="inner-tabs" id="rent-tabs">
+      <button class="inner-tab active" onclick="showRentTab('matrix')">Matrice Rentabilité</button>
+      <button class="inner-tab" onclick="showRentTab('detail')">Détail Coûts</button>
+      <button class="inner-tab" onclick="showRentTab('impact')">Impact CA</button>
+      <button class="inner-tab" onclick="showRentTab('formules')">Formules Excel</button>
+    </div>
+  </div>
+
+  <!-- FORMULA LEGEND -->
+  <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px 20px;margin-bottom:16px;font-size:11px;line-height:1.9">
+    <div style="font-family:Archivo,sans-serif;font-weight:800;color:var(--accent);margin-bottom:8px;font-size:12px">📐 Formules de Prix Extraites du Fichier Excel Trimo</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div style="background:var(--s3);border-radius:6px;padding:10px 14px">
+        <div style="color:var(--muted2);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">PV Usine TTC</div>
+        <div style="font-family:Archivo Narrow,monospace;color:var(--factory)">= CR_MP_MO + Ratio_Fixe + Ratio_Bénéfice</div>
+        <div style="color:var(--muted);font-size:9px;margin-top:3px">CR = Mat_HT + MO_Directe · Ratio_Fixe = CR × (OH/m²)</div>
+      </div>
+      <div style="background:var(--s3);border-radius:6px;padding:10px 14px">
+        <div style="color:var(--muted2);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">PV Public Minimum</div>
+        <div style="font-family:Archivo Narrow,monospace;color:var(--mobili)">= PV_Usine × 1.25</div>
+        <div style="color:var(--muted);font-size:9px;margin-top:3px">Marge distributeur minimum (25%)</div>
+      </div>
+      <div style="background:var(--s3);border-radius:6px;padding:10px 14px">
+        <div style="color:var(--muted2);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">PV Public Conseillé</div>
+        <div style="font-family:Archivo Narrow,monospace;color:var(--green)">= PV_Usine × 1.4375</div>
+        <div style="color:var(--muted);font-size:9px;margin-top:3px">Ratio Bénéfice/Ratio_Fixe = 1/3.20 (constant)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GLOBAL KPIs -->
+  <div class="kpi-grid kpi-5 mb-16" id="rent-kpis"></div>
+
+  <!-- TAB: MATRIX -->
+  <div id="rent-matrix">
+    <!-- STATUS LEGEND -->
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px" id="status-legend"></div>
+    <!-- PRODUCT CARDS GRID -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px" id="rent-cards"></div>
+  </div>
+
+  <!-- TAB: DETAIL COSTS -->
+  <div id="rent-detail" style="display:none">
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">🔬 Décomposition Complète des Coûts par Produit</span><span class="panel-tag tag-f">TRIMO · DONNÉES RÉELLES</span></div>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="rent-detail-table"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: IMPACT CA -->
+  <div id="rent-impact" style="display:none">
+    <div class="g2 mb-16">
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">📉 CA Manqué / Gagné vs Prix Conseillé</span><span class="panel-tag tag-r">IMPACT</span></div>
+        <div class="chart-area" style="padding:20px"><svg id="impact-chart" height="260" style="display:block;width:100%;overflow:visible"></svg></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">💹 Position vs Seuils de Prix</span><span class="panel-tag tag-g">POSITIONNEMENT</span></div>
+        <div class="chart-area" style="padding:20px"><svg id="position-chart" height="260" style="display:block;width:100%;overflow:visible"></svg></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">🏆 Classement Impact CA Total</span><span class="panel-tag tag-m">VOLUME × PRIX</span></div>
+      <div id="impact-ranking"></div>
+    </div>
+  </div>
+
+  <!-- TAB: FORMULES -->
+  <div id="rent-formules" style="display:none">
+    <div class="g2">
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">📐 Décomposition % PV Usine par Produit</span><span class="panel-tag tag-f">STRUCTURE</span></div>
+        <div class="panel-body" id="formula-breakdown"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">📊 Ratio Fixe / m² — Vérification Formule</span><span class="panel-tag tag-g">VALIDATION</span></div>
+        <div class="panel-body" id="formula-ratio"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+</main>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════════
+const TRIMO = {
+  ca:1698822, mat:600652, mo:116508, cr:717160, marge:981661,
+  mat_families:[
+    {n:'Boiserie (MDF, Stratidécor)',val:301438,pct:50.2,c:'#3a8ef5'},
+    {n:'Peinture & Finitions',val:146105,pct:24.3,c:'#60a8d8'},
+    {n:'Vinyle & Décoration',val:79376,pct:13.2,c:'#8080f0'},
+    {n:'Quincaillerie',val:46933,pct:7.8,c:'#30c8a8'},
+    {n:'Métal',val:16421,pct:2.7,c:'#5090c8'},
+    {n:'Emballage',val:10379,pct:1.7,c:'#4070a8'},
+  ],
+  mo_processes:[
+    {n:'Livraison',val:33552,pct:28.8,tmin:36,c:'#f07040'},
+    {n:'Préparation',val:28059,pct:24.1,tmin:71,c:'#f0a840'},
+    {n:'Peinture',val:25202,pct:21.6,tmin:156,c:'#e0c040'},
+    {n:'Assemblage',val:10666,pct:9.2,tmin:24,c:'#3cb854'},
+    {n:'Découpe Manuelle',val:5209,pct:4.5,tmin:15,c:'#50c880'},
+    {n:'Montage',val:4359,pct:3.7,tmin:7,c:'#60d890'},
+    {n:'CNC',val:3833,pct:3.3,tmin:3,c:'#70e8a0'},
+    {n:'Vernis',val:2492,pct:2.1,tmin:5.8,c:'#90f0b0'},
+    {n:'Tapisserie + Autres',val:1938,pct:1.7,tmin:10,c:'#b0f8d0'},
+  ],
+  products:[
+    {n:'Tiroir sous lit',v:536,mat:200.9,mo:62.1,pv:642.9,m:59.1},
+    {n:'Tiroir lit 90x190',v:185,mat:343.2,mo:80.7,pv:1084.1,m:60.9},
+    {n:'Lit Epsilon 90',v:110,mat:827.4,mo:66.4,pv:2047.7,m:56.4},
+    {n:'Lit Rectangulaire',v:100,mat:811.3,mo:66.4,pv:1983.0,m:55.7},
+    {n:'Bureau 3 tiroirs',v:94,mat:605.2,mo:98.7,pv:1597.6,m:55.9},
+    {n:'TDC 1 tiroir',v:88,mat:264.0,mo:82.9,pv:853.3,m:59.3},
+    {n:'Etagère Mira',v:86,mat:60.4,mo:57.9,pv:238.6,m:50.4},
+    {n:'Table Trio',v:84,mat:129.4,mo:74.3,pv:452.0,m:54.9},
+    {n:'TDC 2 tiroirs',v:83,mat:316.1,mo:98.5,pv:967.9,m:57.2},
+    {n:'Lit Mira 90',v:76,mat:822.0,mo:66.4,pv:2026.1,m:56.2},
+    {n:'Lit Race 90',v:54,mat:858.4,mo:159.1,pv:2509.1,m:59.5},
+    {n:'Nemsis 90',v:30,mat:869.1,mo:159.1,pv:2552.2,m:59.7},
+  ]
+};
+
+const GROUP = {
+  ca:2847500, mat:600652, mo:278400, mktBudget:148600,
+  overhead:381000, opex:152000, distribution:90000,
+  factoryRatio:59.6, mobileRatio:40.4,
+  accounts:[
+    {n:'NSFactory — CIH Principal',entity:'factory',bal:167420,in:542800,out:487600},
+    {n:'NSFactory — Attijariwafa',entity:'factory',bal:80430,in:210000,out:142300},
+    {n:'NSMobili — BMCE Commercial',entity:'mobili',bal:136350,in:139600,out:98260},
+  ]
+};
+
+const TRANSACTIONS = [
+  {desc:'Encaissement client — Commande Lit Epsilon',date:'12/01/2025',cat:'Ventes',entity:'mobili',amt:+224847,icon:'💰',catColor:'#30e090'},
+  {desc:'Achat MDF 18mm — Fournisseur Atlas Bois',date:'11/01/2025',cat:'Matières',entity:'factory',amt:-148200,icon:'🪵',catColor:'#3a8ef5'},
+  {desc:'Salaires Atelier — Décembre',date:'10/01/2025',cat:'Paie',entity:'factory',amt:-124000,icon:'👷',catColor:'#f0a030'},
+  {desc:'Meta Ads — Campagne Lits Enfants',date:'09/01/2025',cat:'Marketing',entity:'mobili',amt:-28400,icon:'📘',catColor:'#e1306c'},
+  {desc:'Google Ads — Campagne Search',date:'08/01/2025',cat:'Marketing',entity:'mobili',amt:-12800,icon:'🔍',catColor:'#4285f4'},
+  {desc:'Loyer Atelier NSFactory',date:'05/01/2025',cat:'Charges fixes',entity:'factory',amt:-32000,icon:'🏭',catColor:'#8080f0'},
+  {desc:'Virement inter-sociétés Factory→Mobili',date:'04/01/2025',cat:'Interco',entity:'factory',amt:-280000,icon:'🔄',catColor:'#e8f040'},
+  {desc:'Encaissement — Tiroirs × 48 lots',date:'03/01/2025',cat:'Ventes',entity:'mobili',amt:+96432,icon:'💰',catColor:'#30e090'},
+  {desc:'Vernis & Peintures — Fournisseur',date:'02/01/2025',cat:'Matières',entity:'factory',amt:-38640,icon:'🎨',catColor:'#3a8ef5'},
+  {desc:'ERP & IT — Abonnements',date:'01/01/2025',cat:'OPEX',entity:'factory',amt:-8400,icon:'💻',catColor:'#a060f0'},
+];
+
+const CAMPAIGNS = [
+  {platform:'META',name:'Lits Enfants — Epsilon & Race',status:'active',budget:42000,spent:38400,impr:1240000,clics:9840,ctr:'0.79%',cpo:48.9,roas:3.2},
+  {platform:'META',name:'Bureaux & Meubles Bureau',status:'active',budget:28000,spent:24600,impr:820000,clics:6240,ctr:'0.76%',cpo:157.6,roas:2.8},
+  {platform:'META',name:'Retargeting — Visiteurs Site',status:'active',budget:18000,spent:16800,impr:480000,clics:5280,ctr:'1.1%',cpo:52.5,roas:4.1},
+  {platform:'GOOGLE',name:'Search — Lit Enfant Maroc',status:'active',budget:24000,spent:22400,impr:640000,clics:7680,ctr:'1.2%',cpo:89.7,roas:3.8},
+  {platform:'META',name:'Brand Awareness — NSMobili',status:'paused',budget:14000,spent:11248,impr:380000,clics:3240,ctr:'0.85%',cpo:202.1,roas:1.9},
+  {platform:'GOOGLE',name:'Display — Remarketing',status:'active',budget:16000,spent:14800,impr:620000,clics:3840,ctr:'0.62%',cpo:123.3,roas:3.1},
+];
+
+const PAGES = [
+  {url:'/lits-enfants/epsilon-90x190',sessions:8240,bounce:'54%',duration:'3:12',conv:'3.2%',revenue:'184k'},
+  {url:'/lits-enfants/race-voiture',sessions:6180,bounce:'48%',duration:'3:48',conv:'4.1%',revenue:'142k'},
+  {url:'/bureaux/bureau-3-tiroirs',sessions:4320,bounce:'61%',duration:'2:44',conv:'2.8%',revenue:'98k'},
+  {url:'/tables-chevets/1-tiroir',sessions:3840,bounce:'67%',duration:'2:18',conv:'2.1%',revenue:'64k'},
+  {url:'/ (Accueil)',sessions:12480,bounce:'78%',duration:'1:24',conv:'0.8%',revenue:'22k'},
+  {url:'/promotions',sessions:2960,bounce:'52%',duration:'2:56',conv:'3.6%',revenue:'46k'},
+];
+
+const GL_ROWS = [
+  {date:'12/01',piece:'VTE-0842',lib:'Facture client NSMobili — Lits × 12',debit:0,credit:224847,solde:+224847},
+  {date:'11/01',piece:'ACH-1124',lib:'Achat MDF 18mm — Atlas Bois SA',debit:148200,credit:0,solde:-148200},
+  {date:'10/01',piece:'PAI-0312',lib:'Salaires Atelier — Décembre 2024',debit:124000,credit:0,solde:-124000},
+  {date:'09/01',piece:'PUB-0089',lib:'Meta Ads — Campagne Lits Enfants',debit:28400,credit:0,solde:-28400},
+  {date:'08/01',piece:'PUB-0090',lib:'Google Ads — Search Campaign',debit:12800,credit:0,solde:-12800},
+  {date:'05/01',piece:'CHF-0441',lib:'Loyer Atelier NSFactory',debit:32000,credit:0,solde:-32000},
+  {date:'03/01',piece:'VTE-0843',lib:'Encaissement lots tiroirs × 48',debit:0,credit:96432,solde:+96432},
+  {date:'02/01',piece:'ACH-1125',lib:'Peintures & Vernis — ChimMaroc',debit:38640,credit:0,solde:-38640},
+  {date:'01/01',piece:'SRV-0021',lib:'Abonnements ERP + IT',debit:8400,credit:0,solde:-8400},
+  {date:'31/12',piece:'VTE-0840',lib:'Factures Décembre — Consolidées',debit:0,credit:487200,solde:+487200},
+];
+
+// ══════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════
+function fmt(v) { return Math.round(Math.abs(v)).toLocaleString('fr-FR'); }
+function fmtMAD(v) { return fmt(v) + ' MAD'; }
+
+// ══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════════
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function switchEntity(e, btn) {
+  document.querySelectorAll('.entity-switch .esw-btn').forEach(b => { b.className = 'esw-btn'; });
+  btn.classList.add(e==='factory'?'active-f':e==='mobili'?'active-m':'active-g');
+}
+
+function switchBankEntity(e, btn) {
+  document.querySelectorAll('#view-banque .entity-switch .esw-btn').forEach(b => { b.className = 'esw-btn'; });
+  btn.classList.add(e==='factory'?'active-f':e==='mobili'?'active-m':'active-g');
+}
+
+function switchEbitda(e, btn) {
+  if (!btn) return;
+  document.querySelectorAll('#view-ebitda .entity-switch .esw-btn').forEach(b => { b.className = 'esw-btn'; });
+  btn.classList.add(e==='factory'?'active-f':e==='mobili'?'active-m':'active-g');
+}
+
+function showCompta(tab) {
+  ['balance','grandlivre','upload'].forEach(t => {
+    const el = document.getElementById('compta-'+t);
+    if (el) el.style.display = t===tab ? '' : 'none';
+  });
+  document.querySelectorAll('#view-compta .inner-tab').forEach((b,i) => {
+    b.classList.toggle('active', ['balance','grandlivre','upload'][i]===tab);
+  });
+}
+
+function showMktTab(tab) {
+  ['overview','meta','google','import'].forEach(t => {
+    const el = document.getElementById('mkt-'+t);
+    if (el) el.style.display = t===tab ? '' : 'none';
+  });
+  document.querySelectorAll('#view-marketing .inner-tab').forEach((b,i) => {
+    b.classList.toggle('active', ['overview','meta','google','import'][i]===tab);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// UPLOAD HANDLERS
+// ══════════════════════════════════════════════════════════════
+function handleBankUpload(e, entity) {
+  const f = e.target.files[0];
+  if (!f) return;
+  alert(`✅ Fichier "${f.name}" chargé pour ${entity === 'factory' ? 'NSFactory' : 'NSMobili'}.\n\nDans la version complète, les transactions sont parsées automatiquement depuis le CSV/Excel et catégorisées par ML.`);
+}
+function handleComptaUpload(e, entity) {
+  const f = e.target.files[0];
+  if (f) alert(`✅ Grand Livre "${f.name}" importé pour ${entity === 'factory' ? 'NSFactory' : 'NSMobili'}.\n\nLes écritures comptables seront intégrées au Grand Livre et à la Balance.`);
+}
+function handleProdUpload(e) {
+  const f = e.target.files[0];
+  if (f) alert(`✅ Étude coûts "${f.name}" chargée.\n\nLes données MP + MO seront recalculées et les KPI mis à jour automatiquement.`);
+}
+function handleMktUpload(e, platform) {
+  const f = e.target.files[0];
+  if (f) alert(`✅ Export ${platform.toUpperCase()} "${f.name}" importé.\n\nCampagnes, dépenses, ROAS et conversions seront mis à jour.`);
+}
+function handleAnalyticsUpload(e) {
+  const f = e.target.files[0];
+  if (f) alert(`✅ Données Analytics "${f.name}" importées.\n\nSessions, conversions, événements pixel seront actualisés.`);
+}
+function handleDrop(e, id) { e.preventDefault(); e.currentTarget.classList.remove('drag'); }
+
+// ══════════════════════════════════════════════════════════════
+// SVG HELPERS
+// ══════════════════════════════════════════════════════════════
+const NS = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k,v] of Object.entries(attrs||{})) e.setAttribute(k,v);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+// ══════════════════════════════════════════════════════════════
+// BRIDGE RENDERER
+// ══════════════════════════════════════════════════════════════
+function renderBridge(containerId, rows, maxVal) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+  rows.forEach(row => {
+    if (row.sep) {
+      const hr = document.createElement('hr');
+      hr.className = 'bridge-sep'; container.appendChild(hr); return;
+    }
+    const div = document.createElement('div');
+    div.className = 'bridge-row' + (row.total ? ' bridge-total' : '');
+    const bw = Math.min(100, Math.abs(row.val)/maxVal*100);
+    div.innerHTML = `
+      <div class="bridge-label">${row.label}<small>${row.sub||''}</small></div>
+      <div class="bridge-bar-wrap"><div class="bridge-bar" style="width:${bw}%;background:${row.c}"></div></div>
+      <div class="bridge-amount" style="color:${row.c}">${row.val>0?'+':row.val<0?'−':''} ${fmt(row.val)} MAD</div>`;
+    container.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// DASHBOARD BRIDGE
+// ══════════════════════════════════════════════════════════════
+function renderDashBridge() {
+  const ca = GROUP.ca;
+  const rows = [
+    {label:'Chiffre d\'Affaires Consolidé',sub:'NSFactory + NSMobili',val:ca,c:'var(--accent)'},
+    {sep:true},
+    {label:'Matières Premières (MP)',sub:'Réel Trimo 2019 — 35.4% CA',val:-TRIMO.mat,c:'var(--red)'},
+    {label:'Main d\'Œuvre Directe',sub:'Factory : menuisiers, peinture, assemblage',val:-GROUP.mo,c:'var(--red)'},
+    {total:true,label:'= Marge Brute Directe',sub:'CA − MP − MO directe',val:ca-TRIMO.mat-GROUP.mo,c:'var(--green)'},
+    {sep:true},
+    {label:'Overhead Industriel',sub:'Maintenance, loyer atelier, assurances, rebuts',val:-GROUP.overhead,c:'var(--factory)'},
+    {label:'Budget Marketing Digital',sub:'Meta Ads + Google Ads',val:-GROUP.mktBudget,c:'var(--pink)'},
+    {label:'OPEX Structure',sub:'IT, bureaux, juridique, RH, direction',val:-GROUP.opex,c:'var(--purple)'},
+    {sep:true},
+    {total:true,label:'⚡ EBITDA CONSOLIDÉ',sub:'Avant intérêts, taxes et amortissements',val:427125,c:'var(--accent)'},
+  ];
+  renderBridge('dash-bridge', rows, ca);
+}
+
+// ══════════════════════════════════════════════════════════════
+// DASHBOARD ACCOUNTS
+// ══════════════════════════════════════════════════════════════
+function renderDashAccounts() {
+  const el = document.getElementById('dash-accounts');
+  if (!el) return;
+  GROUP.accounts.forEach(acc => {
+    const c = acc.entity==='factory'?'var(--factory)':'var(--mobili)';
+    el.innerHTML += `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)44;font-size:11px">
+      <div><div style="font-weight:700">${acc.n}</div><div style="font-size:9px;color:var(--muted2);margin-top:2px">Solde courant</div></div>
+      <div style="font-family:Archivo,sans-serif;font-weight:900;font-size:15px;color:${c}">${fmt(acc.bal)} MAD</div>
+    </div>`;
+  });
+  const total = GROUP.accounts.reduce((a,b)=>a+b.bal,0);
+  el.innerHTML += `<div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border2)">
+    <div style="font-weight:800;font-size:13px">Trésorerie Totale</div>
+    <div style="font-family:Archivo,sans-serif;font-weight:900;font-size:18px;color:var(--green)">${fmt(total)} MAD</div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// DASHBOARD MARKETING SUMMARY
+// ══════════════════════════════════════════════════════════════
+function renderDashMktSummary() {
+  const el = document.getElementById('dash-mkt-summary');
+  if (!el) return;
+  const items = [
+    {n:'Meta Ads (Insta + FB)',val:101048,roas:3.0,c:'#e1306c'},
+    {n:'Google Ads (Search)',val:47552,roas:3.6,c:'#4285f4'},
+  ];
+  items.forEach(i => {
+    el.innerHTML += `<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+        <span style="color:${i.c};font-weight:700">${i.n}</span>
+        <span style="font-family:Archivo,sans-serif;font-weight:800">${fmt(i.val)} MAD</span>
+      </div>
+      <div class="progress"><div class="progress-fill" style="width:${i.val/GROUP.mktBudget*100}%;background:${i.c}"></div></div>
+      <div style="font-size:10px;color:var(--muted2);margin-top:3px">ROAS ×${i.roas} · Conversions ${i.roas===3.0?784:464}</div>
+    </div>`;
+  });
+  el.innerHTML += `<div style="padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between">
+    <span style="font-size:11px;color:var(--muted2)">ROAS Global Moyen</span>
+    <span style="font-family:Archivo,sans-serif;font-weight:900;color:var(--green)">×3.2</span>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// DASHBOARD PIXELS
+// ══════════════════════════════════════════════════════════════
+function renderDashPixels() {
+  const el = document.getElementById('dash-pixels');
+  if (!el) return;
+  const items = [
+    {n:'Sessions Web',val:'48 240',delta:'+18.4%',c:'var(--factory)'},
+    {n:'Taux Rebond',val:'62.4%',delta:'À réduire',c:'var(--red)'},
+    {n:'Taux Conversion',val:'2.58%',delta:'+0.3pp',c:'var(--green)'},
+    {n:'Panier Moyen',val:'1 248 MAD',delta:'+8%',c:'var(--accent)'},
+    {n:'Événements Pixel',val:'124 800',delta:'+34%',c:'var(--purple)'},
+  ];
+  items.forEach(i => {
+    el.innerHTML += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)44;font-size:11px">
+      <span style="color:var(--muted2)">${i.n}</span>
+      <div style="text-align:right">
+        <div style="font-family:Archivo,sans-serif;font-weight:800;color:${i.c}">${i.val}</div>
+        <div style="font-size:9px;color:var(--muted)">${i.delta}</div>
+      </div>
+    </div>`;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// TRANSACTION LIST
+// ══════════════════════════════════════════════════════════════
+function renderTransactions() {
+  const el = document.getElementById('tx-list');
+  if (!el) return;
+  TRANSACTIONS.forEach(tx => {
+    const pos = tx.amt > 0;
+    el.innerHTML += `<div class="tx-item">
+      <div class="tx-icon" style="background:${tx.catColor}22">${tx.icon}</div>
+      <div class="tx-body">
+        <div class="tx-desc">${tx.desc}</div>
+        <div class="tx-date">${tx.date} · ${tx.entity === 'factory' ? '🏭 NSFactory' : '🏪 NSMobili'}</div>
+        <span class="tx-cat" style="background:${tx.catColor}20;color:${tx.catColor}">${tx.cat}</span>
+      </div>
+      <div class="tx-amount" style="color:${pos?'var(--green)':'var(--red)'}">${pos?'+':'-'} ${fmt(tx.amt)} MAD</div>
+    </div>`;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// CATEGORY BREAKDOWN
+// ══════════════════════════════════════════════════════════════
+function renderCatBreakdown() {
+  const el = document.getElementById('cat-breakdown');
+  if (!el) return;
+  const cats = [
+    {n:'Matières Premières',val:186840,pct:25.7,c:'var(--factory)'},
+    {n:'Masse Salariale',val:278400,pct:38.2,c:'var(--mobili)'},
+    {n:'Marketing Digital',val:148600,pct:20.4,c:'var(--pink)'},
+    {n:'Charges Fixes',val:64000,pct:8.8,c:'var(--purple)'},
+    {n:'OPEX Structure',val:50320,pct:6.9,c:'var(--muted2)'},
+  ];
+  cats.forEach(c => {
+    el.innerHTML += `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+        <span>${c.n}</span>
+        <span style="font-family:Archivo,sans-serif;font-weight:700;color:${c.c}">${fmt(c.val)} MAD · ${c.pct}%</span>
+      </div>
+      <div class="progress"><div class="progress-fill" style="width:${c.pct*2}%;background:${c.c}"></div></div>
+    </div>`;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// PRODUCTION TABLES
+// ══════════════════════════════════════════════════════════════
+function renderProdMatTable() {
+  const el = document.getElementById('prod-mat-table');
+  if (!el) return;
+  TRIMO.mat_families.forEach(f => {
+    el.innerHTML += `<div style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+        <span>${f.n}</span>
+        <span style="font-family:Archivo,sans-serif;font-weight:700;color:${f.c}">${fmt(f.val)} MAD</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="progress" style="flex:1"><div class="progress-fill" style="width:${f.pct}%;background:${f.c}"></div></div>
+        <span style="font-size:10px;color:var(--muted2);width:35px;text-align:right">${f.pct}%</span>
+      </div>
+    </div>`;
+  });
+}
+
+function renderProdMoTable() {
+  const el = document.getElementById('prod-mo-table');
+  if (!el) return;
+  TRIMO.mo_processes.forEach(p => {
+    el.innerHTML += `<div style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+        <span>${p.n} <span style="color:var(--muted);font-size:9px">${p.tmin}min</span></span>
+        <span style="font-family:Archivo,sans-serif;font-weight:700;color:${p.c}">${fmt(p.val)} MAD</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="progress" style="flex:1"><div class="progress-fill" style="width:${p.pct*2.5}%;background:${p.c}"></div></div>
+        <span style="font-size:10px;color:var(--muted2);width:35px;text-align:right">${p.pct}%</span>
+      </div>
+    </div>`;
+  });
+}
+
+function renderProdDonut() {
+  const svg = document.getElementById('prod-donut');
+  const legend = document.getElementById('prod-donut-legend');
+  if (!svg || !legend) return;
+  const slices = [
+    {n:'Matières',v:TRIMO.mat,c:'var(--factory)'},
+    {n:'Main d\'Œuvre',v:TRIMO.mo,c:'var(--mobili)'},
+    {n:'Marge Brute',v:TRIMO.marge,c:'var(--green)'},
+  ];
+  const total = slices.reduce((a,s)=>a+s.v,0);
+  let angle = -Math.PI/2; let paths = '';
+  const cx=70,cy=70,r=55,ri=32;
+  slices.forEach(s => {
+    const a = s.v/total*Math.PI*2;
+    const x1=cx+r*Math.cos(angle),y1=cy+r*Math.sin(angle);
+    const x2=cx+r*Math.cos(angle+a),y2=cy+r*Math.sin(angle+a);
+    const xi1=cx+ri*Math.cos(angle),yi1=cy+ri*Math.sin(angle);
+    const xi2=cx+ri*Math.cos(angle+a),yi2=cy+ri*Math.sin(angle+a);
+    const lg=a>Math.PI?1:0;
+    paths += `<path d="M${xi1},${yi1} L${x1},${y1} A${r},${r} 0 ${lg} 1 ${x2},${y2} L${xi2},${yi2} A${ri},${ri} 0 ${lg} 0 ${xi1},${yi1}" fill="${s.c}" opacity="0.85"/>`;
+    angle += a;
+  });
+  svg.innerHTML = paths;
+  legend.innerHTML = slices.map(s=>`<div class="donut-legend-item">
+    <div class="donut-dot" style="background:${s.c}"></div>
+    <div style="flex:1;font-size:10px;color:var(--muted2)">${s.n}</div>
+    <div style="font-family:Archivo,sans-serif;font-weight:700;font-size:11px">${(s.v/total*100).toFixed(0)}%</div>
+  </div>`).join('');
+}
+
+function renderProdTable() {
+  const el = document.getElementById('prod-table');
+  if (!el) return;
+  el.innerHTML = `<thead><tr>
+    <th>Produit</th><th style="text-align:right">Unités</th>
+    <th style="text-align:right">MP (MAD)</th><th style="text-align:right">MO (MAD)</th>
+    <th style="text-align:right">CR Total</th><th style="text-align:right">PV Usine</th>
+    <th style="text-align:right">Marge %</th><th style="text-align:right">CA Ligne</th>
+  </tr></thead><tbody>${TRIMO.products.map(p => {
+    const cr = p.mat+p.mo;
+    const mc = p.m>=58?'pos':p.m>=53?'':'neg';
+    return `<tr>
+      <td style="font-weight:600">${p.n}</td>
+      <td class="num">${p.v}</td>
+      <td class="num" style="color:var(--factory)">${fmt(p.mat)}</td>
+      <td class="num" style="color:var(--mobili)">${fmt(p.mo)}</td>
+      <td class="num">${fmt(cr)}</td>
+      <td class="num" style="color:var(--accent)">${fmt(p.pv)}</td>
+      <td class="num ${mc}">${p.m.toFixed(1)}%</td>
+      <td class="num" style="color:var(--green)">${fmt(p.pv*p.v/1000)}k</td>
+    </tr>`;
+  }).join('')}</tbody>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// CAMPAIGN TABLE
+// ══════════════════════════════════════════════════════════════
+function renderCampaigns() {
+  const el = document.getElementById('campaign-table');
+  if (!el) return;
+  el.innerHTML = `<div class="camp-row camp-head">
+    <div class="camp-cell"></div>
+    <div class="camp-cell">Campagne</div>
+    <div class="camp-cell right">Budget</div>
+    <div class="camp-cell right">Dépensé</div>
+    <div class="camp-cell right">Impr.</div>
+    <div class="camp-cell right">Clics</div>
+    <div class="camp-cell right">CPO</div>
+    <div class="camp-cell right">ROAS</div>
+  </div>
+  ${CAMPAIGNS.map(c => {
+    const pColor = c.platform==='META'?'#e1306c':'#4285f4';
+    const statusC = c.status==='active'?'var(--green)':'var(--muted)';
+    const roasC = c.roas>=3.5?'var(--green)':c.roas>=2.5?'var(--mobili)':'var(--red)';
+    return `<div class="camp-row">
+      <div class="camp-cell"><div class="status-dot" style="background:${statusC}"></div></div>
+      <div class="camp-cell">
+        <div style="font-weight:600;font-size:11px">${c.name}</div>
+        <div style="font-size:9px;color:${pColor};font-weight:700;letter-spacing:0.08em">${c.platform}</div>
+      </div>
+      <div class="camp-cell right">${fmt(c.budget)}</div>
+      <div class="camp-cell right" style="color:var(--factory)">${fmt(c.spent)}</div>
+      <div class="camp-cell right">${(c.impr/1000).toFixed(0)}k</div>
+      <div class="camp-cell right">${c.clics.toLocaleString('fr-FR')}</div>
+      <div class="camp-cell right">${c.cpo} MAD</div>
+      <div class="camp-cell right" style="color:${roasC};font-weight:800">×${c.roas}</div>
+    </div>`;
+  }).join('')}`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// GRAND LIVRE
+// ══════════════════════════════════════════════════════════════
+function renderGrandLivre() {
+  const el = document.getElementById('gl-rows');
+  if (!el) return;
+  let solde = 0;
+  GL_ROWS.forEach(r => {
+    solde += r.credit - r.debit;
+    const sc = solde >= 0 ? 'var(--green)' : 'var(--red)';
+    el.innerHTML += `<div class="gl-row">
+      <div class="gl-cell" style="color:var(--muted2)">${r.date}</div>
+      <div class="gl-cell" style="color:var(--factory)">${r.piece}</div>
+      <div class="gl-cell">${r.lib}</div>
+      <div class="gl-cell right" style="color:var(--red)">${r.debit>0?fmt(r.debit)+' MAD':'—'}</div>
+      <div class="gl-cell right" style="color:var(--green)">${r.credit>0?'+'+fmt(r.credit)+' MAD':'—'}</div>
+      <div class="gl-cell right" style="color:${sc};font-weight:700">${solde>=0?'+':'-'}${fmt(solde)} MAD</div>
+    </div>`;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// ANALYTICS — META FUNNEL
+// ══════════════════════════════════════════════════════════════
+function renderMetaFunnel() {
+  const el = document.getElementById('meta-funnel');
+  if (!el) return;
+  const steps = [
+    {n:'Impressions',v:2900000,c:'var(--factory)'},
+    {n:'Reach (comptes uniques)',v:186400,c:'var(--factory)'},
+    {n:'Clics sur le lien',v:24600,c:'var(--mobili)'},
+    {n:'Visites Site Web',v:18400,c:'var(--accent)'},
+    {n:'Ajouts au Panier (ViewContent)',v:3840,c:'var(--purple)'},
+    {n:'Initiations Paiement',v:1240,c:'var(--green)'},
+    {n:'Achats Confirmés',v:784,c:'var(--green)'},
+  ];
+  const max = steps[0].v;
+  steps.forEach(s => {
+    el.innerHTML += `<div class="funnel-step">
+      <div class="funnel-label">${s.n}</div>
+      <div class="funnel-bar-wrap">
+        <div class="funnel-fill" style="width:${s.v/max*100}%;background:${s.c}22;border:1px solid ${s.c}55">
+          <span style="font-size:10px;font-family:Archivo,sans-serif;font-weight:700;color:${s.c}">${s.v.toLocaleString('fr-FR')}</span>
+        </div>
+      </div>
+    </div>`;
+  });
+}
+
+function renderPixelEvents() {
+  const el = document.getElementById('pixel-events');
+  if (!el) return;
+  const evts = [
+    {n:'PageView',v:48240,c:'var(--factory)'},
+    {n:'ViewContent',v:18600,c:'var(--mobili)'},
+    {n:'AddToCart',v:3840,c:'var(--accent)'},
+    {n:'InitiateCheckout',v:1240,c:'var(--purple)'},
+    {n:'Purchase',v:784,c:'var(--green)'},
+    {n:'Lead',v:2160,c:'var(--pink)'},
+  ];
+  el.innerHTML = evts.map(e => `<div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-bottom:1px solid var(--border)44">
+    <span style="font-family:Archivo Narrow,monospace;color:${e.c}">${e.n}</span>
+    <span style="font-family:Archivo,sans-serif;font-weight:700">${e.v.toLocaleString('fr-FR')}</span>
+  </div>`).join('');
+}
+
+function renderTrafficSources() {
+  const el = document.getElementById('traffic-sources');
+  if (!el) return;
+  const srcs = [
+    {n:'Paid Social (Meta)',v:48,c:'#e1306c'},
+    {n:'Organic Search',v:22,c:'#4285f4'},
+    {n:'Paid Search (Google)',v:16,c:'#34a853'},
+    {n:'Direct',v:8,c:'var(--accent)'},
+    {n:'Organic Social',v:4,c:'var(--purple)'},
+    {n:'Référents',v:2,c:'var(--muted2)'},
+  ];
+  srcs.forEach(s => {
+    el.innerHTML += `<div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+        <span>${s.n}</span><span style="color:${s.c};font-weight:700">${s.v}%</span>
+      </div>
+      <div class="progress"><div class="progress-fill" style="width:${s.v}%;background:${s.c}"></div></div>
+    </div>`;
+  });
+}
+
+function renderDevices() {
+  const el = document.getElementById('devices-chart');
+  if (!el) return;
+  const devs = [
+    {n:'📱 Mobile',v:74,c:'var(--factory)'},
+    {n:'💻 Desktop',v:21,c:'var(--mobili)'},
+    {n:'📟 Tablet',v:5,c:'var(--muted2)'},
+  ];
+  devs.forEach(d => {
+    el.innerHTML += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12px">
+      <span style="width:80px">${d.n}</span>
+      <div class="progress" style="flex:1"><div class="progress-fill" style="width:${d.v}%;background:${d.c}"></div></div>
+      <span style="font-family:Archivo,sans-serif;font-weight:800;color:${d.c};width:30px">${d.v}%</span>
+    </div>`;
+  });
+}
+
+function renderPagesTable() {
+  const el = document.getElementById('pages-table');
+  if (!el) return;
+  el.innerHTML = `<thead><tr>
+    <th>URL</th><th style="text-align:right">Sessions</th>
+    <th style="text-align:right">Rebond</th><th style="text-align:right">Durée</th>
+    <th style="text-align:right">Conv.</th><th style="text-align:right">CA Estimé</th>
+  </tr></thead><tbody>${PAGES.map(p => `<tr>
+    <td style="font-family:Archivo Narrow,monospace;font-size:10px;color:var(--factory)">${p.url}</td>
+    <td class="num">${p.sessions.toLocaleString('fr-FR')}</td>
+    <td class="num" style="color:${parseFloat(p.bounce)>70?'var(--red)':'var(--muted2)'}">${p.bounce}</td>
+    <td class="num">${p.duration}</td>
+    <td class="num" style="color:var(--green)">${p.conv}</td>
+    <td class="num" style="color:var(--accent)">${p.revenue} MAD</td>
+  </tr>`).join('')}</tbody>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// EBITDA FULL BRIDGE
+// ══════════════════════════════════════════════════════════════
+function renderFullBridge() {
+  const ca = GROUP.ca;
+  const rows = [
+    {label:'CA Consolidé NSGroup',sub:'NSFactory 1 699k + NSMobili 1 149k',val:ca,c:'var(--accent)'},
+    {sep:true},
+    {label:'(−) Matières Premières Directes',sub:'Réel Trimo — Boiserie 50% · Peinture 24% · Vinyle 13%',val:-TRIMO.mat,c:'var(--red)'},
+    {label:'(−) Main d\'Œuvre Directe',sub:'Menuisiers, peinture, assemblage, CNC, livraison',val:-GROUP.mo,c:'var(--red)'},
+    {total:true,label:'= Marge Brute Directe',sub:'57.8% sur coûts variables',val:ca-TRIMO.mat-GROUP.mo,c:'var(--green)'},
+    {sep:true},
+    {label:'(−) Overhead Industriel',sub:'Loyer atelier, maintenance machines, assurances, rebuts',val:-GROUP.overhead,c:'var(--factory)'},
+    {total:true,label:'= Marge Industrielle Nette',sub:'Après frais généraux atelier',val:ca-TRIMO.mat-GROUP.mo-GROUP.overhead,c:'var(--factory)'},
+    {sep:true},
+    {label:'(−) Budget Marketing Digital',sub:'Meta Ads 68% + Google Ads 32% · ROAS ×3.2',val:-GROUP.mktBudget,c:'var(--pink)'},
+    {label:'(−) OPEX & Structure',sub:'IT, juridique, direction, bureaux, RH',val:-GROUP.opex,c:'var(--purple)'},
+    {label:'(−) Distribution',sub:'Transport livraison client, logistique',val:-GROUP.distribution,c:'var(--mobili)'},
+    {sep:true},
+    {total:true,label:'⚡ EBITDA CONSOLIDÉ',sub:'Avant intérêts · impôts · amortissements',val:427125,c:'var(--accent)'},
+  ];
+  renderBridge('full-bridge', rows, ca);
+}
+
+function renderBenchmarks() {
+  const el = document.getElementById('benchmarks');
+  if (!el) return;
+  const ebitdaPct = (427125/GROUP.ca*100).toFixed(1);
+  const matPct = (TRIMO.mat/GROUP.ca*100).toFixed(1);
+  const moPct = (GROUP.mo/GROUP.ca*100).toFixed(1);
+  const items = [
+    {n:'Taux EBITDA',v:ebitdaPct+'%',ref:'10–18%',ok:parseFloat(ebitdaPct)>=10,c:'var(--accent)'},
+    {n:'% Matières / CA',v:matPct+'%',ref:'38–48%',ok:parseFloat(matPct)<=48,c:'var(--factory)'},
+    {n:'% Masse Sal. / CA',v:moPct+'%',ref:'14–22%',ok:parseFloat(moPct)<=22,c:'var(--mobili)'},
+    {n:'% Mkt Digital / CA',v:'5.2%',ref:'3–6%',ok:true,c:'var(--pink)'},
+    {n:'Taux Rebuts',v:'1.5%',ref:'≤ 1%',ok:false,c:'var(--red)'},
+  ];
+  items.forEach(i => {
+    const statusC = i.ok ? 'var(--green)' : 'var(--red)';
+    el.innerHTML += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)44;font-size:11px">
+      <span>${i.n}</span>
+      <div style="text-align:right">
+        <div style="font-family:Archivo,sans-serif;font-weight:800;color:${statusC}">${i.v} ${i.ok?'✓':'⚠'}</div>
+        <div style="font-size:9px;color:var(--muted)">Ref: ${i.ref}</div>
+      </div>
+    </div>`;
+  });
+}
+
+function renderBreakeven() {
+  const el = document.getElementById('breakeven');
+  if (!el) return;
+  const fixedCosts = GROUP.overhead + GROUP.opex + GROUP.mktBudget + GROUP.distribution;
+  const varPct = (TRIMO.mat + GROUP.mo) / GROUP.ca;
+  const contribMargin = 1 - varPct;
+  const breakeven = Math.round(fixedCosts / contribMargin);
+  const safety = ((GROUP.ca - breakeven) / GROUP.ca * 100).toFixed(1);
+  el.innerHTML = `
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;color:var(--muted2);margin-bottom:3px">Point Mort (Seuil Rentabilité)</div>
+      <div style="font-family:Archivo,sans-serif;font-weight:900;font-size:22px;color:var(--red)">${fmt(breakeven)} MAD</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">CA minimum pour couvrir toutes les charges</div>
+    </div>
+    <div class="progress" style="margin-bottom:12px;height:10px">
+      <div class="progress-fill" style="width:${breakeven/GROUP.ca*100}%;background:var(--red)"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="background:var(--s3);border-radius:6px;padding:10px">
+        <div style="font-size:9px;color:var(--muted2)">Marge de Sécurité</div>
+        <div style="font-family:Archivo,sans-serif;font-weight:800;color:var(--green);font-size:18px">${safety}%</div>
+      </div>
+      <div style="background:var(--s3);border-radius:6px;padding:10px">
+        <div style="font-size:9px;color:var(--muted2)">Marge Contrib.</div>
+        <div style="font-family:Archivo,sans-serif;font-weight:800;color:var(--accent);font-size:18px">${(contribMargin*100).toFixed(1)}%</div>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SVG CHARTS
+// ══════════════════════════════════════════════════════════════
+function renderLineChart(svgId, data, color, labels) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const W = 800, H = parseInt(svg.getAttribute('height'))||160;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const min = Math.min(...data)*0.9, max = Math.max(...data)*1.05;
+  const xs = data.map((_,i) => 40 + i*(W-60)/(data.length-1));
+  const ys = data.map(v => H-20 - (v-min)/(max-min)*(H-40));
+  const pathD = xs.map((x,i) => (i===0?'M':'L')+x+','+ys[i]).join(' ');
+  const areaD = pathD + ` L${xs[xs.length-1]},${H-20} L${xs[0]},${H-20} Z`;
+  svg.innerHTML = `
+    <defs><linearGradient id="g_${svgId}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="${color}" stop-opacity="0.02"/>
+    </linearGradient></defs>
+    <path d="${areaD}" fill="url(#g_${svgId})"/>
+    <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+    ${xs.map((x,i) => `
+      <circle cx="${x}" cy="${ys[i]}" r="3" fill="${color}"/>
+      <text x="${x}" y="${H-4}" text-anchor="middle" font-size="9" fill="var(--muted2)" font-family="Archivo Narrow">${labels[i]}</text>
+    `).join('')}`;
+}
+
+function renderDualChart(svgId, data1, data2, c1, c2, labels) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const W=800, H=parseInt(svg.getAttribute('height'))||160;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const all = [...data1,...data2];
+  const min=Math.min(...all)*0.8, max=Math.max(...all)*1.1;
+  const xs = data1.map((_,i)=>40+i*(W-60)/(data1.length-1));
+  function ys(data){ return data.map(v=>H-20-(v-min)/(max-min)*(H-40)); }
+  function pathStr(data,color){ 
+    const y=ys(data); 
+    const d=xs.map((x,i)=>(i===0?'M':'L')+x+','+y[i]).join(' ');
+    const a=d+` L${xs[xs.length-1]},${H-20} L${xs[0]},${H-20} Z`;
+    return `<path d="${a}" fill="${color}" opacity="0.08"/>
+            <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+            ${xs.map((x,i)=>`<circle cx="${x}" cy="${y[i]}" r="3" fill="${color}"/>`).join('')}`;
+  }
+  svg.innerHTML = pathStr(data1,c1)+pathStr(data2,c2)+
+    xs.map((x,i)=>`<text x="${x}" y="${H-4}" text-anchor="middle" font-size="9" fill="var(--muted2)" font-family="Archivo Narrow">${labels[i]}</text>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  const months = ['Juil','Août','Sep','Oct','Nov','Déc'];
+  
+  // Dashboard
+  renderDashBridge();
+  renderDashAccounts();
+  renderDashMktSummary();
+  renderDashPixels();
+  
+  // Bank
+  renderTransactions();
+  renderCatBreakdown();
+  renderLineChart('bank-chart',
+    [284000,312000,298000,356000,401000,384200],
+    'var(--green)', months);
+  
+  // Compta
+  renderGrandLivre();
+  
+  // Production
+  renderProdMatTable();
+  renderProdMoTable();
+  renderProdDonut();
+  renderProdTable();
+  initRentability();
+  
+  // Marketing
+  renderCampaigns();
+  renderDualChart('mkt-chart',
+    [18400,22600,28400,32800,36200,38400],
+    [2.4,2.6,2.8,3.0,3.2,3.2],
+    'var(--pink)','var(--green)',months);
+  
+  // Analytics
+  renderMetaFunnel();
+  renderPixelEvents();
+  renderTrafficSources();
+  renderDevices();
+  renderPagesTable();
+  
+  // EBITDA
+  renderFullBridge();
+  renderBenchmarks();
+  renderBreakeven();
+  renderLineChart('ebitda-trend',
+    [280000,310000,320000,380000,410000,427125,440000,455000,470000,460000,475000,490000],
+    'var(--accent)',
+    ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']);
+
+  // Mermaid Industrial Graph
+  renderMermaidGraph();
+});
+
+// ══════════════════════════════════════════════════════════════
+// RENTABILITY DATA — RÉEL EXTRAIT FICHIER EXCEL TRIMO
+// ──────────────────────────────────────────────────────────────
+// Formules extraites des feuilles produit :
+//   CR = MP_HT × 1.2 (TVA) + MO_Directe
+//   MO = Σ(Sal_mensuel / 208h / 60) × Temps(min)  [Sal/208/60 = coût/min]
+//   RCF = Ratio Charges Fixes (loyer atelier 160 000 MAD/an ÷ 660 m² × m²_produit)
+//   RBén = Ratio Bénéfice (50 000 MAD/an ÷ 660 m² × m²_produit)
+//   PVU TTC = CR + RCF + RBén  (= prix vente usine toutes taxes)
+//   PV_Public_Min = PVU × 1.25 (marge distributeur 25%)
+//   PV_Public_Conseillé = PVU × 1.4375 (marge distributeur 43.75%)
+//   PA = Prix Actuel pratiqué (Métrage sheet col PV Actuel)
+//   Rentable si PA ≥ PVU | Sous-vendu si PVU × 0.85 ≤ PA < PVU | En perte si PA < CR
+// ══════════════════════════════════════════════════════════════
+const RENT_DATA = [
+  // ── Tiroir sous lit (536 unités) ── PA=600 MAD → EN DESSOUS PVU 643 = légèrement sous-vendu
+  { nom:'Tiroir sous lit',       sheet:'MP+MO Tiroir sous lit',  vol:536, pa:600,   cr:303.14, pv_usine:642.88,  pv_min:803.60,   pv_cons:900.03,   mp_ht:200.90, mo:0.00,   ratio_cf:201.21, ratio_ben:62.88,  m2:0.83,
+    mp_families:{Boiserie:123.44, Peinture:58.42, Quincaillerie:14.88, Emballage:4.15},
+    mo_detail:{CNC:0.61, 'Découpe':3.46, Assemblage:4.62, Préparation:15.93, Peinture:13.20, Vernis:1.12, Montage:1.56, Emballage:0.80, Livraison:20.77} },
+
+  // ── Tiroir lit 90x190 (185 unités) ── PA=1200 → EN DESSOUS PV Min 1355
+  { nom:'Tiroir lit 90×190',     sheet:'MP+MO Tiroir lit',       vol:185, pa:1200,  cr:492.55, pv_usine:1084.07, pv_min:1355.09,  pv_cons:1558.35,  mp_ht:343.25, mo:0.00,   ratio_cf:353.94, ratio_ben:110.61, m2:1.46,
+    mp_families:{Boiserie:210.62, Peinture:102.77, Quincaillerie:22.56, Emballage:7.30},
+    mo_detail:{CNC:0.91, 'Découpe':4.33, Assemblage:6.92, Préparation:19.36, Peinture:23.20, Vernis:1.97, Montage:2.19, Emballage:1.00, Livraison:20.77} },
+
+  // ── Barrière 80cm (214 unités) ── PA=400 BIEN AU DESSUS PV Min 278 → TRÈS RENTABLE
+  { nom:'Barrière à fente 80cm', sheet:'MP+MO Barrière à fente 80', vol:214, pa:400, cr:88.68, pv_usine:222.52,  pv_min:278.15,   pv_cons:319.88,   mp_ht:39.18, mo:0.00,    ratio_cf:82.42,  ratio_ben:25.76,  m2:0.34,
+    mp_families:{Boiserie:13.05, Peinture:23.93, Quincaillerie:0.50, Emballage:1.70},
+    mo_detail:{CNC:0.91, 'Découpe':1.44, Assemblage:1.15, Préparation:9.97, Peinture:5.42, Vernis:0.46, Montage:0.94, Emballage:0.60, Livraison:20.77} },
+
+  // ── Chaise Mini H36 (204 unités) ── PA=350 > PV Min 327 → TRÈS RENTABLE
+  { nom:'Chaise Mini H36',       sheet:'MP+MO Chaise Mini 36',   vol:204, pa:350,   cr:132.07, pv_usine:261.79,  pv_min:327.24,   pv_cons:376.33,   mp_ht:69.19, mo:49.04,   ratio_cf:75.15,  ratio_ben:23.48,  m2:0.31,
+    mp_families:{Boiserie:44.62, Peinture:21.82, Quincaillerie:1.20, Emballage:1.55},
+    mo_detail:{CNC:0.30, 'Découpe':1.44, Assemblage:4.33, Préparation:14.97, Peinture:4.93, Habillage:1.28, Vernis:0.42, Emballage:0.60, Livraison:20.77} },
+
+  // ── Chaise Bureau Std (136 unités) ── PA=1000 > PV Min 815 → TRÈS RENTABLE
+  { nom:'Chaise Bureau Std',     sheet:'MP+MO Chaise Bureau std', vol:136, pa:1000,  cr:375.86, pv_usine:652.06,  pv_min:815.07,   pv_cons:937.33,   mp_ht:257.91, mo:66.37,  ratio_cf:150.30, ratio_ben:46.97,  m2:0.62,
+    mp_families:{Boiserie:150.24, Peinture:43.64, Quincaillerie:1.20, Vinyle:36.17, 'Tissu+ouate':23.56, Emballage:3.10},
+    mo_detail:{CNC:2.74, 'Découpe':1.44, Assemblage:4.33, Tapisserie:3.04, Préparation:21.46, Peinture:9.87, Habillage:1.28, Vernis:0.83, Emballage:0.60, Livraison:20.77} },
+
+  // ── Lit Epsilon 90-190 (110 unités) ── PA=2800 > PV Min 2560 → TRÈS RENTABLE
+  { nom:'Lit Epsilon 90-190',    sheet:'Lit epsilon 90-190',     vol:110, pa:2800,  cr:1059.19, pv_usine:2047.70, pv_min:2559.63, pv_cons:2943.57,   mp_ht:827.35, mo:66.37,  ratio_cf:567.27, ratio_ben:177.27, m2:2.34,
+    mp_families:{Boiserie:435.11, Peinture:164.71, Quincaillerie:21.92, Métal:57.41, Vinyle:136.50, Emballage:11.70},
+    mo_detail:{CNC:2.74, 'Découpe':1.44, Assemblage:4.33, Tapisserie:3.04, Préparation:21.46, Peinture:9.87, Habillage:1.28, Vernis:0.83, Emballage:0.60, Livraison:20.77} },
+
+  // ── Lit Rectangulaire 90-190 (100 unités) ── PA=2800 > PV Min 2479 → TRÈS RENTABLE
+  { nom:'Lit Rectangulaire',     sheet:'Lit Rectangulaire 90-190', vol:100, pa:2800, cr:1039.93, pv_usine:1983.01, pv_min:2478.77, pv_cons:2850.58, mp_ht:811.30, mo:66.37,   ratio_cf:538.18, ratio_ben:168.18, m2:2.22,
+    mp_families:{Boiserie:435.11, Peinture:156.26, Quincaillerie:21.92, Métal:57.41, Vinyle:129.50, Emballage:11.10},
+    mo_detail:{CNC:2.74, 'Découpe':1.44, Assemblage:4.33, Tapisserie:3.04, Préparation:21.46, Peinture:9.87, Habillage:1.28, Vernis:0.83, Emballage:0.60, Livraison:20.77} },
+
+  // ── Bureau 3 Tiroirs (94 unités) ── PA=2200 > PV Min 1997 → TRÈS RENTABLE
+  { nom:'Bureau 3 Tiroirs',      sheet:'Bureau 3 tiroirs',       vol:94,  pa:2200,  cr:825.04, pv_usine:1597.61, pv_min:1997.01, pv_cons:2296.57,   mp_ht:605.25, mo:98.74,   ratio_cf:443.64, ratio_ben:138.64, m2:1.83,
+    mp_families:{Boiserie:200.85, Peinture:128.81, Quincaillerie:159.69, Vinyle:106.75, Emballage:9.15},
+    mo_detail:{CNC:4.57, 'Découpe':5.77, Assemblage:18.49, Préparation:8.86, Peinture:29.09, Habillage:1.28, Vernis:1.49, Montage:7.81, Emballage:0.60, Livraison:20.77} },
+
+  // ── Table Chevet 1 Tiroir (88 unités) ── PA=1000 < PV Min 1067 → RENTABLE mais pas au public
+  { nom:'Table Chevet 1 Tiroir', sheet:'Table de chevet 1 tiroir', vol:88, pa:1000,  cr:399.80, pv_usine:853.31,  pv_min:1066.64, pv_cons:1226.64,  mp_ht:264.04, mo:82.95,   ratio_cf:269.09, ratio_ben:84.09,  m2:1.11,
+    mp_families:{Boiserie:74.04, Peinture:78.13, Quincaillerie:41.57, Vinyle:64.75, Emballage:5.55},
+    mo_detail:{CNC:0.00, 'Découpe':5.77, Assemblage:8.65, Préparation:18.03, Peinture:17.57, Habillage:1.28, Vernis:2.46, Montage:7.81, Emballage:0.60, Livraison:20.77} },
+
+  // ── Table Chevet 2 Tiroirs (83 unités) ── PA=1200 ≈ PV Min 1210 → LÉGÈREMENT SOUS PV Min
+  { nom:'Table Chevet 2 Tiroirs',sheet:'Table de chevet 2 tiroirs', vol:83, pa:1200, cr:477.84, pv_usine:967.89,  pv_min:1209.86, pv_cons:1391.33,  mp_ht:316.11, mo:98.52,   ratio_cf:286.06, ratio_ben:89.39,  m2:1.18,
+    mp_families:{Boiserie:78.33, Peinture:83.06, Quincaillerie:79.98, Vinyle:68.83, Emballage:5.90},
+    mo_detail:{CNC:0.00, 'Découpe':5.77, Assemblage:8.65, Préparation:23.93, Peinture:23.21, Habillage:1.28, Vernis:3.37, Montage:10.94, Emballage:0.60, Livraison:20.77} },
+
+  // ── Lit Mira 90-190 (76 unités) ── PA=2800 > PV Min 2533 → TRÈS RENTABLE
+  { nom:'Lit Mira 90-190',       sheet:'Lit Mira 90-190 ',       vol:76,  pa:2800,  cr:1052.77, pv_usine:2026.14, pv_min:2532.67, pv_cons:2912.58, mp_ht:822.00, mo:66.37,   ratio_cf:557.58, ratio_ben:174.24, m2:2.30,
+    mp_families:{Boiserie:435.11, Peinture:161.89, Quincaillerie:21.92, Métal:57.41, Vinyle:134.17, Emballage:11.50},
+    mo_detail:{CNC:2.74, 'Découpe':1.44, Assemblage:4.33, Tapisserie:3.04, Préparation:21.46, Peinture:9.87, Habillage:1.28, Vernis:0.83, Emballage:0.60, Livraison:20.77} },
+
+  // ── Table Trio (84 unités) ── PA=800 > PV Min 565 → TRÈS RENTABLE
+  { nom:'Table Trio',            sheet:'Table Trio',             vol:84,  pa:800,   cr:229.62, pv_usine:451.97,  pv_min:564.96,  pv_cons:649.71,   mp_ht:129.45, mo:74.28,   ratio_cf:128.48, ratio_ben:40.15,  m2:0.53,
+    mp_families:{Boiserie:54.88, Peinture:37.31, Quincaillerie:3.69, Vinyle:30.92, Emballage:2.65},
+    mo_detail:{CNC:6.09, 'Découpe':0.00, Assemblage:8.65, Préparation:24.63, Peinture:8.42, Habillage:1.28, Vernis:0.71, Montage:3.12, Emballage:0.60, Livraison:20.77} },
+
+  // ── Étagère Mira (86 unités) ── PA=400 > PV Min 298 → TRÈS RENTABLE
+  { nom:'Étagère Mira',          sheet:'ETagère Mira',           vol:86,  pa:400,   cr:130.43, pv_usine:238.63,  pv_min:298.29,  pv_cons:343.03,   mp_ht:60.43, mo:57.92,    ratio_cf:60.61,  ratio_ben:18.94,  m2:0.25,
+    mp_families:{Boiserie:24.21, Peinture:17.60, Quincaillerie:2.79, Vinyle:14.58, Emballage:1.25},
+    mo_detail:{CNC:0.91, 'Découpe':2.88, Assemblage:4.33, Préparation:14.76, Peinture:3.97, Habillage:1.28, Vernis:0.34, Emballage:0.60, Livraison:28.85} },
+
+  // ── Lit Race 90-190 (54 unités) ── PA=3800 > PV Min 3136 → TRÈS RENTABLE (produit premium)
+  { nom:'Lit Race 90-190 (LED)', sheet:'Race90190',              vol:54,  pa:3800,  cr:1189.12, pv_usine:2509.12, pv_min:3136.40, pv_cons:3606.86, mp_ht:858.37, mo:159.07,  ratio_cf:780.61, ratio_ben:243.94, m2:3.22,
+    mp_families:{Boiserie:396.15, Peinture:226.65, Quincaillerie:31.64, Vinyle:187.83, Emballage:16.10},
+    mo_detail:{CNC:18.27, 'Découpe':4.33, Assemblage:16.15, Préparation:24.50, Peinture:44.73, Habillage:2.89, Vernis:6.73, Montage:6.25, Emballage:0.60, Livraison:34.62} },
+
+  // ── Box 30×30 (48 unités) ── PA=350 < PV Min 379 → SOUS PV Public
+  { nom:'Box Étagère 30×30',     sheet:'Box 3030',               vol:48,  pa:350,   cr:149.23, pv_usine:302.79,  pv_min:378.49,  pv_cons:435.26,   mp_ht:75.76, mo:58.31,   ratio_cf:89.70,  ratio_ben:28.03,  m2:0.37,
+    mp_families:{Boiserie:25.29, Peinture:26.04, Quincaillerie:1.00, Vinyle:21.58, Emballage:1.85},
+    mo_detail:{CNC:0.00, 'Découpe':5.77, Assemblage:2.88, Préparation:10.30, Peinture:8.62, Vernis:3.37, Montage:3.12, Emballage:0.60, Livraison:23.08} },
+
+  // ── Box 40×40 (53 unités) ── PA=450 < PV Min 507 → SOUS-VENDU
+  { nom:'Box Étagère 40×40',     sheet:'Box 4040',               vol:53,  pa:450,   cr:186.16, pv_usine:405.54,  pv_min:506.93,  pv_cons:582.97,   mp_ht:106.54, mo:58.31,  ratio_cf:130.91, ratio_ben:40.91,  m2:0.54,
+    mp_families:{Boiserie:33.33, Peinture:38.01, Quincaillerie:1.00, Vinyle:31.50, Emballage:2.70},
+    mo_detail:{CNC:0.00, 'Découpe':5.77, Assemblage:2.88, Préparation:10.30, Peinture:8.62, Vernis:3.37, Montage:3.12, Emballage:0.60, Livraison:23.08} },
+
+  // ── Box 30×60 (44 unités) ── PA=600 > PV Min 513 → TRÈS RENTABLE
+  { nom:'Box Étagère 30×60',     sheet:'Box 3060',               vol:44,  pa:600,   cr:190.66, pv_usine:410.72,  pv_min:513.39,  pv_cons:590.40,   mp_ht:110.29, mo:58.31,  ratio_cf:130.91, ratio_ben:40.91,  m2:0.63,
+    mp_families:{Boiserie:37.08, Peinture:38.01, Quincaillerie:1.00, Vinyle:31.50, Emballage:2.70},
+    mo_detail:{CNC:0.00, 'Découpe':5.77, Assemblage:2.88, Préparation:10.30, Peinture:8.62, Vernis:3.37, Montage:3.12, Emballage:0.60, Livraison:23.08} },
+
+  // ── Armoire Strati 90-190 (50 unités, vol réel Métrage) ── PA=4500 >> PV Min 1323 → EXCEPTIONAL
+  { nom:'Armoire Strati 90-190', sheet:'Strati90190',            vol:50,  pa:4500,  cr:604.07, pv_usine:1058.11, pv_min:1322.64, pv_cons:1428.45,  mp_ht:521.99, mo:82.08,  ratio_cf:0.00,   ratio_ben:174.24, m2:2.62,
+    mp_families:{Boiserie:368.52, Quincaillerie:28.56, Métal:57.41, Vinyle:52.50, Emballage:15.00},
+    mo_detail:{Habillage:0.00, Emballage:2.00, Livraison:34.62} },
+];
+
+// Compute derived fields
+RENT_DATA.forEach(p => {
+  p.marge_pv = p.pv_usine > 0 ? (p.pv_usine - p.cr) / p.pv_usine * 100 : 0;
+  p.marge_pa = p.pa > 0 ? (p.pa - p.cr) / p.pa * 100 : 0;
+  p.delta_pa_pvu = p.pa - p.pv_usine;
+  p.delta_pct = p.pv_usine > 0 ? (p.pa - p.pv_usine) / p.pv_usine * 100 : 0;
+  p.resultat_ligne = p.vol > 0 ? (p.pa - p.cr) * p.vol : null;
+  p.ca_ligne = p.vol * p.pa;
+  p.cout_total = p.vol * p.cr;
+  // Status
+  if (p.pa < p.cr) {
+    p.status = 'loss'; p.statusLabel = '🔴 EN PERTE'; p.statusC = '#f04050';
+  } else if (p.pa < p.pv_usine * 0.85) {
+    p.status = 'under'; p.statusLabel = '🟠 SOUS-VENDU'; p.statusC = '#f0a030';
+  } else if (p.pa < p.pv_usine) {
+    p.status = 'slight'; p.statusLabel = '🟡 LÉGÈREMENT −'; p.statusC = '#e8f040';
+  } else if (p.pa >= p.pv_min) {
+    p.status = 'excellent'; p.statusLabel = '⭐ TRÈS RENTABLE'; p.statusC = '#3a8ef5';
+  } else {
+    p.status = 'ok'; p.statusLabel = '🟢 RENTABLE'; p.statusC = '#30e090';
+  }
+});
+
+let rentSort = 'resultat';
+
+function sortRentability(by) {
+  rentSort = by;
+  renderPriceLadder();
+}
+
+// ── RENTABILITY KPIs ────────────────────────────────────────
+function renderRentKPIs() {
+  const el = document.getElementById('rent-kpis');
+  if (!el) return;
+  const withVol = RENT_DATA.filter(p => p.vol > 0);
+  const totalCA = withVol.reduce((a,p) => a + p.ca_ligne, 0);
+  const totalResult = withVol.reduce((a,p) => a + (p.resultat_ligne||0), 0);
+  const profitable = withVol.filter(p => p.status === 'ok' || p.status === 'excellent');
+  const underpriced = withVol.filter(p => p.status === 'slight' || p.status === 'under');
+  const loss = withVol.filter(p => p.status === 'loss');
+  const avgMarge = withVol.reduce((a,p) => a + p.marge_pa, 0) / withVol.length;
+  const missed = withVol.filter(p => p.delta_pa_pvu < 0).reduce((a,p) => a + Math.abs(p.delta_pa_pvu) * p.vol, 0);
+
+  el.innerHTML = `
+    <div class="kpi c-green"><div class="kpi-label">Produits Rentables</div>
+      <div class="kpi-val c-green">${profitable.length} / ${withVol.length}</div>
+      <div class="kpi-delta">Sur prod. avec volume vendu</div></div>
+    <div class="kpi c-accent"><div class="kpi-label">Résultat Total Lignes</div>
+      <div class="kpi-val c-accent">${fmt(totalResult)} MAD</div>
+      <div class="kpi-delta">CA − Coût direct</div></div>
+    <div class="kpi c-factory"><div class="kpi-label">Marge Moyenne Réelle</div>
+      <div class="kpi-val c-factory">${avgMarge.toFixed(1)}%</div>
+      <div class="kpi-delta">PA vs CR pondéré</div></div>
+    <div class="kpi c-mobili"><div class="kpi-label">Produits Sous-Vendus</div>
+      <div class="kpi-val c-mobili">${underpriced.length}</div>
+      <div class="kpi-delta">PA < PV Usine calculé</div></div>
+    <div class="kpi c-red"><div class="kpi-label">Manque à Gagner</div>
+      <div class="kpi-val c-red">${fmt(missed)} MAD</div>
+      <div class="kpi-delta">Si alignement sur PVU</div></div>`;
+}
+
+// ── PRICE LADDER CHART ───────────────────────────────────────
+function renderPriceLadder() {
+  const el = document.getElementById('price-ladder');
+  if (!el) return;
+
+  let data = RENT_DATA.filter(p => p.vol > 0);
+  if (rentSort === 'marge') data = [...data].sort((a,b) => b.marge_pa - a.marge_pa);
+  else if (rentSort === 'resultat') data = [...data].sort((a,b) => (b.resultat_ligne||0) - (a.resultat_ligne||0));
+  else if (rentSort === 'volume') data = [...data].sort((a,b) => b.vol - a.vol);
+
+  const maxPrice = Math.max(...data.map(p => p.pv_min));
+
+  el.innerHTML = data.map(p => {
+    const pctCR    = Math.min(100, p.cr / maxPrice * 100);
+    const pctPVU   = Math.min(100, p.pv_usine / maxPrice * 100);
+    const pctPA    = Math.min(100, p.pa / maxPrice * 100);
+    const pctPVmin = Math.min(100, p.pv_min / maxPrice * 100);
+
+    // the bar background shows cost zones
+    const paAbovePVU = p.pa >= p.pv_usine;
+    const arrowDir = p.delta_pa_pvu >= 0 ? '▲' : '▼';
+    const deltaC = p.delta_pa_pvu >= 0 ? '#30e090' : '#f04050';
+
+    return `<div style="margin-bottom:10px;display:flex;align-items:center;gap:10px">
+      <!-- Product name -->
+      <div style="width:150px;flex-shrink:0">
+        <div style="font-size:11px;font-weight:700;color:${p.statusC}">${p.statusLabel}</div>
+        <div style="font-size:11px;color:var(--text);margin-top:1px">${p.nom}</div>
+        <div style="font-size:9px;color:var(--muted2)">Vol: ${p.vol} · Marge PA: <span style="color:${p.marge_pa>50?'#30e090':'#f0a030'}">${p.marge_pa.toFixed(1)}%</span></div>
+      </div>
+      <!-- PRICE BAR -->
+      <div style="flex:1;position:relative;height:28px">
+        <!-- base bar -->
+        <div style="position:absolute;inset:0;background:var(--s3);border-radius:4px;overflow:hidden">
+          <!-- CR zone = coût direct -->
+          <div style="position:absolute;left:0;top:0;bottom:0;width:${pctCR}%;background:#f04050;opacity:0.35"></div>
+          <!-- PVU zone = between CR and PVU -->
+          <div style="position:absolute;left:${pctCR}%;top:0;bottom:0;width:${Math.max(0,pctPVU-pctCR)}%;background:#a060f055"></div>
+        </div>
+        <!-- CR marker -->
+        <div style="position:absolute;left:${pctCR}%;top:-6px;bottom:-2px;width:2px;background:#f04050;opacity:0.8"></div>
+        <div style="position:absolute;left:${pctCR}%;top:30px;font-size:8px;color:#f04050;transform:translateX(-50%)">CR</div>
+        <!-- PVU marker -->
+        <div style="position:absolute;left:${pctPVU}%;top:-6px;bottom:-2px;width:2px;background:var(--accent);opacity:0.9"></div>
+        <div style="position:absolute;left:${pctPVU}%;top:30px;font-size:8px;color:var(--accent);transform:translateX(-50%)">PVU</div>
+        <!-- PV min marker -->
+        <div style="position:absolute;left:${pctPVmin}%;top:-6px;bottom:-2px;width:1.5px;background:#30e090;opacity:0.6" title="PV Public Min"></div>
+        <!-- PA dot -->
+        <div style="position:absolute;left:${pctPA}%;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:${p.statusC};border:2px solid var(--bg);z-index:2;box-shadow:0 0 6px ${p.statusC}88"></div>
+        <!-- price labels at right -->
+        <div style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-family:Archivo,sans-serif;font-weight:800;font-size:10px;color:${p.statusC}">${fmt(p.pa)} MAD</div>
+      </div>
+      <!-- DELTA badge -->
+      <div style="width:72px;flex-shrink:0;text-align:right">
+        <div style="font-family:Archivo,sans-serif;font-weight:800;font-size:11px;color:${deltaC}">${arrowDir} ${fmt(Math.abs(p.delta_pa_pvu))}</div>
+        <div style="font-size:9px;color:var(--muted2)">vs PVU</div>
+      </div>
+      <!-- Résultat ligne -->
+      <div style="width:90px;flex-shrink:0;text-align:right">
+        <div style="font-family:Archivo,sans-serif;font-weight:800;font-size:11px;color:${(p.resultat_ligne||0)>0?'#30e090':'#f04050'}">${fmt(p.resultat_ligne||0)} MAD</div>
+        <div style="font-size:9px;color:var(--muted2)">ligne CA</div>
+      </div>
+    </div>
+    <!-- spacer for labels -->
+    <div style="margin-bottom:14px"></div>`;
+  }).join('');
+}
+
+// ── FULL DETAIL TABLE ────────────────────────────────────────
+function renderRentTable() {
+  const el = document.getElementById('rent-table');
+  if (!el) return;
+  el.innerHTML = `<thead><tr>
+    <th>Statut</th>
+    <th>Produit</th>
+    <th style="text-align:right">Vol.</th>
+    <th style="text-align:right">MP HT</th>
+    <th style="text-align:right">MO</th>
+    <th style="text-align:right">CR (MP_TTC+MO)</th>
+    <th style="text-align:right">RCF</th>
+    <th style="text-align:right">RBén</th>
+    <th style="text-align:right">PV Usine TTC</th>
+    <th style="text-align:right">PV Public Min</th>
+    <th style="text-align:right">Prix Actuel</th>
+    <th style="text-align:right">Δ PA−PVU</th>
+    <th style="text-align:right">Marge%</th>
+    <th style="text-align:right">Résultat Ligne</th>
+  </tr></thead><tbody>
+  ${RENT_DATA.map(p => {
+    const mp_ttc = p.mp_ht * 1.2;
+    const crCalc = mp_ttc + p.mo;
+    const dc = p.delta_pa_pvu >= 0 ? 'pos' : 'neg';
+    const rc = (p.resultat_ligne||0) >= 0 ? 'pos' : 'neg';
+    const volStyle = p.vol === 0 ? 'color:var(--muted2)' : '';
+    return `<tr style="${p.vol===0?'opacity:0.5':''}">
+      <td><span style="font-size:11px">${p.statusLabel.split(' ')[0]}</span>
+        <span style="font-size:9px;color:${p.statusC};font-weight:700;margin-left:4px">${p.statusLabel.split(' ').slice(1).join(' ')}</span></td>
+      <td style="font-weight:700">${p.nom}</td>
+      <td class="num" style="${volStyle}">${p.vol}</td>
+      <td class="num" style="color:var(--factory)">${fmt(p.mp_ht)}</td>
+      <td class="num" style="color:var(--mobili)">${fmt(p.mo)}</td>
+      <td class="num" style="color:#f04050;font-weight:800">${fmt(p.cr)}</td>
+      <td class="num" style="color:var(--purple)">${fmt(p.ratio_cf)}</td>
+      <td class="num" style="color:var(--muted2)">${fmt(p.ratio_ben)}</td>
+      <td class="num" style="color:var(--accent)">${fmt(p.pv_usine)}</td>
+      <td class="num" style="color:var(--green)">${fmt(p.pv_min)}</td>
+      <td class="num" style="color:${p.statusC};font-weight:900">${fmt(p.pa)}</td>
+      <td class="num ${dc}" style="font-weight:800">${p.delta_pa_pvu>=0?'+':''}${fmt(p.delta_pa_pvu)}</td>
+      <td class="num ${p.marge_pa>50?'pos':p.marge_pa>35?'':'neg'}">${p.marge_pa.toFixed(1)}%</td>
+      <td class="num ${rc}">${p.vol>0 ? (p.resultat_ligne>=0?'+':'')+fmt(p.resultat_ligne)+' MAD' : '—'}</td>
+    </tr>`;
+  }).join('')}
+  </tbody>`;
+}
+
+// ── TOP PROFITABLE ───────────────────────────────────────────
+function renderTopProfitable() {
+  const el = document.getElementById('top-profitable');
+  if (!el) return;
+  const sorted = [...RENT_DATA].filter(p => p.vol > 0 && (p.resultat_ligne||0) > 0)
+    .sort((a,b) => (b.resultat_ligne||0) - (a.resultat_ligne||0)).slice(0,7);
+  const maxR = sorted[0]?.resultat_ligne || 1;
+  sorted.forEach((p, i) => {
+    el.innerHTML += `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+        <div>
+          <span style="font-family:Archivo,sans-serif;font-weight:900;color:var(--muted);margin-right:6px">#${i+1}</span>
+          <span style="font-weight:700">${p.nom}</span>
+          <span style="font-size:9px;color:var(--muted2);margin-left:6px">× ${p.vol} unités</span>
+        </div>
+        <span style="font-family:Archivo,sans-serif;font-weight:900;color:var(--green)">+${fmt(p.resultat_ligne)} MAD</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="progress" style="flex:1;height:8px">
+          <div class="progress-fill" style="width:${p.resultat_ligne/maxR*100}%;background:linear-gradient(90deg,var(--green),var(--factory))"></div>
+        </div>
+        <span style="font-size:10px;color:${p.statusC};width:90px;text-align:right;font-weight:700">${p.statusLabel}</span>
+      </div>
+      <div style="font-size:9px;color:var(--muted2);margin-top:2px">Marge: <span style="color:${p.marge_pa>50?'#30e090':'#f0a030'}">${p.marge_pa.toFixed(1)}%</span> · PA: ${fmt(p.pa)} MAD · PVU: ${fmt(p.pv_usine)} MAD</div>
+    </div>`;
+  });
+}
+
+// ── PROBLEMATIC PRODUCTS ──────────────────────────────────────
+function renderTopLoss() {
+  const el = document.getElementById('top-loss');
+  if (!el) return;
+  const problematic = [...RENT_DATA].filter(p => p.vol > 0 && p.pa < p.pv_usine)
+    .sort((a,b) => (a.delta_pa_pvu) - (b.delta_pa_pvu));
+
+  if (problematic.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--green);font-weight:700">✅ Tous les produits vendus ≥ PV Usine calculé</div>';
+    return;
+  }
+  problematic.forEach(p => {
+    const gap = p.delta_pa_pvu;
+    const missed = Math.abs(gap) * p.vol;
+    el.innerHTML += `<div style="margin-bottom:12px;padding:10px;background:${p.statusC}0a;border:1px solid ${p.statusC}33;border-radius:6px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <div>
+          <span style="font-size:11px;font-weight:700;color:${p.statusC}">${p.statusLabel}</span>
+          <span style="font-size:11px;font-weight:700;margin-left:6px">${p.nom}</span>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:Archivo,sans-serif;font-weight:900;font-size:12px;color:#f04050">−${fmt(missed)} MAD</div>
+          <div style="font-size:9px;color:var(--muted2)">manque à gagner</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:10px">
+        <div style="background:var(--s3);padding:5px 8px;border-radius:4px">
+          <div style="color:var(--muted2)">Prix Actuel</div>
+          <div style="color:${p.statusC};font-weight:800">${fmt(p.pa)} MAD</div>
+        </div>
+        <div style="background:var(--s3);padding:5px 8px;border-radius:4px">
+          <div style="color:var(--muted2)">PV Usine (calculé)</div>
+          <div style="color:var(--accent);font-weight:800">${fmt(p.pv_usine)} MAD</div>
+        </div>
+        <div style="background:var(--s3);padding:5px 8px;border-radius:4px">
+          <div style="color:var(--muted2)">Écart / unité</div>
+          <div style="color:#f04050;font-weight:800">${fmt(gap)} MAD</div>
+        </div>
+      </div>
+    </div>`;
+  });
+}
+
+// ── PRICE MATRIX ──────────────────────────────────────────────
+function renderPriceMatrix() {
+  const el = document.getElementById('price-matrix');
+  if (!el) return;
+  const data = [...RENT_DATA].filter(p => p.vol > 0).sort((a,b) => b.vol - a.vol);
+  const totalMissed = data.filter(p => p.delta_pa_pvu < 0).reduce((a,p) => a + Math.abs(p.delta_pa_pvu)*p.vol, 0);
+  const totalGain = data.filter(p => p.delta_pa_pvu > 0).reduce((a,p) => a + p.delta_pa_pvu*p.vol, 0);
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="background:var(--s3);border:1px solid #f04050;border-radius:8px;padding:12px 16px">
+        <div style="font-size:10px;color:var(--muted2);margin-bottom:4px">💸 TOTAL MANQUE À GAGNER (si prix → PVU)</div>
+        <div style="font-family:Archivo,sans-serif;font-weight:900;font-size:22px;color:#f04050">${fmt(totalMissed)} MAD</div>
+        <div style="font-size:10px;color:var(--muted2);margin-top:4px">Produits vendus sous leur prix de revient calculé</div>
+      </div>
+      <div style="background:var(--s3);border:1px solid var(--green);border-radius:8px;padding:12px 16px">
+        <div style="font-size:10px;color:var(--muted2);margin-bottom:4px">💰 SURPLUS PRIX (ventes au-dessus PVU)</div>
+        <div style="font-family:Archivo,sans-serif;font-weight:900;font-size:22px;color:var(--green)">${fmt(totalGain)} MAD</div>
+        <div style="font-size:10px;color:var(--muted2);margin-top:4px">Produits bien positionnés créant de la marge extra</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <div style="display:grid;grid-template-columns:160px repeat(4,1fr) 100px 100px;gap:0;min-width:700px">
+        <div style="font-size:9px;color:var(--muted2);padding:6px 8px;background:var(--s3);letter-spacing:0.1em">PRODUIT</div>
+        <div style="font-size:9px;color:var(--muted2);padding:6px 8px;background:var(--s3);text-align:right">CR MAD</div>
+        <div style="font-size:9px;color:var(--muted2);padding:6px 8px;background:var(--s3);text-align:right">PVU MAD</div>
+        <div style="font-size:9px;color:var(--muted2);padding:6px 8px;background:var(--s3);text-align:right">PA MAD</div>
+        <div style="font-size:9px;color:var(--muted2);padding:6px 8px;background:var(--s3);text-align:right">PV Min MAD</div>
+        <div style="font-size:9px;color:var(--muted2);padding:6px 8px;background:var(--s3);text-align:right">Δ PA/PVU</div>
+        <div style="font-size:9px;color:var(--muted2);padding:6px 8px;background:var(--s3);text-align:right">Impact</div>
+        ${data.map(p => {
+          const impact = p.delta_pa_pvu * p.vol;
+          const ic = impact > 0 ? 'var(--green)' : '#f04050';
+          const dc = p.delta_pa_pvu >= 0 ? 'var(--green)' : '#f04050';
+          // mini heat bar
+          const maxDelta = 1300;
+          const barW = Math.min(100, Math.abs(p.delta_pa_pvu)/maxDelta*100);
+          return `
+          <div style="padding:7px 8px;border-bottom:1px solid var(--border)44;font-size:11px;font-weight:700">${p.nom}</div>
+          <div style="padding:7px 8px;border-bottom:1px solid var(--border)44;text-align:right;font-size:10px;color:#f04050">${fmt(p.cr)}</div>
+          <div style="padding:7px 8px;border-bottom:1px solid var(--border)44;text-align:right;font-size:10px;color:var(--accent)">${fmt(p.pv_usine)}</div>
+          <div style="padding:7px 8px;border-bottom:1px solid var(--border)44;text-align:right;font-size:11px;font-weight:800;color:${p.statusC}">${fmt(p.pa)}</div>
+          <div style="padding:7px 8px;border-bottom:1px solid var(--border)44;text-align:right;font-size:10px;color:var(--green)">${fmt(p.pv_min)}</div>
+          <div style="padding:7px 8px;border-bottom:1px solid var(--border)44;text-align:right;font-family:Archivo,sans-serif;font-weight:800;font-size:11px;color:${dc}">${p.delta_pa_pvu>=0?'+':''}${fmt(p.delta_pa_pvu)}</div>
+          <div style="padding:7px 8px;border-bottom:1px solid var(--border)44;text-align:right;font-family:Archivo,sans-serif;font-weight:800;font-size:11px;color:${ic}">${impact>=0?'+':''}${fmt(impact)}</div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+// ── INIT RENTABILITY ──────────────────────────────────────────
+function initRentability() {
+  renderRentKPIs();
+  renderPriceLadder();
+  renderRentTable();
+  renderTopProfitable();
+  renderTopLoss();
+  renderPriceMatrix();
+  // Also init standalone view
+  renderRentCards();
+  renderRentDetailTable();
+}
+
+// ── SHOW RENT TAB ─────────────────────────────────────────────
+function showRentTab(tab) {
+  ['matrix','detail','impact','formules'].forEach(t => {
+    const el = document.getElementById('rent-'+t);
+    if (el) el.style.display = t===tab ? '' : 'none';
+  });
+  document.querySelectorAll('#rent-tabs .inner-tab').forEach((b,i) => {
+    b.classList.toggle('active', ['matrix','detail','impact','formules'][i]===tab);
+  });
+  if (tab === 'impact') renderImpactCharts();
+  if (tab === 'formules') renderFormulaBreakdown();
+}
+
+// ── RENT CARDS GRID ───────────────────────────────────────────
+function renderRentCards() {
+  const el = document.getElementById('rent-cards');
+  if (!el) return;
+  const sorted = [...RENT_DATA].filter(p => p.vol > 0).sort((a,b) => (b.resultat_ligne||0) - (a.resultat_ligne||0));
+  el.innerHTML = sorted.map(p => {
+    const pctCR  = Math.min(98, p.cr  / p.pv_usine * 100);
+    const pctRCF = Math.min(98, (p.cr + p.ratio_cf) / p.pv_usine * 100);
+    const paBand = Math.min(140, p.pa / p.pv_usine * 100);
+    const marge  = p.marge_pa.toFixed(1);
+    const margeColor = p.marge_pa >= 60 ? '#30e090' : p.marge_pa >= 45 ? '#e8f040' : p.marge_pa >= 20 ? '#f0a030' : '#f04050';
+    const mpPct  = Math.round(p.mp_ht   / p.pv_usine * 100);
+    const moPct  = Math.round(p.mo      / p.pv_usine * 100);
+    const cfPct  = Math.round(p.ratio_cf/ p.pv_usine * 100);
+    const benPct = Math.round(p.ratio_ben/p.pv_usine * 100);
+    return `<div style="background:var(--s2);border:1px solid ${p.statusC}44;border-radius:10px;overflow:hidden;transition:transform 0.15s" onmouseenter="this.style.transform='translateY(-2px)'" onmouseleave="this.style.transform=''">
+      <div style="background:${p.statusC}18;border-bottom:1px solid ${p.statusC}33;padding:12px 16px;display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-family:Archivo,sans-serif;font-weight:800;font-size:13px;line-height:1.2">${p.nom}</div>
+          <div style="font-size:9px;color:var(--muted2);margin-top:3px">× ${p.vol} unités · ${fmt(p.ca_ligne)} MAD CA</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:9px;font-weight:700;color:${p.statusC}">${p.statusLabel}</div>
+          <div style="font-family:Archivo,sans-serif;font-weight:900;font-size:18px;color:${margeColor};margin-top:2px">${marge}%</div>
+          <div style="font-size:8px;color:var(--muted2)">marge réelle</div>
+        </div>
+      </div>
+      <!-- PRICE LADDER -->
+      <div style="padding:14px 16px 6px">
+        <div style="font-size:8px;color:var(--muted2);letter-spacing:0.1em;margin-bottom:8px">POSITION PRIX — CR · PVU · Prix Actuel</div>
+        <div style="position:relative;height:22px;background:var(--s3);border-radius:4px;margin-bottom:20px">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:${pctCR}%;background:#f04050;opacity:0.3;border-radius:4px 0 0 4px"></div>
+          <div style="position:absolute;left:${pctCR}%;top:0;bottom:0;width:${Math.max(0,pctRCF-pctCR)}%;background:#a060f0;opacity:0.25"></div>
+          <div style="position:absolute;left:${pctCR}%;top:-4px;bottom:-4px;width:2px;background:#f04050;opacity:0.9"></div>
+          <div style="position:absolute;left:${pctCR}%;top:24px;font-size:7px;color:#f04050;transform:translateX(-50%);white-space:nowrap">CR ${fmt(p.cr)}</div>
+          <div style="position:absolute;left:99%;top:-4px;bottom:-4px;width:2px;background:var(--accent);opacity:0.9"></div>
+          <div style="position:absolute;left:99%;top:24px;font-size:7px;color:var(--accent);transform:translateX(-50%);white-space:nowrap">PVU ${fmt(p.pv_usine)}</div>
+          <div style="position:absolute;left:${Math.min(130,paBand)}%;top:50%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:${p.statusC};border:2px solid var(--bg);z-index:3;box-shadow:0 0 8px ${p.statusC}cc"></div>
+          <div style="position:absolute;left:${Math.min(130,paBand)}%;top:24px;font-size:7px;color:${p.statusC};font-weight:800;transform:translateX(-50%);white-space:nowrap">PA ${fmt(p.pa)}</div>
+        </div>
+      </div>
+      <!-- COST BAR -->
+      <div style="padding:0 16px 10px">
+        <div style="font-size:8px;color:var(--muted2);letter-spacing:0.1em;margin-bottom:5px">STRUCTURE COÛTS (% du PVU)</div>
+        <div style="display:flex;height:12px;border-radius:3px;overflow:hidden;gap:0.5px">
+          <div style="flex:${mpPct};background:var(--factory)" title="MP ${mpPct}%"></div>
+          <div style="flex:${moPct};background:var(--mobili)" title="MO ${moPct}%"></div>
+          <div style="flex:${cfPct};background:var(--purple)" title="CF ${cfPct}%"></div>
+          <div style="flex:${benPct};background:var(--green)" title="Bén ${benPct}%"></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
+          <span style="font-size:8px;color:var(--factory)">■ MP ${mpPct}%</span>
+          <span style="font-size:8px;color:var(--mobili)">■ MO ${moPct}%</span>
+          <span style="font-size:8px;color:var(--purple)">■ CF ${cfPct}%</span>
+          <span style="font-size:8px;color:var(--green)">■ Bén ${benPct}%</span>
+        </div>
+      </div>
+      <!-- BOTTOM METRICS -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid ${p.statusC}22">
+        <div style="padding:8px 12px;border-right:1px solid var(--border)44">
+          <div style="font-size:8px;color:var(--muted2)">Prix Actuel</div>
+          <div style="font-family:Archivo,sans-serif;font-weight:800;font-size:13px;color:${p.statusC}">${fmt(p.pa)} MAD</div>
+        </div>
+        <div style="padding:8px 12px;border-right:1px solid var(--border)44">
+          <div style="font-size:8px;color:var(--muted2)">Δ vs PVU</div>
+          <div style="font-family:Archivo,sans-serif;font-weight:800;font-size:13px;color:${p.delta_pa_pvu>=0?'var(--green)':'#f04050'}">${p.delta_pa_pvu>=0?'+':''}${fmt(p.delta_pa_pvu)} MAD</div>
+        </div>
+        <div style="padding:8px 12px">
+          <div style="font-size:8px;color:var(--muted2)">Résultat Ligne</div>
+          <div style="font-family:Archivo,sans-serif;font-weight:800;font-size:13px;color:${(p.resultat_ligne||0)>=0?'var(--green)':'#f04050'}">${p.vol>0?((p.resultat_ligne>=0?'+':'')+fmt(p.resultat_ligne)+' MAD'):'—'}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENT DETAIL TABLE (standalone view) ───────────────────────
+function renderRentDetailTable() {
+  const el = document.getElementById('rent-detail-table');
+  if (!el) return;
+  const all = [...RENT_DATA].sort((a,b) => (b.resultat_ligne||0) - (a.resultat_ligne||0));
+  el.innerHTML = `<thead><tr>
+    <th>Statut</th><th>Produit</th><th>Feuille Excel</th>
+    <th style="text-align:right">Vol.</th>
+    <th style="text-align:right">MP HT</th><th style="text-align:right">MO</th>
+    <th style="text-align:right">CR</th><th style="text-align:right">Ratio CF</th>
+    <th style="text-align:right">Ratio Bén.</th><th style="text-align:right">PV Usine</th>
+    <th style="text-align:right">PV Public Min</th><th style="text-align:right">PA Actuel</th>
+    <th style="text-align:right">Δ PA/PVU</th><th style="text-align:right">Marge%</th>
+    <th style="text-align:right">Résultat</th>
+  </tr></thead><tbody>${all.map(p => {
+    const dc = p.delta_pa_pvu >= 0 ? 'pos' : 'neg';
+    return `<tr style="${p.vol===0?'opacity:0.45':''}">
+      <td><span style="color:${p.statusC};font-size:10px;font-weight:700">${p.statusLabel}</span></td>
+      <td style="font-weight:700">${p.nom}</td>
+      <td style="font-size:9px;color:var(--muted2);font-family:Archivo Narrow,monospace">${p.sheet}</td>
+      <td class="num">${p.vol}</td>
+      <td class="num" style="color:var(--factory)">${fmt(p.mp_ht)}</td>
+      <td class="num" style="color:var(--mobili)">${fmt(p.mo)}</td>
+      <td class="num" style="color:#f04050;font-weight:800">${fmt(p.cr)}</td>
+      <td class="num" style="color:var(--purple)">${fmt(p.ratio_cf)}</td>
+      <td class="num" style="color:var(--green)">${fmt(p.ratio_ben)}</td>
+      <td class="num" style="color:var(--accent)">${fmt(p.pv_usine)}</td>
+      <td class="num" style="color:var(--green)">${fmt(p.pv_min)}</td>
+      <td class="num" style="color:${p.statusC};font-weight:900">${fmt(p.pa)}</td>
+      <td class="num ${dc};font-weight:800">${p.delta_pa_pvu>=0?'+':''}${fmt(p.delta_pa_pvu)}</td>
+      <td class="num" style="color:${p.marge_pa>55?'var(--green)':p.marge_pa>30?'var(--mobili)':'#f04050'};font-weight:800">${p.marge_pa.toFixed(1)}%</td>
+      <td class="num" style="color:${(p.resultat_ligne||0)>=0?'var(--green)':'#f04050'};font-weight:800">${p.vol>0?((p.resultat_ligne>=0?'+':'')+fmt(p.resultat_ligne)+' MAD'):'—'}</td>
+    </tr>`;
+  }).join('')}</tbody>`;
+}
+
+// ── IMPACT CHARTS ─────────────────────────────────────────────
+function renderImpactCharts() {
+  const withVol = [...RENT_DATA].filter(p => p.vol > 0).sort((a,b) => b.ca_ligne - a.ca_ligne);
+  const maxCA = withVol[0]?.ca_ligne || 1;
+  const ic = document.getElementById('impact-chart');
+  if (ic) {
+    const W=560, barH=18, gap=8, padL=165, padT=10;
+    ic.setAttribute('viewBox',`0 0 ${W} ${withVol.length*(barH+gap)+padT+20}`);
+    let html = '';
+    withVol.forEach((p,i) => {
+      const y = padT + i*(barH+gap);
+      const bw = (p.ca_ligne/maxCA)*(W-padL-20);
+      const pw = Math.max(0, ((p.pa-p.cr)/p.pa) * bw);
+      html += `<text x="${padL-6}" y="${y+13}" font-size="10" fill="var(--text)" text-anchor="end" font-family="Archivo Narrow,sans-serif" font-weight="600">${p.nom.slice(0,24)}</text>`;
+      html += `<rect x="${padL}" y="${y}" width="${bw}" height="${barH}" rx="3" fill="${p.statusC}22"/>`;
+      html += `<rect x="${padL}" y="${y}" width="${pw}" height="${barH}" rx="3" fill="${p.statusC}77"/>`;
+      html += `<text x="${padL+bw+4}" y="${y+13}" font-size="9" fill="${p.statusC}" font-weight="800" font-family="Archivo,sans-serif">${fmt(p.ca_ligne)} MAD</text>`;
+    });
+    ic.innerHTML = html;
+  }
+  const pc = document.getElementById('position-chart');
+  if (pc) {
+    const W=520,H=220,padL=40,padB=30,padT=15,padR=20;
+    pc.setAttribute('viewBox',`0 0 ${W} ${H}`);
+    const maxP = Math.max(...withVol.map(p=>Math.max(p.pa,p.pv_min)))*1.1;
+    const xs = p => padL + (p.pv_usine/maxP)*(W-padL-padR);
+    const ys = p => padT + (H-padT-padB) - (p.pa/maxP)*(H-padT-padB);
+    let html = `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}" stroke="var(--border)" stroke-width="0.5"/>
+      <line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="var(--border)" stroke-width="0.5"/>
+      <line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${padT}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="5,4" opacity="0.4"/>
+      <text x="${(W-padL)/2+padL}" y="${H}" font-size="9" fill="var(--muted2)" text-anchor="middle" font-family="Archivo Narrow,sans-serif">PV Usine TTC →</text>`;
+    withVol.forEach(p => {
+      const x=xs(p), y=ys(p), r=Math.max(5,Math.min(14,Math.sqrt(p.vol)*1.4));
+      html += `<circle cx="${x}" cy="${y}" r="${r}" fill="${p.statusC}" opacity="0.7"/>`;
+      html += `<text x="${x}" y="${y-r-3}" font-size="7.5" fill="${p.statusC}" text-anchor="middle" font-family="Archivo Narrow,sans-serif">${p.nom.slice(0,14)}</text>`;
+    });
+    pc.innerHTML = html;
+  }
+  const rankEl = document.getElementById('impact-ranking');
+  if (rankEl) {
+    const sorted = [...RENT_DATA].filter(p=>p.vol>0).sort((a,b)=>(b.resultat_ligne||0)-(a.resultat_ligne||0));
+    const maxR = Math.max(...sorted.map(p=>Math.abs(p.resultat_ligne||0)));
+    rankEl.innerHTML = sorted.map((p,i) => {
+      const bw = Math.abs(p.resultat_ligne||0)/maxR*100;
+      const isPos = (p.resultat_ligne||0) >= 0;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 18px;border-bottom:1px solid var(--border)44;font-size:11px">
+        <span style="font-family:Archivo,sans-serif;font-weight:900;color:var(--muted);width:24px;text-align:right">#${i+1}</span>
+        <span style="width:155px;font-weight:700">${p.nom}</span>
+        <div style="flex:1"><div class="progress" style="height:8px"><div class="progress-fill" style="width:${bw}%;background:${isPos?'var(--green)':'#f04050'}"></div></div></div>
+        <span style="color:${p.statusC};width:100px;text-align:right;font-size:10px;font-weight:700">${p.statusLabel}</span>
+        <span style="font-family:Archivo,sans-serif;font-weight:900;color:${isPos?'var(--green)':'#f04050'};width:110px;text-align:right">${isPos?'+':''}${fmt(p.resultat_ligne)} MAD</span>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ── FORMULA BREAKDOWN ─────────────────────────────────────────
+function renderFormulaBreakdown() {
+  const fbEl = document.getElementById('formula-breakdown');
+  if (fbEl && !fbEl.innerHTML) {
+    fbEl.innerHTML = RENT_DATA.filter(p=>p.vol>0&&p.pv_usine>0).sort((a,b)=>b.pv_usine-a.pv_usine).map(p => {
+      const mpP=(p.mp_ht/p.pv_usine*100).toFixed(1), moP=(p.mo/p.pv_usine*100).toFixed(1);
+      const cfP=(p.ratio_cf/p.pv_usine*100).toFixed(1), bP=(p.ratio_ben/p.pv_usine*100).toFixed(1);
+      return `<div style="margin-bottom:11px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
+          <span style="font-weight:700">${p.nom}</span><span style="color:var(--muted2)">PVU ${fmt(p.pv_usine)} MAD</span>
+        </div>
+        <div style="display:flex;height:10px;border-radius:3px;overflow:hidden;gap:0.5px">
+          <div style="flex:${mpP};background:var(--factory)"></div>
+          <div style="flex:${moP};background:var(--mobili)"></div>
+          <div style="flex:${cfP};background:var(--purple)"></div>
+          <div style="flex:${bP};background:var(--green)"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:2px;font-size:8px">
+          <span style="color:var(--factory)">MP ${mpP}%</span>
+          <span style="color:var(--mobili)">MO ${moP}%</span>
+          <span style="color:var(--purple)">CF ${cfP}%</span>
+          <span style="color:var(--green)">Bén ${bP}%</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  const frEl = document.getElementById('formula-ratio');
+  if (frEl && !frEl.innerHTML) {
+    frEl.innerHTML = `<div style="font-size:10px;line-height:2;color:var(--muted2);margin-bottom:14px">
+      <strong style="color:var(--accent)">CR = MP_HT × 1.2 (TVA) + MO_Directe</strong><br>
+      <code style="color:var(--factory)">MO = Σ (Salaire/208h/60min × Temps_min)</code><br>
+      <strong style="color:var(--purple)">RCF = 160 000 MAD/an ÷ 660 m² × M²_produit</strong><br>
+      <strong style="color:var(--green)">RBén = 50 000 MAD/an ÷ 660 m² × M²_produit</strong><br>
+      <strong style="color:var(--accent)">PVU TTC = CR + RCF + RBén</strong><br>
+      <code style="color:var(--factory)">PV Public Min = PVU × 1.25 | PV Conseillé = PVU × 1.4375</code>
+    </div>
+    ${RENT_DATA.filter(p=>p.m2>0&&p.vol>0).map(p=>`
+      <div style="display:flex;justify-content:space-between;font-size:10px;padding:4px 0;border-bottom:1px solid var(--border)44">
+        <span>${p.nom}</span>
+        <span style="color:var(--muted2)">${p.m2} m²</span>
+        <span style="color:var(--purple);font-weight:700">RCF ${fmt(p.ratio_cf)} MAD</span>
+        <span style="color:var(--green);font-weight:700">RBén ${fmt(p.ratio_ben)} MAD</span>
+      </div>`).join('')}`;
+  }
+}
+
+// Full reproduction of the complex Mermaid flowchart as SVG
+// ══════════════════════════════════════════════════════════════
+
+let mermaidZoom = 1;
+let mermaidLabelsVisible = true;
+
+function toggleMermaidLabels() {
+  mermaidLabelsVisible = !mermaidLabelsVisible;
+  document.querySelectorAll('.mermaid-amount').forEach(el => {
+    el.style.display = mermaidLabelsVisible ? '' : 'none';
+  });
+}
+
+function zoomMermaid(factor) {
+  mermaidZoom = Math.max(0.4, Math.min(2.5, mermaidZoom * factor));
+  document.getElementById('mermaid-svg').style.transform = `scale(${mermaidZoom})`;
+  document.getElementById('mermaid-svg').style.transformOrigin = 'top center';
+}
+
+function renderMermaidGraph() {
+  const svg = document.getElementById('mermaid-svg');
+  if (!svg) return;
+
+  // ── LAYOUT CONSTANTS ──────────────────────────────────────
+  const W = 1600, H = 1160;
+  const NW = 148, NH = 56;   // node width / height
+  const GW = 180, GH = 62;   // aggregate node
+  const R = 7;                // corner radius
+
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+
+  // ── COLOR PALETTE ─────────────────────────────────────────
+  const C = {
+    bg:    '#f5f7fa',
+    s2:    '#ffffff',
+    s3:    '#f0f3f8',
+    rev:   '#3a8ef5',   // Layer 1 — Commercial
+    mat:   '#30c8a8',   // Layer 2 — Matières
+    labor: '#f0a030',   // Layer 3 — Labor
+    oh:    '#a060f0',   // Layer 4 — Overhead
+    opex:  '#f050a0',   // Layer 5 — OPEX
+    loss:  '#f04050',   // Losses
+    agg:   '#e8f040',   // Aggregates / EBITDA
+    text:  '#1a2035',
+    muted: '#8090b0',
+    border:'#dde3ee',
+  };
+
+  // ── BACKGROUND ────────────────────────────────────────────
+  let html = `<rect width="${W}" height="${H}" fill="${C.bg}"/>`;
+
+  // ── LANE BACKGROUNDS ──────────────────────────────────────
+  const lanes = [
+    { y:20,  h:100, label:'C1 — ACTIVITÉ COMMERCIALE', color:C.rev   },
+    { y:130, h:140, label:'C2 — MATIÈRES PREMIÈRES',   color:C.mat   },
+    { y:280, h:110, label:'C3 — MAIN D\'ŒUVRE',        color:C.labor },
+    { y:400, h:150, label:'C4 — OVERHEAD INDUSTRIEL',  color:C.oh    },
+    { y:560, h:110, label:'C5 — OPEX STRUCTURE',       color:C.opex  },
+    { y:680, h:100, label:'AGRÉGATS → EBITDA',         color:C.agg   },
+  ];
+
+  lanes.forEach(l => {
+    html += `<rect x="0" y="${l.y}" width="${W}" height="${l.h}" fill="${l.color}09"/>`;
+    html += `<rect x="0" y="${l.y}" width="3" height="${l.h}" fill="${l.color}"/>`;
+    html += `<rect x="0" y="${l.y}" width="28" height="${l.h}" fill="${l.color}18"/>`;
+    html += `<text x="14" y="${l.y + l.h/2 + 4}" font-size="8" fill="${l.color}" font-weight="600"
+      font-family="Archivo Narrow,sans-serif" text-anchor="middle"
+      transform="rotate(-90,14,${l.y + l.h/2})">${l.label}</text>`;
+    // divider
+    html += `<line x1="28" y1="${l.y + l.h}" x2="${W}" y2="${l.y + l.h}" stroke="${C.border}" stroke-width="0.5" stroke-dasharray="5,4"/>`;
+  });
+
+  // ── NODE HELPERS ──────────────────────────────────────────
+  function node(x, y, w, h, lines, amount, color, tag='', delay=0) {
+    let out = '';
+    // shadow
+    out += `<rect x="${x+3}" y="${y+3}" width="${w}" height="${h}" rx="${R}" fill="rgba(0,0,0,0.4)"/>`;
+    // body
+    out += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${R}" fill="${C.s2}" stroke="${C.border}" stroke-width="1"/>`;
+    // top stripe
+    out += `<rect x="${x}" y="${y}" width="${w}" height="5" rx="${R}" fill="${color}"/>`;
+    out += `<rect x="${x}" y="${y+3}" width="${w}" height="3" rx="0" fill="${color}"/>`;
+    // tag badge top-right
+    if (tag) {
+      out += `<rect x="${x+w-38}" y="${y-8}" width="40" height="14" rx="3" fill="${color}30"/>`;
+      out += `<text x="${x+w-18}" y="${y+2}" font-size="7" fill="${color}" font-weight="700"
+        font-family="Archivo,sans-serif" text-anchor="middle">${tag}</text>`;
+    }
+    // lines of text
+    const lineY = y + 22;
+    lines.forEach((l, i) => {
+      out += `<text x="${x+w/2}" y="${lineY + i*13}" font-size="10" fill="${C.text}" font-weight="600"
+        font-family="Archivo Narrow,sans-serif" text-anchor="middle">${l}</text>`;
+    });
+    // amount
+    if (amount) {
+      out += `<text x="${x+w/2}" y="${y+h-8}" font-size="10" fill="${color}" font-weight="800"
+        font-family="Archivo,sans-serif" text-anchor="middle" class="mermaid-amount">${amount}</text>`;
+    }
+    return out;
+  }
+
+  function aggNode(x, y, w, h, lines, amount, sub, color) {
+    let out = '';
+    out += `<rect x="${x+3}" y="${y+3}" width="${w}" height="${h}" rx="${R+2}" fill="rgba(0,0,0,0.5)"/>`;
+    out += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${R+2}" fill="${color}18" stroke="${color}88" stroke-width="1.5"/>`;
+    const lineY = y + (sub ? h/2 - 12 : h/2 - 6);
+    lines.forEach((l, i) => {
+      out += `<text x="${x+w/2}" y="${lineY + i*15}" font-size="11.5" fill="${C.text}" font-weight="800"
+        font-family="Archivo,sans-serif" text-anchor="middle">${l}</text>`;
+    });
+    if (amount) {
+      out += `<text x="${x+w/2}" y="${y+h/2+18}" font-size="13" fill="${color}" font-weight="900"
+        font-family="Archivo,sans-serif" text-anchor="middle" class="mermaid-amount">${amount}</text>`;
+    }
+    if (sub) {
+      out += `<text x="${x+w/2}" y="${y+h-10}" font-size="9" fill="${color}bb" font-weight="500"
+        font-family="Archivo Narrow,sans-serif" text-anchor="middle" class="mermaid-amount">${sub}</text>`;
+    }
+    return out;
+  }
+
+  // ── ARROW HELPERS ─────────────────────────────────────────
+  function arrow(x1, y1, x2, y2, color, sw=1.5, dash='') {
+    const mx = (x1+x2)/2, my = (y1+y2)/2;
+    const d = `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
+    const ang = Math.atan2(y2-my, x2-mx);
+    const ax = x2, ay = y2;
+    const a1x = ax-8*Math.cos(ang-0.4), a1y = ay-8*Math.sin(ang-0.4);
+    const a2x = ax-8*Math.cos(ang+0.4), a2y = ay-8*Math.sin(ang+0.4);
+    let out = `<path d="${d}" stroke="${color}" stroke-width="${sw}" fill="none" stroke-linecap="round"`;
+    if (dash) out += ` stroke-dasharray="${dash}"`;
+    out += `/>`;
+    out += `<polygon points="${ax},${ay} ${a1x},${a1y} ${a2x},${a2y}" fill="${color}"/>`;
+    return out;
+  }
+
+  function sarrow(x1, y1, x2, y2, color, sw=1.5, dash='') {
+    const ang = Math.atan2(y2-y1, x2-x1);
+    const a1x = x2-8*Math.cos(ang-0.4), a1y = y2-8*Math.sin(ang-0.4);
+    const a2x = x2-8*Math.cos(ang+0.4), a2y = y2-8*Math.sin(ang+0.4);
+    let out = `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${sw}" stroke-linecap="round"`;
+    if (dash) out += ` stroke-dasharray="${dash}"`;
+    out += `/>`;
+    out += `<polygon points="${x2},${y2} ${a1x},${a1y} ${a2x},${a2y}" fill="${color}"/>`;
+    return out;
+  }
+
+  function elbow(x1, y1, mx, y2, x2, color, sw=1.5) {
+    const d = `M${x1},${y1} L${mx},${y1} L${mx},${y2} L${x2},${y2}`;
+    const ang = Math.atan2(0, x2-mx);
+    const ax=x2, ay=y2;
+    const a1x=ax-8*Math.cos(ang-0.4), a1y=ay-8*Math.sin(ang-0.4);
+    const a2x=ax-8*Math.cos(ang+0.4), a2y=ay-8*Math.sin(ang+0.4);
+    return `<path d="${d}" stroke="${color}" stroke-width="${sw}" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+            <polygon points="${ax},${ay} ${a1x},${a1y} ${a2x},${a2y}" fill="${color}"/>`;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // ROW 1 — COMMERCIAL FLOW  (y ≈ 28)
+  // ══════════════════════════════════════════════════════════
+  const r1y = 32;
+  // A — Customer Orders
+  html += node(38, r1y, NW, NH, ['Commandes','Clients'], '1 526 unités', C.rev, 'C1');
+  // B — Sales Orders
+  html += node(214, r1y, NW, NH, ['Ordres de','Fabrication'], '— OF/Plans', C.rev);
+  // C — Invoices
+  html += node(390, r1y, NW, NH, ['Factures','Émises'], '+ Emballage', C.rev);
+  // D — Revenue AGG
+  html += aggNode(570, r1y-4, GW+20, GH+2, ['CHIFFRE', "D'AFFAIRES"], '2 847 500 MAD', '100% du CA', C.rev);
+
+  // Row 1 arrows
+  html += sarrow(186, r1y+NH/2, 214, r1y+NH/2, C.rev);
+  html += sarrow(362, r1y+NH/2, 390, r1y+NH/2, C.rev);
+  html += sarrow(538, r1y+NH/2, 570, r1y+NH/2, C.rev);
+
+  // ══════════════════════════════════════════════════════════
+  // ROW 2 — RAW MATERIALS (y ≈ 148)
+  // ══════════════════════════════════════════════════════════
+  const r2y = 148;
+  const matNodes = [
+    { label:['Bois MDF','& Strati'],       amt:'301 438', tag:'50%' },
+    { label:['Peinture','& Finitions'],    amt:'146 105', tag:'24%' },
+    { label:['Vinyle &','Décoration'],     amt:'79 376',  tag:'13%' },
+    { label:['Quincaillerie','& Ferrures'],amt:'46 933',  tag:'8%' },
+    { label:['Métal Tubes','& Platines'],  amt:'16 421',  tag:'3%' },
+    { label:['Emballage','& Palettes'],    amt:'10 379',  tag:'2%' },
+  ];
+  const matXs = matNodes.map((_, i) => 38 + i * 158);
+  matNodes.forEach((mn, i) => {
+    html += node(matXs[i], r2y, NW, NH, mn.label, mn.amt+' MAD', C.mat, mn.tag);
+  });
+  // Stock intermediaire
+  html += node(1010, r2y, NW, NH, ['Stock','Matières'], '→ Flux', C.mat);
+  // Conso aggregate
+  html += aggNode(1190, r2y-4, GW+10, GH+2, ['MATIÈRES', 'DIRECTES'], '600 652 MAD', '35.4% du CA', C.mat);
+
+  // Arrows mat → stock
+  matNodes.forEach((_, i) => {
+    const mx = matXs[i] + NW/2;
+    html += arrow(mx, r2y+NH, 1010+NW/2, r2y+NH+10, C.mat+'66', 1);
+  });
+  html += sarrow(1158, r2y+NH/2, 1190, r2y+NH/2, C.mat);
+
+  // ══════════════════════════════════════════════════════════
+  // ROW 3 — LABOR (y ≈ 296)
+  // ══════════════════════════════════════════════════════════
+  const r3y = 296;
+  const laborNodes = [
+    { label:['Menuisiers','& Opérateurs'], amt:'Livraison 34k', c:C.labor },
+    { label:['Préparation','P1·P2·P3'],    amt:'Prépa. 28k',   c:'#e8a020' },
+    { label:['Peinture','Atelier'],        amt:'Peinture 25k', c:'#e0c040' },
+    { label:['CNC &','Découpe'],           amt:'CNC+Déc. 9k',  c:'#30e090' },
+    { label:['Assemblage','& Montage'],    amt:'Ass+Mont. 15k',c:'#40c880' },
+    { label:['Admin &','Direction'],       amt:'Indirect 96k', c:'#8090d0' },
+  ];
+  const labXs = laborNodes.map((_, i) => 38 + i * 160);
+  laborNodes.forEach((ln, i) => {
+    html += node(labXs[i], r3y, NW, NH, ln.label, ln.amt+' MAD', ln.c);
+  });
+  // Labor aggregate
+  html += aggNode(1190, r3y-4, GW+10, GH+2, ['MAIN', "D'ŒUVRE"], '116 508 MAD', '6.9% du CA', C.labor);
+
+  labXs.forEach((lx, i) => {
+    html += arrow(lx+NW/2, r3y+NH, 1190+(GW+10)/2, r3y+NH+8, laborNodes[i].c+'66', 1);
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // ROW 4 — OVERHEAD (y ≈ 416)
+  // ══════════════════════════════════════════════════════════
+  const r4y = 416;
+  const ohNodes = [
+    { label:['Machine','Maintenance'],     amt:'72 000',  c:C.oh },
+    { label:['Loyer','Atelier'],           amt:'96 000',  c:C.oh },
+    { label:['Assurances','Industrielles'],amt:'36 000',  c:C.oh },
+    { label:['Nettoyage','Sécurité HSE'],  amt:'24 000',  c:C.oh },
+    { label:['Rebuts &','Déchets'],        amt:'63 000',  c:C.loss, tag:'⚠' },
+    { label:['Transport','Livraison'],     amt:'90 000',  c:'#d06040' },
+  ];
+  const ohXs = ohNodes.map((_, i) => 38 + i * 168);
+  ohNodes.forEach((on, i) => {
+    html += node(ohXs[i], r4y, NW, NH, on.label, on.amt+' MAD', on.c, on.tag||'');
+  });
+  // Overhead aggregate
+  html += aggNode(1190, r4y-4, GW+10, GH+2, ['OVERHEAD', 'INDUSTRIEL'], '381 000 MAD', '13.4% du CA', C.oh);
+
+  ohXs.forEach((ox, i) => {
+    const c = ohNodes[i].c+'66';
+    html += arrow(ox+NW/2, r4y+NH, 1190+(GW+10)/2, r4y+NH+8, c, 1);
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // ROW 5 — OPEX (y ≈ 576)
+  // ══════════════════════════════════════════════════════════
+  const r5y = 576;
+  const opexNodes = [
+    { label:['Admin','Payroll'],           amt:'96 000'  },
+    { label:['Équipe','Commerciale'],      amt:'80 000'  },
+    { label:['Marketing','Digital'],       amt:'148 600' },
+    { label:['IT & ERP','Systèmes'],       amt:'24 000'  },
+    { label:['Loyer','Bureaux'],           amt:'36 000'  },
+    { label:['Juridique','& Conseil'],     amt:'18 000'  },
+  ];
+  const opexXs = opexNodes.map((_, i) => 38 + i * 168);
+  opexNodes.forEach((on, i) => {
+    html += node(opexXs[i], r5y, NW, NH, on.label, on.amt+' MAD', C.opex);
+  });
+  html += aggNode(1190, r5y-4, GW+10, GH+2, ['OPEX', 'STRUCTURE'], '402 600 MAD', '14.1% du CA', C.opex);
+
+  opexXs.forEach((ox) => {
+    html += arrow(ox+NW/2, r5y+NH, 1190+(GW+10)/2, r5y+NH+8, C.opex+'55', 1);
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // RIGHT COLUMN — AGGREGATION CHAIN
+  // ══════════════════════════════════════════════════════════
+  const rx = 1430;
+
+  // COGS = mat + labor direct
+  html += aggNode(rx, 144, GW, 72, ['COÛT DE', 'PRODUCTION'], '717 160 MAD', 'MP + MO directe', C.mat);
+  // Arrows: mat agg → COGS, labor agg → COGS
+  html += elbow(1190+GW+10, r2y+NH/2, 1410, r2y+NH/2, rx, C.mat, 1.5);
+  html += elbow(1190+GW+10, r3y+NH/2, 1420, 144+72/2, rx, C.labor, 1.5);
+
+  // GROSS MARGIN
+  html += aggNode(rx, 270, GW, 72, ['MARGE', 'BRUTE'], '1 613 182 MAD', '56.7% du CA', C.rev);
+  // CA → Gross Margin (from top)
+  html += elbow(570+GW+20, r1y+NH/2, 1480, r1y+NH/2, rx+GW, C.rev, 1.5);
+  html += arrow(rx+GW/2, 144+72, rx+GW/2, 270, C.rev+'aa', 1.5);
+
+  // OPERATING RESULT
+  html += aggNode(rx, 400, GW, 72, ['RÉSULTAT', 'OPÉRATIONNEL'], '1 232 182 MAD', '43.3% du CA', C.oh);
+  html += arrow(rx+GW/2, 270+72, rx+GW/2, 400, C.rev+'88', 1.5);
+  html += elbow(1190+GW+10, r4y+NH/2, 1420, 400+36, rx, C.oh, 1.5);
+
+  // EBITDA FINAL
+  const ey = 700;
+  html += `<rect x="${rx-4}" y="${ey-4}" width="${GW+8}" height="118" rx="10" fill="${C.agg}22" stroke="${C.agg}" stroke-width="2.5"/>`;
+  html += `<rect x="${rx}" y="${ey}" width="${GW}" height="110" rx="8" fill="#f5f7facc" stroke="none"/>`;
+  html += `<text x="${rx+GW/2}" y="${ey+26}" font-size="11" fill="${C.text}" font-weight="800"
+    font-family="Archivo,sans-serif" text-anchor="middle">⚡ EBITDA</text>`;
+  html += `<text x="${rx+GW/2}" y="${ey+26}" font-size="11" fill="${C.text}" font-weight="800"
+    font-family="Archivo,sans-serif" text-anchor="middle">⚡ EBITDA</text>`;
+  html += `<text x="${rx+GW/2}" y="${ey+48}" font-size="15" fill="${C.agg}" font-weight="900"
+    font-family="Archivo,sans-serif" text-anchor="middle" class="mermaid-amount">427 125 MAD</text>`;
+  html += `<text x="${rx+GW/2}" y="${ey+68}" font-size="10" fill="${C.agg}bb" font-weight="600"
+    font-family="Archivo Narrow,sans-serif" text-anchor="middle" class="mermaid-amount">15.0% du CA Consolidé</text>`;
+  html += `<text x="${rx+GW/2}" y="${ey+86}" font-size="9" fill="${C.muted}" font-weight="500"
+    font-family="Archivo Narrow,sans-serif" text-anchor="middle">CA − MP − MO − OH − OPEX</text>`;
+  html += `<text x="${rx+GW/2}" y="${ey+102}" font-size="9" fill="${C.muted}" font-weight="500"
+    font-family="Archivo Narrow,sans-serif" text-anchor="middle">avant intérêts, taxes, amort.</text>`;
+
+  // Arrows to EBITDA
+  html += arrow(rx+GW/2, 400+72, rx+GW/2, ey, C.agg, 2.5);
+  html += elbow(1190+GW+10, r5y+NH/2, 1415, ey+55, rx, C.opex, 1.5);
+
+  // ══════════════════════════════════════════════════════════
+  // TITLE & FORMULA BAR
+  // ══════════════════════════════════════════════════════════
+  html += `<rect x="28" y="2" width="${W-36}" height="16" rx="3" fill="${C.s2}"/>`;
+  html += `<text x="38" y="13" font-size="9" fill="${C.rev}" font-weight="700"
+    font-family="Archivo,sans-serif">GRAPHE EBITDA INDUSTRIEL — FLUX COMPLET — NSFactory + NSMobili — Données Réelles Trimo</text>`;
+  html += `<text x="${W-20}" y="13" font-size="9" fill="${C.muted}"
+    font-family="Archivo Narrow,sans-serif" text-anchor="end">EBITDA = CA − Matières − MO − Overhead − OPEX</text>`;
+
+  // ══════════════════════════════════════════════════════════
+  // INTER-COMPANY FLOW ANNOTATION
+  // ══════════════════════════════════════════════════════════
+  html += `<rect x="38" y="${ey+10}" width="220" height="90" rx="7" fill="${C.s3}" stroke="${C.border}" stroke-width="1"/>`;
+  html += `<text x="50" y="${ey+28}" font-size="9" fill="${C.agg}" font-weight="700" font-family="Archivo,sans-serif">🔄 FLUX INTER-SOCIÉTÉS</text>`;
+  html += `<text x="50" y="${ey+44}" font-size="9" fill="${C.text}" font-family="Archivo Narrow,sans-serif">NSFactory → Fabrication</text>`;
+  html += `<text x="50" y="${ey+57}" font-size="9" fill="${C.mat}" font-family="Archivo,sans-serif" font-weight="700">1 698 822 MAD (CR+Marge)</text>`;
+  html += `<text x="50" y="${ey+72}" font-size="9" fill="${C.text}" font-family="Archivo Narrow,sans-serif">NSMobili → Commercialisation</text>`;
+  html += `<text x="50" y="${ey+85}" font-size="9" fill="${C.rev}" font-family="Archivo,sans-serif" font-weight="700">+67.7% marge distribution</text>`;
+
+  // ══════════════════════════════════════════════════════════
+  // PRODUCT MIX MINI CHART (bottom center)
+  // ══════════════════════════════════════════════════════════
+  const pmx = 310, pmy = ey + 8;
+  html += `<rect x="${pmx}" y="${pmy}" width="580" height="92" rx="7" fill="${C.s3}" stroke="${C.border}" stroke-width="1"/>`;
+  html += `<text x="${pmx+12}" y="${pmy+16}" font-size="9" fill="${C.labor}" font-weight="700" font-family="Archivo,sans-serif">TOP PRODUITS — CA × Volumes</text>`;
+
+  const products = [
+    {n:'Tiroir / lit', v:536, m:59.1, c:C.mat},
+    {n:'Lit Epsilon',  v:110, m:56.4, c:C.rev},
+    {n:'Lit Rectang.', v:100, m:55.7, c:C.rev},
+    {n:'Bureau 3T',    v:94,  m:55.9, c:C.labor},
+    {n:'TDC 1 tiroir', v:88,  m:59.3, c:C.oh},
+    {n:'Etagère Mira', v:86,  m:50.4, c:C.opex},
+    {n:'Table Trio',   v:84,  m:54.9, c:C.labor},
+  ];
+  const barMaxW = 64;
+  const maxV = 536;
+  products.forEach((p, i) => {
+    const bx = pmx + 12 + i * 80;
+    const barH = (p.v / maxV) * 52;
+    const by = pmy + 85 - barH;
+    html += `<rect x="${bx}" y="${by}" width="52" height="${barH}" rx="2" fill="${p.c}88"/>`;
+    html += `<text x="${bx+26}" y="${by - 3}" font-size="7.5" fill="${p.c}" font-weight="700"
+      font-family="Archivo,sans-serif" text-anchor="middle" class="mermaid-amount">${p.m}%</text>`;
+    html += `<text x="${bx+26}" y="${pmy+92}" font-size="7" fill="${C.muted}"
+      font-family="Archivo Narrow,sans-serif" text-anchor="middle">${p.n}</text>`;
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // WRITE TO SVG
+  // ══════════════════════════════════════════════════════════
+  svg.innerHTML = html;
+}
+</script>
+</body>
+</html>

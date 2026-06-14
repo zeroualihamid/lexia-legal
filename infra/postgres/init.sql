@@ -31,7 +31,9 @@ CREATE TYPE document_status AS ENUM (
     'pending_review',
     'published',
     'rejected',
-    'archived'
+    'archived',
+    'ready',
+    'failed'
 );
 
 CREATE TYPE document_visibility AS ENUM (
@@ -112,6 +114,44 @@ CREATE TYPE health_status AS ENUM (
 -- Tables
 -- ────────────────────────────────────────────────────────────
 
+-- Cases (matters): a lawyer groups uploaded documents by client case.
+-- Each case is owned by a single user (owner_id = Keycloak subject UUID).
+CREATE TABLE cases (
+    id            UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    owner_id      UUID        NOT NULL,
+    title         TEXT        NOT NULL,
+    client_name   TEXT,
+    case_ref      TEXT,
+    description   TEXT,
+    status        TEXT        NOT NULL DEFAULT 'open'
+                              CHECK (status IN ('open', 'closed', 'archived')),
+    -- Structured court-file reference for the mahakim.ma lookup.
+    court_type    TEXT,                                  -- 'appeal' | 'first_instance' | 'cassation'
+    court_name    TEXT,
+    file_number   TEXT,                                  -- "رقم الملف"
+    file_code     TEXT,                                  -- "رمز الملف"
+    file_year     TEXT,                                  -- "السنة"
+    court_section TEXT,                                  -- "القسم / الغرفة" (e.g. القسم التجاري عدد 3)
+    court_panel   TEXT,                                  -- "الهيئة" (e.g. الهيئة عدد 3)
+    case_category TEXT        DEFAULT 'file',            -- mahakim tab: 'file' | 'hearings'
+    -- Background fetch result from https://mahakim.ma.
+    mahakim_status     TEXT   NOT NULL DEFAULT 'idle'
+                              CHECK (mahakim_status IN
+                                ('idle', 'queued', 'processing', 'ready', 'not_found', 'failed', 'unsupported')),
+    mahakim_data       JSONB,
+    mahakim_fetched_at TIMESTAMPTZ,
+    mahakim_error      TEXT,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_cases_owner_id ON cases (owner_id);
+CREATE INDEX idx_cases_updated_at ON cases (updated_at DESC);
+-- A case reference is unique per owner (case-insensitive, ignoring blanks).
+CREATE UNIQUE INDEX uq_cases_owner_ref
+    ON cases (owner_id, lower(case_ref))
+    WHERE case_ref IS NOT NULL AND btrim(case_ref) <> '';
+
 -- Documents: core legal documents (laws, judgments, user uploads)
 CREATE TABLE documents (
     id                  UUID            PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -121,20 +161,46 @@ CREATE TABLE documents (
     source_type         source_type     NOT NULL,
     owner_type          owner_type      NOT NULL DEFAULT 'system',
     owner_id            UUID,
+    -- For user uploads: the client case this document belongs to.
+    case_id             UUID            REFERENCES cases(id) ON DELETE CASCADE,
+    -- Legal document taxonomy (contract, pleading, judgment, ...). NULL for system docs.
+    document_type       TEXT,
     visibility          document_visibility NOT NULL DEFAULT 'public',
     status              document_status NOT NULL DEFAULT 'processing',
     minio_bucket        TEXT            NOT NULL,
     minio_key           TEXT            NOT NULL,
     file_size_bytes     BIGINT,
+    content_type        TEXT,
     page_count          INTEGER,
+    pages_status        analysis_status DEFAULT 'pending',
+    ocr_text            TEXT,
+    word_count          INTEGER,
     jurisdiction        JSONB           DEFAULT '{}',
     reviewed_by         UUID,
     reviewed_at         TIMESTAMPTZ,
     rejection_reason    TEXT,
+    error_message       TEXT,
     metadata            JSONB           DEFAULT '{}',
     created_at          TIMESTAMPTZ     DEFAULT NOW(),
     updated_at          TIMESTAMPTZ     DEFAULT NOW()
 );
+
+-- Per-document rendered page images (one row per PDF page).
+-- The bucket name equals the document UUID (per design choice).
+CREATE TABLE document_pages (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    document_id     UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    page_number     INTEGER NOT NULL,
+    minio_bucket    TEXT NOT NULL,
+    minio_key       TEXT NOT NULL,
+    width           INTEGER,
+    height          INTEGER,
+    file_size_bytes BIGINT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (document_id, page_number)
+);
+
+CREATE INDEX idx_document_pages_document_id ON document_pages (document_id);
 
 -- Chunks: text segments extracted from documents, linked to Qdrant vectors
 CREATE TABLE chunks (
@@ -369,6 +435,9 @@ CREATE INDEX idx_documents_visibility
 CREATE INDEX idx_documents_owner
     ON documents (owner_type, owner_id);
 
+CREATE INDEX idx_documents_case_id
+    ON documents (case_id);
+
 CREATE INDEX idx_chunks_document_id
     ON chunks (document_id);
 
@@ -432,6 +501,10 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_documents_updated_at
     BEFORE UPDATE ON documents
+    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+
+CREATE TRIGGER trg_cases_updated_at
+    BEFORE UPDATE ON cases
     FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
 CREATE TRIGGER trg_conversations_updated_at

@@ -1,0 +1,52 @@
+# OS
+.DS_Store
+*.swp
+*.swo
+
+# IDE
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Data
+#data/
+
+# Logs
+logs/
+
+# Lock
+uv.lock
+
+
+# Data/raw
+data/raw/
+
+# DuckDB temporary spill files (large — never commit)
+data/.duckdb_tmp/
+**/.duckdb_tmp/
+duckdb_temp_storage*.tmp
+
+# Large generated data (parquet caches, embeddings, CTE pickles, etc.)
+# data/classes/, data/reporting/, data/cte_graphs/ MUST stay tracked — the
+# app imports modules from data/classes/ and reads CTE pickles from
+# data/cte_graphs/ at runtime.
+data/parquet/
+data/embeddings/
+data/outputs/
+data/query_cache/
+data/conversations/
+data/memory/playground.json
+data/subagents/*/cards.json
+data/subagents/*/status.json
+data/cte_graph_profiles.json

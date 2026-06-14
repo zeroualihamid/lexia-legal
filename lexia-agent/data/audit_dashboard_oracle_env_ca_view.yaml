@@ -1,0 +1,133 @@
+# =============================================================================
+# Tableau de bord — Audit des quittances (oracle_env_ca_view)
+# Exercice 2027 — Mois de février vs mars
+# Généré par sous-agent « Audit »
+# =============================================================================
+
+dashboard:
+  title: "Audit des quittances — Exercice 2027"
+  subtitle: "Comparaison février 2027 vs mars 2027"
+  source: "oracle_env_ca_view.parquet"
+  generated_at: "2025-07-16"
+
+  # ---------------------------------------------------------------------------
+  # KPI Cards — indicateurs clés
+  # ---------------------------------------------------------------------------
+  kpi_cards:
+
+    - id: kpi_nb_quit
+      title: "Nombre de quittances"
+      unit: "quittances"
+      current:
+        month: "mars 2027"
+        value: 367
+      previous:
+        month: "février 2027"
+        value: 1 240
+      variation:
+        absolute: -873
+        percentage: -70,40 %
+      interpretation: >
+        Forte baisse du volume de quittances entre février et mars 2027
+        (-873 quittances, soit -70,4 %). Ce repli peut être lié à un effet
+        de clôture trimestrielle ou à un ralentissement saisonnier de la
+        production.
+
+    - id: kpi_total_prime
+      title: "Prime nette totale"
+      unit: "MAD"
+      current:
+        month: "mars 2027"
+        value: 76 129,04
+      previous:
+        month: "février 2027"
+        value: 267 196,82
+      variation:
+        absolute: -191 067,78
+        percentage: -71,51 %
+      interpretation: >
+        La prime nette totale chute de 191 067,78 MAD (-71,5 %), en ligne
+        avec la baisse du nombre de quittances. L'impact financier est
+        significatif et mérite une analyse des causes (fin de mois, arrêt
+        de campagne commerciale, variation de périmètre).
+
+    - id: kpi_avg_prime
+      title: "Prime moyenne par quittance"
+      unit: "MAD"
+      current:
+        month: "mars 2027"
+        value: 207,44
+      previous:
+        month: "février 2027"
+        value: 214,96
+      variation:
+        absolute: -7,52
+        percentage: -3,50 %
+      interpretation: >
+        La prime moyenne par quittance est stable (-3,5 %), passant de
+        214,96 MAD à 207,44 MAD. Cette légère baisse suggère que le mix
+        produit n'a pas significativement changé entre les deux mois.
+
+    - id: kpi_taux_activite
+      title: "Taux d'activité (STATQUIT = 1)"
+      unit: "%"
+      current:
+        month: "mars 2027"
+        value: 0,00
+      previous:
+        month: "février 2027"
+        value: 0,00
+      variation:
+        absolute: 0,00
+        percentage: 0,00 %
+      interpretation: >
+        Aucune quittance avec STATQUIT = 1 (actif/encaissé) n'est présente
+        dans les données pour ces deux mois. Les statuts observés sont
+        exclusivement 10 (1 607 occurrences) et 55 (3 occurrences). Cela
+        peut indiquer que le statut 1 n'est pas utilisé dans ce système,
+        ou que les quittances sont encore en cours de traitement.
+
+  # ---------------------------------------------------------------------------
+  # Analysis Cards — synthèses et alertes
+  # ---------------------------------------------------------------------------
+  analysis_cards:
+
+    - id: analysis_volume
+      title: "Analyse de la chute de volume"
+      type: "alerte"
+      severity: "élevée"
+      findings:
+        - "Le nombre de quittances passe de 1 240 (février) à 367 (mars), soit une baisse de 70,4 %."
+        - "La prime nette totale suit la même tendance : -71,5 % (267 196,82 MAD → 76 129,04 MAD)."
+        - "La prime moyenne reste quasi stable (-3,5 %), ce qui écarte l'hypothèse d'un changement de mix produit."
+      recommendations:
+        - "Vérifier si mars 2027 est un mois incomplet dans l'extraction (données partielles)."
+        - "Analyser la répartition par branche (LIBEBRAN) et par intermédiaire (RAISOCIN) pour identifier les segments en repli."
+        - "Croiser avec le calendrier commercial : fin de trimestre, campagne promotionnelle éventuelle."
+
+    - id: analysis_statut
+      title: "Analyse des statuts de quittance (STATQUIT)"
+      type: "information"
+      severity: "moyenne"
+      findings:
+        - "Deux statuts distincts observés : STATQUIT = 10 (1 607 occurrences) et STATQUIT = 55 (3 occurrences)."
+        - "STATQUIT = 1 (actif/encaissé) est absent des données pour l'exercice 2027."
+        - "Le taux d'activité calculé est donc nul pour les deux mois."
+      recommendations:
+        - "Confirmer la signification métier des codes STATQUIT 10 et 55 auprès de l'équipe fonctionnelle."
+        - "Vérifier si le statut 1 est utilisé dans d'autres exercices (EXERSTAT < 2027) ou s'il s'agit d'une évolution du référentiel."
+        - "Si STATQUIT = 10 correspond à 'émis' ou 'encaissé', recalculer le taux d'activité avec cette valeur."
+
+    - id: analysis_synthese
+      title: "Synthèse et prochaines étapes"
+      type: "recommandation"
+      severity: "informative"
+      findings:
+        - "Périmètre analysé : exercice 2027, mois 2 (février) et 3 (mars)."
+        - "Total des quittances sur la période : 1 607."
+        - "Prime nette totale cumulée : 343 325,86 MAD."
+        - "Prime moyenne globale pondérée : 213,65 MAD."
+      recommendations:
+        - "Étendre l'analyse à l'ensemble de l'exercice 2027 dès que les mois suivants seront disponibles."
+        - "Ajouter une ventilation par branche (LIBEBRAN) et par type d'intervenant (LIBTYPIN) pour enrichir le diagnostic."
+        - "Mettre en place un suivi mensuel automatisé de ces KPI pour détecter les anomalies de production."

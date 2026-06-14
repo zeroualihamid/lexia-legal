@@ -1,0 +1,76 @@
+template_id: comex_report
+version: 27
+parameters: []
+sources:
+- name: Analytics_Final
+  source_id: Analytics_Final
+  kind: parquet
+  description: Export bancaire Analytics_Final utilisé par le catalogue CTE analyse_bancaire.
+blocks:
+- id: bank_executive_kpis
+  kind: scalar
+  goal: Calculer la synthèse COMEX bancaire à partir de Analytics_Final via les CTE raw_data, cleaned_data, enriched_data, aggregated_client, aggregated_agency et final_ratios. Retourner la période, PNB proxy, encours, clients actifs, agences, ratio PNB/encours, équipement moyen et part de clients sensibles.
+  tokens:
+  - report_period
+  - pnb_total
+  - encours_total
+  - client_count
+  - active_clients
+  - agencies_count
+  - pnb_encours_ratio
+  - avg_equipment
+  - sensitive_clients_pct
+  status: live
+  depends_on: []
+  cte_ref: comex_report__bank_executive_kpis
+- id: bank_trend_chart
+  kind: scalar
+  goal: Préparer les séries temporelles PNB proxy et encours en milliards MGA avec cumul YTD à partir de aggregated_time, et produire une lecture de période adaptée au COMEX.
+  tokens:
+  - bank_trend_json
+  - latest_month
+  - pnb_month
+  - encours_month
+  - trend_narrative
+  status: live
+  depends_on: []
+  cte_ref: comex_report__bank_trend_chart
+- id: bank_network_chart
+  kind: scalar
+  goal: Analyser la performance du réseau bancaire via aggregated_agency et aggregated_manager. Retourner le top agences, le top gestionnaires, le PNB associé et le JSON nécessaire aux graphiques.
+  tokens:
+  - bank_network_json
+  - top_agency_name
+  - top_agency_pnb
+  - top_manager_name
+  - top_manager_pnb
+  status: live
+  depends_on: []
+  cte_ref: comex_report__bank_network_chart
+- id: bank_segment_chart
+  kind: scalar
+  goal: Segmenter le portefeuille par marché client et qualité de risque avec segmentation_indicators et les champs de qualité, afin d'identifier les poches de PNB, d'encours et les buckets sensibles.
+  tokens:
+  - bank_segment_json
+  - top_market_name
+  - top_market_pnb
+  - top_quality_bucket
+  status: live
+  depends_on: []
+  cte_ref: comex_report__bank_segment_chart
+- id: bank_risk_quality
+  kind: scalar
+  goal: Consolider les indicateurs de risque commercial et de qualité de données depuis risk_indicators, quality_controls et final_ratios. Retourner clients inactifs, sensibles, concentration top 10 et alertes qualité.
+  tokens:
+  - bank_risk_json
+  - inactive_clients
+  - sensitive_clients
+  - top10_concentration
+  - data_quality_alerts
+  status: live
+  depends_on: []
+  cte_ref: comex_report__bank_risk_quality
+metadata:
+  seeded_by: codex
+  source_catalogue: analyse_bancaire
+  cte_graph: brikz-agent/data/cte_graphs/cte-prof-analyse-bancaire.pkl

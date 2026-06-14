@@ -1,0 +1,15 @@
+declare module '@/components/ui/avatar';
+declare module '@/components/ui/badge';
+declare module '@/components/ui/button';
+declare module '@/components/ui/card';
+declare module '@/components/ui/collapsible';
+declare module '@/components/ui/dialog';
+declare module '@/components/ui/input';
+declare module '@/components/ui/scroll-area';
+declare module '@/components/ui/sheet';
+declare module '@/components/ui/skeleton';
+declare module '@/components/ui/table';
+declare module '@/components/ui/textarea';
+declare module '@/components/ui/tooltip';
+declare module '@/lib/chat_api';
+declare module '@/constants/questions';
