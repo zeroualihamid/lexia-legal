@@ -65,8 +65,8 @@ const NAV_GROUPS: {
   {
     label: 'Plateforme juridique',
     items: [
-      { id: 'documents', label: 'Documents', icon: Files },
       { id: 'legal_graphs', label: 'Graphes juridiques', icon: GitBranch },
+      { id: 'documents', label: 'Documents', icon: Files },
     ],
   },
   {
@@ -77,6 +77,7 @@ const NAV_GROUPS: {
       { id: 'skills', label: 'Compétences', icon: FlaskConical },
       { id: 'prompts', label: 'Invites', icon: FileText },
       { id: 'cte', label: 'Graphe CTE', icon: Network },
+      { id: 'legal_graphs', label: 'Graphes juridiques', icon: GitBranch },
       { id: 'conversations', label: 'Conversations', icon: MessagesSquare },
     ],
   },
@@ -101,7 +102,7 @@ export default function AdminLayout({
   isDarkMode: boolean;
   toggleTheme: () => void;
 }) {
-  const [section, setSection] = useState<Section>('documents');
+  const [section, setSection] = useState<Section>('legal_graphs');
   const [collapsed, setCollapsed] = useState(false);
   const { keycloak, logout: clearAuth } = useAuthStore();
 

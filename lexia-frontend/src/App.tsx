@@ -20,6 +20,7 @@ import { AgentPage } from './apps/admin/agent/AgentPage'
 import { AnalyticsPage } from './apps/admin/analytics/AnalyticsPage'
 import { UsersPage } from './apps/admin/users/UsersPage'
 import { JudgmentAnalysisPage } from './apps/admin/judgment-analysis/JudgmentAnalysisPage'
+import { LegalGraphsPage } from './apps/admin/legal-graphs/LegalGraphsPage'
 import { DARK, GOLD } from './shared/constants'
 import { APP_BASE, appPath } from './shared/basePath'
 import { AdminLoginPage } from './apps/admin/AdminLoginPage'
@@ -202,13 +203,21 @@ export default function App() {
         algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
           colorPrimary: GOLD,
-          colorBgBase: 'var(--color-bg-base)',
-          colorBgContainer: 'var(--color-bg-card)',
-          colorBgElevated: 'var(--color-bg-elevated)',
-          colorBorder: 'var(--color-border)',
-          colorBorderSecondary: 'var(--color-border-subtle)',
-          colorText: 'var(--color-text-primary)',
-          colorTextSecondary: 'var(--color-text-secondary)',
+          // These tokens MUST be real, parseable colors — NOT `var(--…)` strings.
+          // Ant Design runs color math on them (e.g. Tag's defaultBg does
+          // `FastColor(colorFillQuaternary).onBackground(colorBgContainer)`, Segmented's
+          // track derives from colorBgBase). A CSS-variable string can't be parsed, so
+          // that math falls back to black → black-on-black default Tags / Segmented track.
+          // Values mirror the --color-* vars in index.css for each theme; ConfigProvider
+          // re-renders on theme toggle (isDark), so they stay in sync.
+          colorBgBase: isDark ? '#060d18' : '#f5f6f8',
+          colorTextBase: isDark ? '#ffffff' : '#000000',
+          colorBgContainer: isDark ? '#0d1b2e' : '#ffffff',
+          colorBgElevated: isDark ? '#0f2040' : '#ffffff',
+          colorBorder: isDark ? 'rgba(201, 168, 76, 0.2)' : 'rgba(201, 168, 76, 0.35)',
+          colorBorderSecondary: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+          colorText: isDark ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)',
+          colorTextSecondary: isDark ? 'rgba(255, 255, 255, 0.55)' : 'rgba(0, 0, 0, 0.6)',
           borderRadius: 8,
           fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
         },
@@ -263,6 +272,7 @@ export default function App() {
               <Route path="scraper" element={<ScraperPage />} />
               <Route path="agent" element={<AgentPage />} />
               <Route path="judgment-analysis" element={<JudgmentAnalysisPage />} />
+              <Route path="legal-graphs" element={<LegalGraphsPage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="analytics" element={<AnalyticsPage />} />
             </Route>

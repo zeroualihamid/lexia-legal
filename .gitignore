@@ -3,13 +3,16 @@
 **/dist/
 **/build/
 **/out/
+**/dist-ssr/
 coverage/
 *.tsbuildinfo
 
-# ─── Secrets & env (keep .env*.example tracked) ───────────────
+# ─── Secrets & env (keep *.example tracked) ─────────────────
 .env
 .env.*
 !.env.example
+!.env.template
+!.env.production
 
 # ─── Logs & runtime ──────────────────────────────────────────
 **/logs/
@@ -18,6 +21,7 @@ npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
 .pnpm-store/
 
 # ─── OS / editor ─────────────────────────────────────────────
@@ -27,13 +31,43 @@ Thumbs.db
 *.swo
 *~
 .idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
 *.orig
 
-# ─── SSL / credentials (often mounted locally; keep out of Git) ─
+# ─── Local AI / agent tooling (not app source) ───────────────
+.agents/
+skills-lock.json
+
+# ─── Backups & local overrides ───────────────────────────────
+*.bak
+.railwayignore.bak
+
+# ─── Python (lexia-agent and scripts) ────────────────────────
+**/__pycache__/
+**/*.py[cod]
+**/*.pyo
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.venv/
+**/venv/
+**/*.egg-info/
+**/.eggs/
+uv.lock
+
+# ─── SSL / credentials ───────────────────────────────────────
 infra/nginx/certs/*.pem
 infra/nginx/certs/*.key
+*.pem
+*.key
+!infra/nginx/certs/.gitkeep
 
-# ─── Puppeteer / browser cache (if used locally) ───────────────
+# ─── Puppeteer / browser cache ───────────────────────────────
 .cache/
 .puppeteer/
 
