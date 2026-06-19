@@ -232,6 +232,54 @@ body {
   direction: rtl;
 }
 
+.user-layout-mobile-nav-btn,
+.user-layout-mobile-history-btn {
+  display: none !important;
+}
+
+.user-layout-mobile-drawer .ant-menu .anticon,
+.user-layout-sider .ant-menu .anticon {
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-layout-mobile-drawer .ant-menu-item .anticon,
+.user-layout-mobile-drawer .ant-menu-submenu-title .anticon,
+.user-layout-sider .ant-menu-item .anticon,
+.user-layout-sider .ant-menu-submenu-title .anticon {
+  min-width: 16px;
+}
+
+@media (max-width: 820px) {
+  .primary-nav {
+    display: none !important;
+  }
+
+  .user-layout-sider {
+    display: none !important;
+  }
+
+  .user-layout-main {
+    margin-right: 0 !important;
+  }
+
+  .user-layout-collapse-btn {
+    display: none !important;
+  }
+
+  .user-layout-mobile-nav-btn {
+    display: inline-flex !important;
+  }
+}
+
+@media (min-width: 821px) {
+  .user-layout-mobile-history-btn {
+    display: none !important;
+  }
+}
+
 /* Collection color pills */
 .collection-tag {
   display: inline-flex;
@@ -300,4 +348,82 @@ body {
   .message-assistant {
     max-width: 90%;
   }
+}
+
+/* French admin login — force LTR over global html { direction: rtl } */
+.admin-login-page {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+.admin-login-page .ant-form-item-label > label {
+  justify-content: flex-start !important;
+  text-align: left !important;
+  width: 100%;
+}
+
+.admin-login-page .ant-input,
+.admin-login-page .ant-input-affix-wrapper,
+.admin-login-page .ant-input-password {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+.admin-login-page .ant-input-affix-wrapper .ant-input {
+  text-align: left !important;
+}
+
+.admin-login-page .ant-alert {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+/* French admin panel — LTR (default locale: fr) */
+.admin-panel-ltr,
+.admin-panel-ltr .ant-layout,
+.admin-panel-ltr .ant-menu,
+.admin-panel-ltr .ant-table,
+.admin-panel-ltr .ant-card,
+.admin-panel-ltr .ant-tabs,
+.admin-panel-ltr .ant-form {
+  direction: ltr;
+  text-align: left;
+}
+
+.admin-panel-ltr .ant-form-item-label > label {
+  justify-content: flex-start !important;
+}
+
+.admin-panel-ltr .ant-menu-item {
+  text-align: left !important;
+}
+
+.admin-panel-ltr .ant-table-thead > tr > th,
+.admin-panel-ltr .ant-table-tbody > tr > td {
+  text-align: left !important;
+}
+
+/* Arabic admin panel — RTL */
+.admin-panel-rtl,
+.admin-panel-rtl .ant-layout,
+.admin-panel-rtl .ant-menu,
+.admin-panel-rtl .ant-table,
+.admin-panel-rtl .ant-card,
+.admin-panel-rtl .ant-tabs,
+.admin-panel-rtl .ant-form {
+  direction: rtl;
+  text-align: right;
+}
+
+.admin-panel-rtl .ant-form-item-label > label {
+  justify-content: flex-end !important;
+}
+
+.admin-panel-rtl .ant-menu-item {
+  text-align: right !important;
+}
+
+.admin-panel-rtl .ant-table-thead > tr > th,
+.admin-panel-rtl .ant-table-tbody > tr > td {
+  text-align: right !important;
 }

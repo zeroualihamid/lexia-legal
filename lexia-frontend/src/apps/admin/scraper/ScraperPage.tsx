@@ -30,34 +30,14 @@ import apiClient from '../../../shared/api/client'
 import { CollectionTag } from '../../../shared/components/CollectionTag'
 import { GOLD, DARK_CARD, BORDER_COLOR } from '../../../shared/constants'
 import dayjs from 'dayjs'
+import { useAdminUi } from '../locale/useAdminI18n'
 
-const COLLECTION_OPTIONS = [
-  { value: 'legal_laws', label: 'القوانين التشريعية' },
-  { value: 'judgments_commercial', label: 'الأحكام التجارية' },
-  { value: 'judgments_civil', label: 'الأحكام المدنية' },
-  { value: 'judgments_admin', label: 'الأحكام الإدارية' },
-  { value: 'judgments_criminal', label: 'الأحكام الجنائية' },
-  { value: 'judgments_family', label: 'أحكام الأسرة' },
-  { value: 'judgments_social', label: 'الأحكام الاجتماعية' },
-  { value: 'judgments_real_estate', label: 'الأحكام العقارية' },
-  { value: 'judgments_constitutional', label: 'الأحكام الدستورية' },
-]
-
-const SCRAPER_TYPES = [
-  { value: 'boa', label: 'الجريدة الرسمية (BOA)' },
-  { value: 'cour_cassation', label: 'محكمة النقض' },
-  { value: 'cour_appel', label: 'محاكم الاستئناف' },
-  { value: 'tribunal', label: 'المحاكم الابتدائية' },
-  { value: 'generic_pdf', label: 'PDF عام' },
-  { value: 'api', label: 'واجهة برمجية (API)' },
-]
-
-const JOB_STATUS_CONFIG: Record<string, { color: string; label: string }> = {
-  running: { color: '#1677ff', label: 'جاري' },
-  completed: { color: '#52c41a', label: 'مكتمل' },
-  failed: { color: '#f5222d', label: 'فشل' },
-  cancelled: { color: '#8c8c8c', label: 'ملغى' },
-  pending: { color: '#fa8c16', label: 'في الانتظار' },
+const JOB_STATUS_COLORS: Record<string, string> = {
+  running: '#1677ff',
+  completed: '#52c41a',
+  failed: '#f5222d',
+  cancelled: '#8c8c8c',
+  pending: '#fa8c16',
 }
 
 const MOCK_SOURCES = [
@@ -76,11 +56,15 @@ function SourceModal({
   open,
   editSource,
   onClose,
+  ui,
 }: {
   open: boolean
   editSource: any | null
   onClose: () => void
+  ui: ReturnType<typeof useAdminUi>
 }) {
+  const { t, font, formStyle, labelStyle, titleStyle, collectionOptions } = ui
+  const scraperTypeOptions = Object.entries(t.scraper.scraperTypes).map(([value, label]) => ({ value, label }))
   const [form] = Form.useForm()
   const qc = useQueryClient()
 
@@ -101,72 +85,60 @@ function SourceModal({
       }
     },
     onSuccess: () => {
-      message.success(editSource ? 'تم تحديث المصدر' : 'تم إضافة المصدر')
+      message.success(editSource ? t.scraper.sourceUpdated : t.scraper.sourceAdded)
       qc.invalidateQueries({ queryKey: ['scraper-sources'] })
       onClose()
     },
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   return (
     <Modal
-      title={
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
-          {editSource ? 'تعديل المصدر' : 'إضافة مصدر جديد'}
-        </span>
-      }
+      title={<span style={titleStyle}>{editSource ? t.scraper.editSource : t.scraper.newSource}</span>}
       open={open}
       onCancel={onClose}
       onOk={() => form.submit()}
-      okText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>حفظ</span>}
-      cancelText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إلغاء</span>}
+      okText={<span style={{ fontFamily: font }}>{t.common.save}</span>}
+      cancelText={<span style={{ fontFamily: font }}>{t.common.cancel}</span>}
       okButtonProps={{ loading: isPending, style: { background: GOLD, borderColor: GOLD, color: '#000' } }}
       centered
       width={540}
     >
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={(v) => save(v)}
-        style={{ direction: 'rtl', marginTop: 16 }}
-      >
+      <Form form={form} layout="vertical" onFinish={(v) => save(v)} style={formStyle}>
         <Form.Item
           name="name_ar"
-          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الاسم بالعربية</span>}
-          rules={[{ required: true, message: 'مطلوب' }]}
+          label={<span style={labelStyle}>{t.scraper.nameAr}</span>}
+          rules={[{ required: true, message: t.common.required }]}
         >
-          <Input style={{ direction: 'rtl', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }} />
+          <Input style={{ direction: 'rtl', fontFamily: font }} />
         </Form.Item>
 
-        <Form.Item
-          name="name_fr"
-          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الاسم بالفرنسية</span>}
-        >
-          <Input style={{ fontFamily: "'Cairo', sans-serif" }} />
+        <Form.Item name="name_fr" label={<span style={labelStyle}>{t.scraper.nameFr}</span>}>
+          <Input style={{ fontFamily: font }} />
         </Form.Item>
 
         <Form.Item
           name="url"
-          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>رابط المصدر</span>}
-          rules={[{ required: true, message: 'مطلوب' }, { type: 'url', message: 'رابط غير صالح' }]}
+          label={<span style={labelStyle}>{t.scraper.sourceUrl}</span>}
+          rules={[{ required: true, message: t.common.required }, { type: 'url', message: t.scraper.invalidUrl }]}
         >
-          <Input style={{ fontFamily: "'Cairo', sans-serif", direction: 'ltr' }} />
+          <Input style={{ fontFamily: font, direction: 'ltr' }} />
         </Form.Item>
 
         <Form.Item
           name="scraper_type"
-          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>نوع الاستخراج</span>}
-          rules={[{ required: true, message: 'مطلوب' }]}
+          label={<span style={labelStyle}>{t.scraper.scraperType}</span>}
+          rules={[{ required: true, message: t.common.required }]}
         >
-          <Select options={SCRAPER_TYPES} style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }} />
+          <Select options={scraperTypeOptions} style={{ fontFamily: font }} />
         </Form.Item>
 
         <Form.Item
           name="collection"
-          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المجموعة</span>}
-          rules={[{ required: true, message: 'مطلوب' }]}
+          label={<span style={labelStyle}>{t.common.collection}</span>}
+          rules={[{ required: true, message: t.common.required }]}
         >
-          <Select options={COLLECTION_OPTIONS} style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }} />
+          <Select options={collectionOptions} style={{ fontFamily: font }} />
         </Form.Item>
       </Form>
     </Modal>
@@ -174,9 +146,14 @@ function SourceModal({
 }
 
 export function ScraperPage() {
+  const ui = useAdminUi()
+  const { t, font, pageStyle, tableStyle, h1Style, labelStyle, collectionLabel, numberLocale, isRtl } = ui
   const [sourceModalOpen, setSourceModalOpen] = useState(false)
   const [editSource, setEditSource] = useState<any | null>(null)
   const qc = useQueryClient()
+
+  const jobStatusLabel = (status: string) =>
+    t.scraper.jobStatus[status as keyof typeof t.scraper.jobStatus] || status
 
   const { data: sources, isLoading: sourcesLoading } = useQuery({
     queryKey: ['scraper-sources'],
@@ -208,7 +185,7 @@ export function ScraperPage() {
       await apiClient.patch(`/admin/scraper/sources/${id}`, { is_active: active })
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['scraper-sources'] }),
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   const { mutate: launchScraping, isPending: launching } = useMutation({
@@ -216,10 +193,10 @@ export function ScraperPage() {
       await apiClient.post(`/admin/scraper/sources/${sourceId}/scrape`)
     },
     onSuccess: () => {
-      message.success('تم بدء الاستخراج')
+      message.success(t.scraper.scrapeStarted)
       qc.invalidateQueries({ queryKey: ['scraper-jobs'] })
     },
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   const { mutate: cancelJob } = useMutation({
@@ -227,59 +204,65 @@ export function ScraperPage() {
       await apiClient.post(`/admin/scraper/jobs/${jobId}/cancel`)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['scraper-jobs'] }),
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   const sourcesColumns = [
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المصدر</span>,
+      title: <span style={labelStyle}>{t.common.source}</span>,
       dataIndex: 'name_ar',
       key: 'name_ar',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontWeight: 500 }}>
+        <span style={{ fontFamily: font, color: 'var(--color-text-primary)', fontWeight: 500 }}>
           {v}
         </span>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الرابط</span>,
+      title: <span style={labelStyle}>{t.common.url}</span>,
       dataIndex: 'url',
       key: 'url',
       render: (v: string) => (
-        <a href={v} target="_blank" rel="noopener noreferrer"
-          style={{ fontFamily: "'Cairo', sans-serif", color: GOLD, fontSize: 12, direction: 'ltr', display: 'inline-block' }}>
+        <a
+          href={v}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ fontFamily: font, color: GOLD, fontSize: 12, direction: 'ltr', display: 'inline-block' }}
+        >
           {v.length > 35 ? v.slice(0, 35) + '...' : v}
         </a>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المجموعة</span>,
+      title: <span style={labelStyle}>{t.common.collection}</span>,
       dataIndex: 'collection',
       key: 'collection',
-      render: (v: string) => <CollectionTag collection={v} size="small" />,
+      render: (v: string) => (
+        <CollectionTag collection={v} size="small" label={collectionLabel(v)} fontFamily={font} />
+      ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الوثائق</span>,
+      title: <span style={labelStyle}>{t.scraper.docs}</span>,
       dataIndex: 'docs_count',
       key: 'docs_count',
       render: (v: number) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}>
-          {v?.toLocaleString() || '0'}
+        <span style={{ fontFamily: font, color: 'var(--color-text-secondary)' }}>
+          {v?.toLocaleString(numberLocale) || '0'}
         </span>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>آخر استخراج</span>,
+      title: <span style={labelStyle}>{t.scraper.lastScrape}</span>,
       dataIndex: 'last_scraped_at',
       key: 'last_scraped_at',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-quaternary)', fontSize: 12 }}>
+        <span style={{ fontFamily: font, color: 'var(--color-text-quaternary)', fontSize: 12 }}>
           {v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '-'}
         </span>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>نشط</span>,
+      title: <span style={labelStyle}>{t.common.active}</span>,
       dataIndex: 'is_active',
       key: 'is_active',
       render: (v: boolean, r: any) => (
@@ -291,11 +274,11 @@ export function ScraperPage() {
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الإجراءات</span>,
+      title: <span style={labelStyle}>{t.common.actions}</span>,
       key: 'actions',
       render: (_: any, record: any) => (
         <Space>
-          <Tooltip title="بدء الاستخراج">
+          <Tooltip title={t.scraper.startScrape}>
             <Button
               type="text"
               size="small"
@@ -305,7 +288,7 @@ export function ScraperPage() {
               onClick={() => launchScraping(record.id)}
             />
           </Tooltip>
-          <Tooltip title="تعديل">
+          <Tooltip title={t.common.edit}>
             <Button
               type="text"
               size="small"
@@ -315,11 +298,11 @@ export function ScraperPage() {
             />
           </Tooltip>
           <Popconfirm
-            title={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>هل تريد حذف هذا المصدر؟</span>}
-            okText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>حذف</span>}
-            cancelText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إلغاء</span>}
+            title={<span style={{ fontFamily: font }}>{t.scraper.deleteSourceConfirm}</span>}
+            okText={<span style={{ fontFamily: font }}>{t.common.delete}</span>}
+            cancelText={<span style={{ fontFamily: font }}>{t.common.cancel}</span>}
             okButtonProps={{ danger: true }}
-            onConfirm={() => message.info('تم الحذف')}
+            onConfirm={() => message.info(t.documents.deleted)}
           >
             <Button type="text" size="small" icon={<DeleteOutlined />} danger />
           </Popconfirm>
@@ -330,72 +313,80 @@ export function ScraperPage() {
 
   const jobsColumns = [
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>النوع</span>,
+      title: <span style={labelStyle}>{t.scraper.type}</span>,
       dataIndex: 'type',
       key: 'type',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 12 }}>{v}</span>
+        <span style={{ fontFamily: font, color: 'var(--color-text-secondary)', fontSize: 12 }}>{v}</span>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المصدر</span>,
+      title: <span style={labelStyle}>{t.common.source}</span>,
       dataIndex: 'source_name_ar',
       key: 'source_name_ar',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13 }}>{v}</span>
+        <span style={{ fontFamily: font, color: 'var(--color-text-secondary)', fontSize: 13 }}>{v}</span>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الحالة</span>,
+      title: <span style={labelStyle}>{t.common.status}</span>,
       dataIndex: 'status',
       key: 'status',
       render: (v: string) => {
-        const cfg = JOB_STATUS_CONFIG[v] || { color: '#8c8c8c', label: v }
+        const color = JOB_STATUS_COLORS[v] || '#8c8c8c'
         return (
-          <Tag style={{ background: `${cfg.color}20`, border: `1px solid ${cfg.color}40`, color: cfg.color, borderRadius: 12, fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
-            {cfg.label}
+          <Tag
+            style={{
+              background: `${color}20`,
+              border: `1px solid ${color}40`,
+              color,
+              borderRadius: 12,
+              fontFamily: font,
+            }}
+          >
+            {jobStatusLabel(v)}
           </Tag>
         )
       },
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>التقدم</span>,
+      title: <span style={labelStyle}>{t.scraper.progress}</span>,
       dataIndex: 'progress',
       key: 'progress',
       render: (v: number, r: any) => (
         <Progress
           percent={v}
           size="small"
-          strokeColor={JOB_STATUS_CONFIG[r.status]?.color || GOLD}
+          strokeColor={JOB_STATUS_COLORS[r.status] || GOLD}
           trailColor="var(--color-border-subtle)"
           style={{ minWidth: 100 }}
         />
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>وقت البدء</span>,
+      title: <span style={labelStyle}>{t.scraper.startedAt}</span>,
       dataIndex: 'created_at',
       key: 'created_at',
       render: (v: string) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-quaternary)', fontSize: 12 }}>
+        <span style={{ fontFamily: font, color: 'var(--color-text-quaternary)', fontSize: 12 }}>
           {dayjs(v).format('HH:mm DD/MM')}
         </span>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الإجراءات</span>,
+      title: <span style={labelStyle}>{t.common.actions}</span>,
       key: 'actions',
       render: (_: any, record: any) => (
         record.status === 'running' ? (
           <Popconfirm
-            title={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>هل تريد إلغاء هذه المهمة؟</span>}
+            title={<span style={{ fontFamily: font }}>{t.scraper.cancelJobConfirm}</span>}
             onConfirm={() => cancelJob(record.id)}
-            okText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إلغاء المهمة</span>}
-            cancelText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إغلاق</span>}
+            okText={<span style={{ fontFamily: font }}>{t.scraper.cancelJob}</span>}
+            cancelText={<span style={{ fontFamily: font }}>{t.common.close}</span>}
             okButtonProps={{ danger: true }}
           >
-            <Button type="text" size="small" icon={<StopOutlined />} danger style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
-              إيقاف
+            <Button type="text" size="small" icon={<StopOutlined />} danger style={{ fontFamily: font }}>
+              {t.scraper.stop}
             </Button>
           </Popconfirm>
         ) : null
@@ -406,7 +397,7 @@ export function ScraperPage() {
   const tabItems = [
     {
       key: 'sources',
-      label: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المصادر</span>,
+      label: <span style={{ fontFamily: font }}>{t.scraper.sources}</span>,
       children: (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -414,16 +405,16 @@ export function ScraperPage() {
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => { setEditSource(null); setSourceModalOpen(true) }}
-              style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}
+              style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: font }}
             >
-              إضافة مصدر
+              {t.scraper.addSource}
             </Button>
             <Button
               icon={<ReloadOutlined />}
               onClick={() => qc.invalidateQueries({ queryKey: ['scraper-sources'] })}
-              style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}
+              style={{ fontFamily: font }}
             >
-              تحديث
+              {t.common.refresh}
             </Button>
           </div>
           <Table
@@ -432,7 +423,7 @@ export function ScraperPage() {
             rowKey="id"
             loading={sourcesLoading}
             pagination={{ pageSize: 15 }}
-            style={{ direction: 'rtl' }}
+            style={tableStyle}
           />
         </div>
       ),
@@ -440,12 +431,12 @@ export function ScraperPage() {
     {
       key: 'jobs',
       label: (
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
-          المهام
+        <span style={{ fontFamily: font }}>
+          {t.scraper.jobs}
           {jobs?.filter((j: any) => j.status === 'running').length > 0 && (
             <Badge
               count={jobs.filter((j: any) => j.status === 'running').length}
-              style={{ marginRight: 8, background: '#1677ff' }}
+              style={{ [isRtl ? 'marginRight' : 'marginLeft']: 8, background: '#1677ff' }}
             />
           )}
         </span>
@@ -456,9 +447,9 @@ export function ScraperPage() {
             <Button
               icon={<ReloadOutlined />}
               onClick={() => qc.invalidateQueries({ queryKey: ['scraper-jobs'] })}
-              style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}
+              style={{ fontFamily: font }}
             >
-              تحديث
+              {t.common.refresh}
             </Button>
           </div>
           <Table
@@ -467,7 +458,7 @@ export function ScraperPage() {
             rowKey="id"
             loading={jobsLoading}
             pagination={{ pageSize: 20 }}
-            style={{ direction: 'rtl' }}
+            style={tableStyle}
           />
         </div>
       ),
@@ -475,20 +466,19 @@ export function ScraperPage() {
   ]
 
   return (
-    <div style={{ direction: 'rtl' }}>
+    <div style={pageStyle}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <CloudDownloadOutlined style={{ fontSize: 22, color: GOLD }} />
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
-          استخراج البيانات
-        </h1>
+        <h1 style={h1Style}>{t.scraper.title}</h1>
       </div>
 
-      <Tabs items={tabItems} style={{ direction: 'rtl' }} />
+      <Tabs items={tabItems} style={{ direction: ui.dir }} />
 
       <SourceModal
         open={sourceModalOpen}
         editSource={editSource}
         onClose={() => { setSourceModalOpen(false); setEditSource(null) }}
+        ui={ui}
       />
     </div>
   )

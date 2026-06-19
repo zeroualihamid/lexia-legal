@@ -13,5 +13,6 @@ import { AgentDocsModule } from '../agent-docs/agent-docs.module';
   ],
   controllers: [ChatUploadsController],
   providers: [ChatUploadsService],
+  exports: [ChatUploadsService],
 })
 export class ChatUploadsModule {}

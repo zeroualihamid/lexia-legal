@@ -1,0 +1,518 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_ComplexAgentHumanCollaboration" targetNamespace="https://lexia-legal.local/bpmn/complex-agent-human-collaboration" exporter="Camunda Modeler" exporterVersion="5.48.0">
+  <bpmn:process id="Process_ComplexAgentHumanCollaboration" name="Complex agent work with human control and trust" isExecutable="false">
+    <bpmn:documentation>Workflow distilled from the transcript: chat or voice can start complex work, but trust and control come from verifiability checks, decomposition, guardrails, skills, decision logs, durable artifacts, and targeted human review.</bpmn:documentation>
+    <bpmn:laneSet id="LaneSet_AgentCollaboration">
+      <bpmn:lane id="Lane_Workers" name="Sub-agents, tools, verifiers">
+        <bpmn:flowNodeRef>Task_ResearchRetrieve</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ApplySkills</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DraftWork</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RunVerification</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_FixVerifierFailures</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Uncertainty</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ContinueAfterUncertainty</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_VerificationPassed</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Orchestrator" name="Agent orchestrator">
+        <bpmn:flowNodeRef>Task_Intake</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AssessVerifiability</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DefineAutomatedVerification</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DecomposeTask</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DefineProxyChecks</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SetGuardrails</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CreatePlanArtifact</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DispatchWorkTree</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_MakeTentativeDecision</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_LogDecision</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PublishArtifact</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ApplyTargetedChanges</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_UpdatePlan</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_VerificationStrategyReady</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_CanVerify</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Human" name="Human reviewer / domain expert">
+        <bpmn:flowNodeRef>Task_ProvideObjective</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReviewPlanArtifact</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReviewArtifactDecisionLog</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_GiveTargetedFeedback</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AddDomainJudgment</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>StartEvent_Request</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_DeliverableAccepted</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Accepted</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_PlanApproved</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent_Request" name="Complex work requested" />
+    <bpmn:task id="Task_ProvideObjective" name="Submit objective, constraints, and source material" />
+    <bpmn:task id="Task_Intake" name="Capture request from chat or voice input" />
+    <bpmn:task id="Task_AssessVerifiability" name="Classify task by verifiability and risk" />
+    <bpmn:exclusiveGateway id="Gateway_CanVerify" name="Can the task be made verifiable?" />
+    <bpmn:task id="Task_DefineAutomatedVerification" name="Define tests or objective verifiers" />
+    <bpmn:task id="Task_DecomposeTask" name="Decompose hard judgment into smaller work nodes" />
+    <bpmn:task id="Task_DefineProxyChecks" name="Define proxy checks from golden examples" />
+    <bpmn:exclusiveGateway id="Gateway_VerificationStrategyReady" name="Verification strategy ready" />
+    <bpmn:task id="Task_SetGuardrails" name="Set guardrails for files, sources, tools, and actions" />
+    <bpmn:task id="Task_CreatePlanArtifact" name="Create plan and review artifact" />
+    <bpmn:task id="Task_ReviewPlanArtifact" name="Review plan artifact and align approach" />
+    <bpmn:exclusiveGateway id="Gateway_PlanApproved" name="Approach aligned?" />
+    <bpmn:task id="Task_AddDomainJudgment" name="Add domain judgment, risk profile, or negotiation stance" />
+    <bpmn:task id="Task_UpdatePlan" name="Update plan, constraints, and work tree" />
+    <bpmn:task id="Task_DispatchWorkTree" name="Run work tree and dispatch sub-agents" />
+    <bpmn:task id="Task_ResearchRetrieve" name="Research, read, search, and retrieve materials" />
+    <bpmn:task id="Task_ApplySkills" name="Apply skills and domain rules at each work node" />
+    <bpmn:task id="Task_DraftWork" name="Draft, edit, format, or analyze output" />
+    <bpmn:exclusiveGateway id="Gateway_Uncertainty" name="Uncertainty or special case?" />
+    <bpmn:task id="Task_MakeTentativeDecision" name="Choose default to stay unblocked" />
+    <bpmn:task id="Task_LogDecision" name="Log decision, rationale, and reversal point" />
+    <bpmn:exclusiveGateway id="Gateway_ContinueAfterUncertainty" name="Continue execution" />
+    <bpmn:task id="Task_RunVerification" name="Run verifiers, linting, and similarity checks" />
+    <bpmn:exclusiveGateway id="Gateway_VerificationPassed" name="Checks passed?" />
+    <bpmn:task id="Task_FixVerifierFailures" name="Fix verifier failures and rerun work node" />
+    <bpmn:task id="Task_PublishArtifact" name="Publish durable artifact for review" />
+    <bpmn:task id="Task_ReviewArtifactDecisionLog" name="Review artifact and decision log" />
+    <bpmn:exclusiveGateway id="Gateway_DeliverableAccepted" name="Deliverable accepted?" />
+    <bpmn:task id="Task_GiveTargetedFeedback" name="Annotate clause, cell, section, or issue" />
+    <bpmn:task id="Task_ApplyTargetedChanges" name="Apply targeted change without rewriting unrelated work" />
+    <bpmn:endEvent id="EndEvent_Accepted" name="Final deliverable accepted" />
+    <bpmn:dataObject id="DataObject_DecisionLog" name="Decision log" />
+    <bpmn:dataObjectReference id="DataObjectReference_DecisionLog" name="Decision log" dataObjectRef="DataObject_DecisionLog" />
+    <bpmn:dataObject id="DataObject_DurableArtifact" name="Durable artifact" />
+    <bpmn:dataObjectReference id="DataObjectReference_DurableArtifact" name="Document or tabular review" dataObjectRef="DataObject_DurableArtifact" />
+    <bpmn:sequenceFlow id="Flow_RequestToObjective" sourceRef="StartEvent_Request" targetRef="Task_ProvideObjective" />
+    <bpmn:sequenceFlow id="Flow_ObjectiveToIntake" sourceRef="Task_ProvideObjective" targetRef="Task_Intake" />
+    <bpmn:sequenceFlow id="Flow_IntakeToAssess" sourceRef="Task_Intake" targetRef="Task_AssessVerifiability" />
+    <bpmn:sequenceFlow id="Flow_AssessToCanVerify" sourceRef="Task_AssessVerifiability" targetRef="Gateway_CanVerify" />
+    <bpmn:sequenceFlow id="Flow_VerifiablePath" name="Easy to verify" sourceRef="Gateway_CanVerify" targetRef="Task_DefineAutomatedVerification" />
+    <bpmn:sequenceFlow id="Flow_HardToVerifyPath" name="Hard to verify" sourceRef="Gateway_CanVerify" targetRef="Task_DecomposeTask" />
+    <bpmn:sequenceFlow id="Flow_VerifierToStrategy" sourceRef="Task_DefineAutomatedVerification" targetRef="Gateway_VerificationStrategyReady" />
+    <bpmn:sequenceFlow id="Flow_DecomposeToProxy" sourceRef="Task_DecomposeTask" targetRef="Task_DefineProxyChecks" />
+    <bpmn:sequenceFlow id="Flow_ProxyToStrategy" sourceRef="Task_DefineProxyChecks" targetRef="Gateway_VerificationStrategyReady" />
+    <bpmn:sequenceFlow id="Flow_StrategyToGuardrails" sourceRef="Gateway_VerificationStrategyReady" targetRef="Task_SetGuardrails">
+      <bpmn:extensionElements>
+        <camunda:executionListener class="" event="take" />
+      </bpmn:extensionElements>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_GuardrailsToPlan" sourceRef="Task_SetGuardrails" targetRef="Task_CreatePlanArtifact" />
+    <bpmn:sequenceFlow id="Flow_PlanToReview" sourceRef="Task_CreatePlanArtifact" targetRef="Task_ReviewPlanArtifact" />
+    <bpmn:sequenceFlow id="Flow_ReviewToApprovedGateway" sourceRef="Task_ReviewPlanArtifact" targetRef="Gateway_PlanApproved" />
+    <bpmn:sequenceFlow id="Flow_PlanRejected" name="Needs steering" sourceRef="Gateway_PlanApproved" targetRef="Task_AddDomainJudgment" />
+    <bpmn:sequenceFlow id="Flow_JudgmentToUpdate" sourceRef="Task_AddDomainJudgment" targetRef="Task_UpdatePlan" />
+    <bpmn:sequenceFlow id="Flow_UpdateToReview" sourceRef="Task_UpdatePlan" targetRef="Task_ReviewPlanArtifact" />
+    <bpmn:sequenceFlow id="Flow_PlanApproved" name="Aligned" sourceRef="Gateway_PlanApproved" targetRef="Task_DispatchWorkTree" />
+    <bpmn:sequenceFlow id="Flow_DispatchToResearch" sourceRef="Task_DispatchWorkTree" targetRef="Task_ResearchRetrieve" />
+    <bpmn:sequenceFlow id="Flow_ResearchToSkills" sourceRef="Task_ResearchRetrieve" targetRef="Task_ApplySkills" />
+    <bpmn:sequenceFlow id="Flow_SkillsToDraft" sourceRef="Task_ApplySkills" targetRef="Task_DraftWork" />
+    <bpmn:sequenceFlow id="Flow_DraftToUncertainty" sourceRef="Task_DraftWork" targetRef="Gateway_Uncertainty" />
+    <bpmn:sequenceFlow id="Flow_UncertaintyYes" name="Yes" sourceRef="Gateway_Uncertainty" targetRef="Task_MakeTentativeDecision" />
+    <bpmn:sequenceFlow id="Flow_TentativeToLog" sourceRef="Task_MakeTentativeDecision" targetRef="Task_LogDecision" />
+    <bpmn:sequenceFlow id="Flow_LogToContinue" sourceRef="Task_LogDecision" targetRef="Gateway_ContinueAfterUncertainty" />
+    <bpmn:sequenceFlow id="Flow_UncertaintyNo" name="No" sourceRef="Gateway_Uncertainty" targetRef="Gateway_ContinueAfterUncertainty" />
+    <bpmn:sequenceFlow id="Flow_ContinueToVerification" sourceRef="Gateway_ContinueAfterUncertainty" targetRef="Task_RunVerification" />
+    <bpmn:sequenceFlow id="Flow_VerificationToGateway" sourceRef="Task_RunVerification" targetRef="Gateway_VerificationPassed" />
+    <bpmn:sequenceFlow id="Flow_ChecksFailed" name="Failed" sourceRef="Gateway_VerificationPassed" targetRef="Task_FixVerifierFailures" />
+    <bpmn:sequenceFlow id="Flow_FixToDispatch" sourceRef="Task_FixVerifierFailures" targetRef="Task_DispatchWorkTree" />
+    <bpmn:sequenceFlow id="Flow_ChecksPassed" name="Passed" sourceRef="Gateway_VerificationPassed" targetRef="Task_PublishArtifact" />
+    <bpmn:sequenceFlow id="Flow_PublishToReview" sourceRef="Task_PublishArtifact" targetRef="Task_ReviewArtifactDecisionLog" />
+    <bpmn:sequenceFlow id="Flow_ReviewToAcceptance" sourceRef="Task_ReviewArtifactDecisionLog" targetRef="Gateway_DeliverableAccepted" />
+    <bpmn:sequenceFlow id="Flow_DeliverableNeedsChanges" name="Needs targeted change" sourceRef="Gateway_DeliverableAccepted" targetRef="Task_GiveTargetedFeedback" />
+    <bpmn:sequenceFlow id="Flow_FeedbackToTargetedChange" sourceRef="Task_GiveTargetedFeedback" targetRef="Task_ApplyTargetedChanges" />
+    <bpmn:sequenceFlow id="Flow_TargetedChangeToVerification" sourceRef="Task_ApplyTargetedChanges" targetRef="Task_RunVerification" />
+    <bpmn:sequenceFlow id="Flow_DeliverableAccepted" name="Accepted" sourceRef="Gateway_DeliverableAccepted" targetRef="EndEvent_Accepted" />
+    <bpmn:textAnnotation id="TextAnnotation_HighBandwidth">
+      <bpmn:text>Use chat for flexible input; use durable artifacts for high-bandwidth collaboration.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_Guardrails">
+      <bpmn:text>Guardrails raise trust by limiting reads, edits, searches, tools, and side effects.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_GuardrailsNote" sourceRef="Task_SetGuardrails" targetRef="TextAnnotation_Guardrails" />
+    <bpmn:association id="Association_HighBandwidthNote" sourceRef="TextAnnotation_HighBandwidth" targetRef="Task_ReviewPlanArtifact" />
+    <bpmn:association id="Association_LogDecision" sourceRef="Task_LogDecision" targetRef="DataObjectReference_DecisionLog" />
+    <bpmn:association id="Association_DecisionLogReview" sourceRef="DataObjectReference_DecisionLog" targetRef="Task_ReviewArtifactDecisionLog" />
+    <bpmn:association id="Association_PublishArtifact" sourceRef="Task_PublishArtifact" targetRef="DataObjectReference_DurableArtifact" />
+    <bpmn:association id="Association_ArtifactReview" sourceRef="DataObjectReference_DurableArtifact" targetRef="Task_ReviewArtifactDecisionLog" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_ComplexAgentHumanCollaboration">
+    <bpmndi:BPMNPlane id="BPMNPlane_ComplexAgentHumanCollaboration" bpmnElement="Process_ComplexAgentHumanCollaboration">
+      <bpmndi:BPMNShape id="Lane_Workers_di" bpmnElement="Lane_Workers" isHorizontal="true">
+        <dc:Bounds x="120" y="590" width="5300" height="220" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Orchestrator_di" bpmnElement="Lane_Orchestrator" isHorizontal="true">
+        <dc:Bounds x="120" y="330" width="5300" height="260" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Human_di" bpmnElement="Lane_Human" isHorizontal="true">
+        <dc:Bounds x="120" y="140" width="5300" height="190" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_Request_di" bpmnElement="StartEvent_Request">
+        <dc:Bounds x="180" y="217" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="163" y="253" width="70" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ProvideObjective_di" bpmnElement="Task_ProvideObjective">
+        <dc:Bounds x="250" y="195" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Intake_di" bpmnElement="Task_Intake">
+        <dc:Bounds x="470" y="415" width="170" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AssessVerifiability_di" bpmnElement="Task_AssessVerifiability">
+        <dc:Bounds x="700" y="415" width="180" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_CanVerify_di" bpmnElement="Gateway_CanVerify" isMarkerVisible="true">
+        <dc:Bounds x="940" y="430" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="909" y="413" width="81" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DefineAutomatedVerification_di" bpmnElement="Task_DefineAutomatedVerification">
+        <dc:Bounds x="1060" y="365" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DecomposeTask_di" bpmnElement="Task_DecomposeTask">
+        <dc:Bounds x="1060" y="485" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DefineProxyChecks_di" bpmnElement="Task_DefineProxyChecks">
+        <dc:Bounds x="1310" y="485" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_VerificationStrategyReady_di" bpmnElement="Gateway_VerificationStrategyReady" isMarkerVisible="true">
+        <dc:Bounds x="1560" y="430" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1550" y="480" width="70" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SetGuardrails_di" bpmnElement="Task_SetGuardrails">
+        <dc:Bounds x="1670" y="415" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CreatePlanArtifact_di" bpmnElement="Task_CreatePlanArtifact">
+        <dc:Bounds x="1920" y="415" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReviewPlanArtifact_di" bpmnElement="Task_ReviewPlanArtifact">
+        <dc:Bounds x="1920" y="195" width="190" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_PlanApproved_di" bpmnElement="Gateway_PlanApproved" isMarkerVisible="true">
+        <dc:Bounds x="2180" y="210" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2181" y="172.5" width="48" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DispatchWorkTree_di" bpmnElement="Task_DispatchWorkTree">
+        <dc:Bounds x="2560" y="415" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ResearchRetrieve_di" bpmnElement="Task_ResearchRetrieve">
+        <dc:Bounds x="2810" y="650" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ApplySkills_di" bpmnElement="Task_ApplySkills">
+        <dc:Bounds x="3050" y="650" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DraftWork_di" bpmnElement="Task_DraftWork">
+        <dc:Bounds x="3290" y="650" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Uncertainty_di" bpmnElement="Gateway_Uncertainty" isMarkerVisible="true">
+        <dc:Bounds x="3530" y="665" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3521" y="715" width="69" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_MakeTentativeDecision_di" bpmnElement="Task_MakeTentativeDecision">
+        <dc:Bounds x="3630" y="415" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_LogDecision_di" bpmnElement="Task_LogDecision">
+        <dc:Bounds x="3860" y="415" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ContinueAfterUncertainty_di" bpmnElement="Gateway_ContinueAfterUncertainty" isMarkerVisible="true">
+        <dc:Bounds x="4110" y="665" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4111" y="715" width="48" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RunVerification_di" bpmnElement="Task_RunVerification">
+        <dc:Bounds x="4210" y="650" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_VerificationPassed_di" bpmnElement="Gateway_VerificationPassed" isMarkerVisible="true">
+        <dc:Bounds x="4450" y="665" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4434" y="715" width="82" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_FixVerifierFailures_di" bpmnElement="Task_FixVerifierFailures">
+        <dc:Bounds x="4560" y="650" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PublishArtifact_di" bpmnElement="Task_PublishArtifact">
+        <dc:Bounds x="4560" y="415" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReviewArtifactDecisionLog_di" bpmnElement="Task_ReviewArtifactDecisionLog">
+        <dc:Bounds x="4560" y="195" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_DeliverableAccepted_di" bpmnElement="Gateway_DeliverableAccepted" isMarkerVisible="true">
+        <dc:Bounds x="4800" y="210" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4797" y="260" width="56" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_GiveTargetedFeedback_di" bpmnElement="Task_GiveTargetedFeedback">
+        <dc:Bounds x="4900" y="250" width="190" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ApplyTargetedChanges_di" bpmnElement="Task_ApplyTargetedChanges">
+        <dc:Bounds x="5130" y="415" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Accepted_di" bpmnElement="EndEvent_Accepted">
+        <dc:Bounds x="4910" y="217" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4888" y="253" width="81" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataObjectReference_DurableArtifact_di" bpmnElement="DataObjectReference_DurableArtifact">
+        <dc:Bounds x="4800" y="415" width="90" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4811" y="475" width="69" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AddDomainJudgment_di" bpmnElement="Task_AddDomainJudgment">
+        <dc:Bounds x="2345" y="195" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_UpdatePlan_di" bpmnElement="Task_UpdatePlan">
+        <dc:Bounds x="2300" y="470" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataObjectReference_DecisionLog_di" bpmnElement="DataObjectReference_DecisionLog">
+        <dc:Bounds x="3920" y="520" width="80" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3930" y="580" width="60" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_LogDecision_di" bpmnElement="Association_LogDecision">
+        <di:waypoint x="3955" y="495" />
+        <di:waypoint x="3960" y="520" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_DecisionLogReview_di" bpmnElement="Association_DecisionLogReview">
+        <di:waypoint x="4000" y="550" />
+        <di:waypoint x="4630" y="550" />
+        <di:waypoint x="4630" y="275" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="TextAnnotation_HighBandwidth_di" bpmnElement="TextAnnotation_HighBandwidth">
+        <dc:Bounds x="1900" y="80" width="300" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_Guardrails_di" bpmnElement="TextAnnotation_Guardrails">
+        <dc:Bounds x="1645" y="515" width="270" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_RequestToObjective_di" bpmnElement="Flow_RequestToObjective">
+        <di:waypoint x="216" y="235" />
+        <di:waypoint x="250" y="235" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ObjectiveToIntake_di" bpmnElement="Flow_ObjectiveToIntake">
+        <di:waypoint x="410" y="235" />
+        <di:waypoint x="440" y="235" />
+        <di:waypoint x="440" y="455" />
+        <di:waypoint x="470" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_IntakeToAssess_di" bpmnElement="Flow_IntakeToAssess">
+        <di:waypoint x="640" y="455" />
+        <di:waypoint x="700" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AssessToCanVerify_di" bpmnElement="Flow_AssessToCanVerify">
+        <di:waypoint x="880" y="455" />
+        <di:waypoint x="940" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_VerifiablePath_di" bpmnElement="Flow_VerifiablePath">
+        <di:waypoint x="990" y="455" />
+        <di:waypoint x="1020" y="455" />
+        <di:waypoint x="1020" y="405" />
+        <di:waypoint x="1060" y="405" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1002" y="420" width="67" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HardToVerifyPath_di" bpmnElement="Flow_HardToVerifyPath">
+        <di:waypoint x="965" y="480" />
+        <di:waypoint x="965" y="525" />
+        <di:waypoint x="1060" y="525" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="947" y="493" width="66" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_VerifierToStrategy_di" bpmnElement="Flow_VerifierToStrategy">
+        <di:waypoint x="1250" y="405" />
+        <di:waypoint x="1535" y="405" />
+        <di:waypoint x="1535" y="455" />
+        <di:waypoint x="1560" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DecomposeToProxy_di" bpmnElement="Flow_DecomposeToProxy">
+        <di:waypoint x="1250" y="525" />
+        <di:waypoint x="1310" y="525" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ProxyToStrategy_di" bpmnElement="Flow_ProxyToStrategy">
+        <di:waypoint x="1500" y="525" />
+        <di:waypoint x="1535" y="525" />
+        <di:waypoint x="1535" y="455" />
+        <di:waypoint x="1560" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_StrategyToGuardrails_di" bpmnElement="Flow_StrategyToGuardrails">
+        <di:waypoint x="1610" y="455" />
+        <di:waypoint x="1670" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_GuardrailsToPlan_di" bpmnElement="Flow_GuardrailsToPlan">
+        <di:waypoint x="1860" y="455" />
+        <di:waypoint x="1920" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PlanToReview_di" bpmnElement="Flow_PlanToReview">
+        <di:waypoint x="2015" y="415" />
+        <di:waypoint x="2015" y="275" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ReviewToApprovedGateway_di" bpmnElement="Flow_ReviewToApprovedGateway">
+        <di:waypoint x="2110" y="235" />
+        <di:waypoint x="2180" y="235" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PlanRejected_di" bpmnElement="Flow_PlanRejected">
+        <di:waypoint x="2230" y="235" />
+        <di:waypoint x="2345" y="235" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2251" y="210" width="74" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_JudgmentToUpdate_di" bpmnElement="Flow_JudgmentToUpdate">
+        <di:waypoint x="2440" y="275" />
+        <di:waypoint x="2440" y="345" />
+        <di:waypoint x="2395" y="345" />
+        <di:waypoint x="2395" y="470" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_UpdateToReview_di" bpmnElement="Flow_UpdateToReview">
+        <di:waypoint x="2490" y="510" />
+        <di:waypoint x="2520" y="510" />
+        <di:waypoint x="2520" y="305" />
+        <di:waypoint x="2015" y="305" />
+        <di:waypoint x="2015" y="275" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PlanApproved_di" bpmnElement="Flow_PlanApproved">
+        <di:waypoint x="2205" y="260" />
+        <di:waypoint x="2205" y="455" />
+        <di:waypoint x="2560" y="455" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2221" y="348" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DispatchToResearch_di" bpmnElement="Flow_DispatchToResearch">
+        <di:waypoint x="2750" y="455" />
+        <di:waypoint x="2780" y="455" />
+        <di:waypoint x="2780" y="690" />
+        <di:waypoint x="2810" y="690" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ResearchToSkills_di" bpmnElement="Flow_ResearchToSkills">
+        <di:waypoint x="3000" y="690" />
+        <di:waypoint x="3050" y="690" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SkillsToDraft_di" bpmnElement="Flow_SkillsToDraft">
+        <di:waypoint x="3240" y="690" />
+        <di:waypoint x="3290" y="690" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DraftToUncertainty_di" bpmnElement="Flow_DraftToUncertainty">
+        <di:waypoint x="3480" y="690" />
+        <di:waypoint x="3530" y="690" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_UncertaintyYes_di" bpmnElement="Flow_UncertaintyYes">
+        <di:waypoint x="3555" y="665" />
+        <di:waypoint x="3555" y="455" />
+        <di:waypoint x="3630" y="455" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3561" y="550" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TentativeToLog_di" bpmnElement="Flow_TentativeToLog">
+        <di:waypoint x="3820" y="455" />
+        <di:waypoint x="3860" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_LogToContinue_di" bpmnElement="Flow_LogToContinue">
+        <di:waypoint x="4050" y="455" />
+        <di:waypoint x="4085" y="455" />
+        <di:waypoint x="4085" y="690" />
+        <di:waypoint x="4110" y="690" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_UncertaintyNo_di" bpmnElement="Flow_UncertaintyNo">
+        <di:waypoint x="3580" y="690" />
+        <di:waypoint x="4110" y="690" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3838" y="665" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ContinueToVerification_di" bpmnElement="Flow_ContinueToVerification">
+        <di:waypoint x="4160" y="690" />
+        <di:waypoint x="4210" y="690" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_VerificationToGateway_di" bpmnElement="Flow_VerificationToGateway">
+        <di:waypoint x="4400" y="690" />
+        <di:waypoint x="4450" y="690" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ChecksFailed_di" bpmnElement="Flow_ChecksFailed">
+        <di:waypoint x="4500" y="690" />
+        <di:waypoint x="4560" y="690" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4515" y="665" width="30" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_FixToDispatch_di" bpmnElement="Flow_FixToDispatch">
+        <di:waypoint x="4655" y="730" />
+        <di:waypoint x="4655" y="785" />
+        <di:waypoint x="2655" y="785" />
+        <di:waypoint x="2655" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ChecksPassed_di" bpmnElement="Flow_ChecksPassed">
+        <di:waypoint x="4475" y="665" />
+        <di:waypoint x="4475" y="455" />
+        <di:waypoint x="4560" y="455" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4472" y="550" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PublishToReview_di" bpmnElement="Flow_PublishToReview">
+        <di:waypoint x="4655" y="415" />
+        <di:waypoint x="4655" y="275" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ReviewToAcceptance_di" bpmnElement="Flow_ReviewToAcceptance">
+        <di:waypoint x="4750" y="235" />
+        <di:waypoint x="4800" y="235" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DeliverableNeedsChanges_di" bpmnElement="Flow_DeliverableNeedsChanges">
+        <di:waypoint x="4825" y="260" />
+        <di:waypoint x="4825" y="285" />
+        <di:waypoint x="4900" y="285" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4802" y="263" width="76" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_FeedbackToTargetedChange_di" bpmnElement="Flow_FeedbackToTargetedChange">
+        <di:waypoint x="5090" y="285" />
+        <di:waypoint x="5110" y="285" />
+        <di:waypoint x="5110" y="455" />
+        <di:waypoint x="5130" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TargetedChangeToVerification_di" bpmnElement="Flow_TargetedChangeToVerification">
+        <di:waypoint x="5225" y="495" />
+        <di:waypoint x="5225" y="785" />
+        <di:waypoint x="4305" y="785" />
+        <di:waypoint x="4305" y="730" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DeliverableAccepted_di" bpmnElement="Flow_DeliverableAccepted">
+        <di:waypoint x="4850" y="235" />
+        <di:waypoint x="4910" y="235" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4857" y="210" width="46" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_GuardrailsNote_di" bpmnElement="Association_GuardrailsNote">
+        <di:waypoint x="1765" y="495" />
+        <di:waypoint x="1765" y="515" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_HighBandwidthNote_di" bpmnElement="Association_HighBandwidthNote">
+        <di:waypoint x="2050" y="140" />
+        <di:waypoint x="2015" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_PublishArtifact_di" bpmnElement="Association_PublishArtifact">
+        <di:waypoint x="4750" y="455" />
+        <di:waypoint x="4800" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_ArtifactReview_di" bpmnElement="Association_ArtifactReview">
+        <di:waypoint x="4845" y="415" />
+        <di:waypoint x="4845" y="305" />
+        <di:waypoint x="4655" y="305" />
+        <di:waypoint x="4655" y="275" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

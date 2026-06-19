@@ -3,7 +3,17 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { GOLD, BORDER_SUBTLE } from '../../../shared/constants'
 
-export function AnalysisViewer({ markdown }: { markdown: string }) {
+export function AnalysisViewer({
+  markdown,
+  fillHeight = false,
+}: {
+  markdown: string
+  fillHeight?: boolean
+}) {
+  const shellStyle: React.CSSProperties = fillHeight
+    ? { flex: 1, minHeight: 0, height: '100%', maxHeight: 'none' }
+    : { maxHeight: '60vh' }
+
   if (!markdown) {
     return (
       <div
@@ -12,6 +22,7 @@ export function AnalysisViewer({ markdown }: { markdown: string }) {
           fontFamily: "'Cairo', sans-serif",
           fontSize: 13,
           padding: 16,
+          ...shellStyle,
         }}
       >
         En attente du résultat…
@@ -31,8 +42,8 @@ export function AnalysisViewer({ markdown }: { markdown: string }) {
         fontFamily: "'Cairo', system-ui, sans-serif",
         fontSize: 14,
         lineHeight: 1.7,
-        maxHeight: '60vh',
         overflow: 'auto',
+        ...shellStyle,
       }}
       className="judgment-analysis-md"
     >

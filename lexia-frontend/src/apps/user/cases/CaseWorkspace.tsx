@@ -12,13 +12,11 @@ import {
   Drawer,
   Popconfirm,
   Tooltip,
-  Progress,
   App as AntApp,
 } from 'antd'
 import type { UploadProps } from 'antd'
 import {
   ArrowRightOutlined,
-  InboxOutlined,
   EyeOutlined,
   DeleteOutlined,
   SearchOutlined,
@@ -26,6 +24,9 @@ import {
   SendOutlined,
   LoadingOutlined,
   FileTextOutlined,
+  UploadOutlined,
+  ReadOutlined,
+  EditOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import apiClient from '../../../shared/api/client'
@@ -34,11 +35,21 @@ import {
   useCase,
   useCaseDocuments,
   useDeleteCaseDocument,
+  useUpdateCaseDocumentType,
+  useSummarizeJudgment,
+  useUpdateDocumentTitle,
+  suggestDocumentTitle,
   useUploadQuota,
   searchCase,
   CaseDocument,
   CaseSearchHit,
 } from '../../../shared/hooks/useCases'
+import { useDocumentJudgmentSummary } from '../../../shared/hooks/useJudgmentSummary'
+import { JudgmentSummaryDrawer } from '../../../shared/components/JudgmentSummaryDrawer'
+import {
+  RenameDocumentModal,
+  RenamableDocument,
+} from '../../../shared/components/RenameDocumentModal'
 import { useCaseChat } from '../../../shared/hooks/useCaseChat'
 import { DocumentViewer } from '../../admin/documents/DocumentViewer'
 import { MahakimPanel } from './CasesPage'
@@ -51,7 +62,6 @@ import {
   TEXT_SECONDARY,
   TEXT_TERTIARY,
   DOCUMENT_TYPE_LABELS,
-  DOCUMENT_TYPE_COLORS,
   DOCUMENT_STATUS_LABELS,
   CASE_STATUS_LABELS,
 } from '../../../shared/constants'
@@ -75,11 +85,20 @@ export function CaseWorkspace() {
   const docsQ = useCaseDocuments(id)
   const quotaQ = useUploadQuota()
   const deleteDoc = useDeleteCaseDocument(id)
+  const updateDocType = useUpdateCaseDocumentType(id)
+  const summarizeJudgment = useSummarizeJudgment(id)
+  const updateTitle = useUpdateDocumentTitle(id)
 
   const [docType, setDocType] = useState('other')
   const [uploading, setUploading] = useState(false)
   const [viewerId, setViewerId] = useState<string | null>(null)
   const [viewerName, setViewerName] = useState<string | undefined>()
+  const [summaryDocId, setSummaryDocId] = useState<string | null>(null)
+  const [summaryReload, setSummaryReload] = useState(0)
+  const summaryStream = useDocumentJudgmentSummary(summaryDocId, summaryReload)
+  const [renameDoc, setRenameDoc] = useState<RenamableDocument | null>(null)
+  const [updatingTypeId, setUpdatingTypeId] = useState<string | null>(null)
+  const [summarizingId, setSummarizingId] = useState<string | null>(null)
 
   // Per-case semantic search
   const [searchQuery, setSearchQuery] = useState('')
@@ -106,6 +125,7 @@ export function CaseWorkspace() {
         qc.invalidateQueries({ queryKey: ['case-documents', id] })
         qc.invalidateQueries({ queryKey: ['upload-quota'] })
         qc.invalidateQueries({ queryKey: ['cases'] })
+        qc.invalidateQueries({ queryKey: ['upload-tasks'] })
       } catch (err: any) {
         onError?.(err)
         message.error(err?.response?.data?.message || 'تعذّر رفع المستند')
@@ -139,6 +159,52 @@ export function CaseWorkspace() {
     }
   }
 
+  const handleTypeChange = async (docId: string, nextType: string) => {
+    setUpdatingTypeId(docId)
+    try {
+      await updateDocType.mutateAsync({ documentId: docId, documentType: nextType })
+      message.success('تم تحديث نوع المستند')
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || 'تعذّر تحديث النوع')
+    } finally {
+      setUpdatingTypeId(null)
+    }
+  }
+
+  const handleJudgmentSummary = async (row: CaseDocument) => {
+    const hasAnalysis =
+      row.summary_ready ||
+      row.analysis_status === 'completed' ||
+      row.analysis_status === 'pending' ||
+      row.analysis_status === 'running'
+
+    if (hasAnalysis) {
+      setSummaryDocId(row.id)
+      setSummaryReload((n) => n + 1)
+      return
+    }
+
+    setSummarizingId(row.id)
+    try {
+      await summarizeJudgment.mutateAsync(row.id)
+      setSummaryDocId(row.id)
+      setSummaryReload((n) => n + 1)
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || 'تعذّر بدء تلخيص الحكم')
+    } finally {
+      setSummarizingId(null)
+    }
+  }
+
+  const judgmentSummaryLabel = (row: CaseDocument) => {
+    if (row.summary_ready || row.analysis_status === 'completed') return 'عرض الملخص'
+    if (row.analysis_status === 'pending' || row.analysis_status === 'running') {
+      return 'متابعة الملخص'
+    }
+    if (row.analysis_status === 'failed') return 'إعادة التلخيص'
+    return 'تلخيص الحكم'
+  }
+
   const statusTag = (status: string) => {
     const cfg = DOCUMENT_STATUS_LABELS[status] || { label: status, color: '#8c8c8c' }
     return (
@@ -153,10 +219,19 @@ export function CaseWorkspace() {
       title: <span style={{ fontFamily: FONT }}>المستند</span>,
       dataIndex: 'title_ar',
       key: 'title',
-      render: (t: string) => (
-        <span style={{ fontFamily: FONT, color: TEXT_PRIMARY, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <FileTextOutlined style={{ color: GOLD }} />
-          {t}
+      render: (t: string, row: CaseDocument) => (
+        <span style={{ fontFamily: FONT, color: TEXT_PRIMARY, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          <FileTextOutlined style={{ color: GOLD, flexShrink: 0 }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t}</span>
+          <Tooltip title="إعادة تسمية">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              style={{ color: TEXT_TERTIARY, flexShrink: 0 }}
+              onClick={() => setRenameDoc({ id: row.id, title_ar: row.title_ar, status: row.status })}
+            />
+          </Tooltip>
         </span>
       ),
     },
@@ -164,16 +239,19 @@ export function CaseWorkspace() {
       title: <span style={{ fontFamily: FONT }}>النوع</span>,
       dataIndex: 'document_type',
       key: 'type',
-      width: 160,
-      render: (dt: string) => {
-        if (!dt) return <span style={{ color: TEXT_TERTIARY }}>—</span>
-        const color = DOCUMENT_TYPE_COLORS[dt] || '#8c8c8c'
-        return (
-          <Tag style={{ background: `${color}20`, border: `1px solid ${color}40`, color, borderRadius: 12, fontFamily: FONT }}>
-            {DOCUMENT_TYPE_LABELS[dt] || dt}
-          </Tag>
-        )
-      },
+      width: 200,
+      render: (dt: string | null, row: CaseDocument) => (
+        <Select
+          size="small"
+          value={dt || 'other'}
+          options={DOC_TYPE_OPTIONS}
+          loading={updatingTypeId === row.id}
+          disabled={row.status === 'processing' || updatingTypeId === row.id}
+          onChange={(value) => handleTypeChange(row.id, value)}
+          style={{ minWidth: 168, fontFamily: FONT }}
+          popupMatchSelectWidth={false}
+        />
+      ),
     },
     {
       title: <span style={{ fontFamily: FONT }}>الحالة</span>,
@@ -201,9 +279,29 @@ export function CaseWorkspace() {
     {
       title: <span style={{ fontFamily: FONT }}>إجراءات</span>,
       key: 'actions',
-      width: 110,
+      width: 200,
       render: (_: any, row: CaseDocument) => (
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {row.document_type === 'judgment' && row.status === 'ready' && (
+            <Tooltip title={judgmentSummaryLabel(row)}>
+              <Button
+                type="text"
+                size="small"
+                icon={
+                  summarizingId === row.id ? (
+                    <LoadingOutlined />
+                  ) : (
+                    <ReadOutlined />
+                  )
+                }
+                loading={summarizingId === row.id}
+                style={{ color: GOLD, fontFamily: FONT, fontSize: 12 }}
+                onClick={() => handleJudgmentSummary(row)}
+              >
+                {judgmentSummaryLabel(row)}
+              </Button>
+            </Tooltip>
+          )}
           <Tooltip title="عرض">
             <Button
               type="text"
@@ -243,9 +341,89 @@ export function CaseWorkspace() {
   const quota = quotaQ.data
 
   return (
-    <div style={{ padding: '20px', direction: 'rtl', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
+    <div className="case-workspace" style={{ padding: '16px 20px 24px', direction: 'rtl', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
+      <style>{`
+        .case-workspace-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 6px;
+          flex-wrap: wrap;
+        }
+        .case-workspace-meta {
+          color: ${TEXT_SECONDARY};
+          font-family: ${FONT};
+          font-size: 13px;
+          margin-bottom: 14px;
+        }
+        .case-documents-panel {
+          background: ${DARK_CARD};
+          border: 1px solid ${BORDER_COLOR};
+          border-radius: 14px;
+          overflow: hidden;
+        }
+        .case-documents-toolbar {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          padding: 12px 14px;
+          border-bottom: 1px solid ${BORDER_SUBTLE};
+          background: var(--color-bg-elevated);
+        }
+        .case-upload-bar {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex: 1;
+          min-width: 220px;
+        }
+        .case-upload-hint {
+          font-family: ${FONT};
+          font-size: 11.5px;
+          color: ${TEXT_TERTIARY};
+          white-space: nowrap;
+        }
+        .case-upload-quota {
+          font-family: ${FONT};
+          font-size: 11.5px;
+          color: ${TEXT_TERTIARY};
+          margin-inline-start: auto;
+          white-space: nowrap;
+        }
+        .case-search-row {
+          padding: 10px 14px;
+          border-bottom: 1px solid ${BORDER_SUBTLE};
+        }
+        .case-search-row .ant-input-search .ant-input {
+          font-family: ${FONT};
+        }
+        .case-search-results {
+          padding: 0 14px 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .case-search-hit {
+          background: var(--color-bg-base);
+          border: 1px solid ${BORDER_SUBTLE};
+          border-radius: 8px;
+          padding: 8px 10px;
+        }
+        .case-documents-table {
+          padding: 0;
+        }
+        .case-documents-table .ant-table {
+          background: transparent;
+        }
+        @media (max-width: 640px) {
+          .case-upload-hint { display: none; }
+          .case-upload-bar { min-width: 100%; }
+        }
+      `}</style>
+
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+      <div className="case-workspace-header">
         <Button icon={<ArrowRightOutlined />} onClick={() => navigate('/cases')} style={{ fontFamily: FONT }}>
           القضايا
         </Button>
@@ -267,87 +445,81 @@ export function CaseWorkspace() {
         </Button>
       </div>
       {(c?.client_name || c?.case_ref) && (
-        <div style={{ color: TEXT_SECONDARY, fontFamily: FONT, fontSize: 13, marginBottom: 16 }}>
+        <div className="case-workspace-meta">
           {c?.client_name && <span>الموكّل: {c.client_name}</span>}
           {c?.client_name && c?.case_ref && <span> · </span>}
           {c?.case_ref && <span>المرجع: {c.case_ref}</span>}
         </div>
       )}
 
-      {c && <div style={{ marginBottom: 20 }}><MahakimPanel c={c} /></div>}
+      {c && <div style={{ marginBottom: 14 }}><MahakimPanel c={c} /></div>}
 
-      {/* Upload */}
-      <div
-        style={{
-          background: DARK_CARD,
-          border: `1px solid ${BORDER_COLOR}`,
-          borderRadius: 12,
-          padding: 16,
-          marginBottom: 20,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: FONT, color: TEXT_SECONDARY, fontSize: 13 }}>نوع المستند:</span>
-          <Select
-            value={docType}
-            onChange={setDocType}
-            options={DOC_TYPE_OPTIONS}
-            style={{ minWidth: 200, fontFamily: FONT }}
-          />
+      {/* Documents panel: upload + search + table */}
+      <section className="case-documents-panel">
+        <div className="case-documents-toolbar">
+          <span style={{ fontFamily: FONT, color: TEXT_PRIMARY, fontWeight: 600, fontSize: 14 }}>
+            المستندات
+          </span>
+          <div className="case-upload-bar">
+            <Select
+              value={docType}
+              onChange={setDocType}
+              options={DOC_TYPE_OPTIONS}
+              size="small"
+              style={{ minWidth: 148, fontFamily: FONT }}
+            />
+            <Upload
+              name="file"
+              accept="application/pdf"
+              multiple
+              showUploadList={false}
+              customRequest={customUpload}
+              disabled={uploading}
+            >
+              <Button
+                type="primary"
+                size="small"
+                icon={uploading ? <LoadingOutlined /> : <UploadOutlined />}
+                loading={uploading}
+                style={{
+                  background: GOLD,
+                  borderColor: GOLD,
+                  color: '#000',
+                  fontWeight: 600,
+                  fontFamily: FONT,
+                }}
+              >
+                رفع PDF
+              </Button>
+            </Upload>
+            <span className="case-upload-hint">استخراج وفهرسة تلقائية</span>
+          </div>
           {quota && (
-            <span style={{ fontFamily: FONT, color: TEXT_TERTIARY, fontSize: 12, marginInlineStart: 'auto' }}>
+            <span className="case-upload-quota">
               الرفع الشهري: {quota.used}/{quota.limit}
             </span>
           )}
         </div>
-        <Upload.Dragger
-          name="file"
-          accept="application/pdf"
-          multiple
-          showUploadList={false}
-          customRequest={customUpload}
-          disabled={uploading}
-          style={{ background: 'transparent', borderColor: BORDER_SUBTLE }}
-        >
-          <p style={{ margin: 0 }}>
-            <InboxOutlined style={{ color: GOLD, fontSize: 36 }} />
-          </p>
-          <p style={{ fontFamily: FONT, color: TEXT_PRIMARY, margin: '8px 0 4px' }}>
-            اسحب ملفات PDF هنا أو انقر للرفع
-          </p>
-          <p style={{ fontFamily: FONT, color: TEXT_TERTIARY, fontSize: 12, margin: 0 }}>
-            يتم استخراج النص وفهرسته تلقائياً للبحث والمحادثة
-          </p>
-          {uploading && <Progress percent={100} status="active" showInfo={false} style={{ marginTop: 12 }} />}
-        </Upload.Dragger>
-      </div>
 
-      {/* Semantic search */}
-      <div style={{ marginBottom: 20 }}>
-        <Input.Search
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onSearch={handleSearch}
-          enterButton={<SearchOutlined />}
-          loading={searching}
-          placeholder="بحث دلالي داخل مستندات هذه القضية..."
-          style={{ fontFamily: FONT }}
-        />
+        <div className="case-search-row">
+          <Input.Search
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onSearch={handleSearch}
+            enterButton={<SearchOutlined />}
+            loading={searching}
+            size="middle"
+            placeholder="بحث دلالي داخل مستندات هذه القضية..."
+          />
+        </div>
+
         {searchResults && (
-          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="case-search-results">
             {searchResults.length === 0 ? (
-              <Empty description={<span style={{ fontFamily: FONT }}>لا نتائج</span>} />
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span style={{ fontFamily: FONT }}>لا نتائج</span>} />
             ) : (
               searchResults.map((hit, i) => (
-                <div
-                  key={`${hit.documentId}-${hit.chunkIndex}-${i}`}
-                  style={{
-                    background: DARK_CARD,
-                    border: `1px solid ${BORDER_SUBTLE}`,
-                    borderRadius: 8,
-                    padding: '10px 12px',
-                  }}
-                >
+                <div key={`${hit.documentId}-${hit.chunkIndex}-${i}`} className="case-search-hit">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <span style={{ fontFamily: FONT, color: GOLD, fontSize: 13, fontWeight: 600 }}>
                       {hit.titleAr || 'مستند'}
@@ -357,30 +529,37 @@ export function CaseWorkspace() {
                     </span>
                   </div>
                   <div style={{ fontFamily: FONT, color: TEXT_SECONDARY, fontSize: 13, lineHeight: 1.6 }}>
-                    {hit.content.slice(0, 320)}
-                    {hit.content.length > 320 ? '…' : ''}
+                    {hit.content.slice(0, 280)}
+                    {hit.content.length > 280 ? '…' : ''}
                   </div>
                 </div>
               ))
             )}
           </div>
         )}
-      </div>
 
-      {/* Documents table */}
-      <Table
-        rowKey="id"
-        loading={docsQ.isLoading}
-        dataSource={docsQ.data || []}
-        columns={columns as any}
-        pagination={false}
-        locale={{
-          emptyText: (
-            <Empty description={<span style={{ fontFamily: FONT, color: TEXT_SECONDARY }}>لا توجد مستندات بعد</span>} />
-          ),
-        }}
-        style={{ background: DARK_CARD, borderRadius: 12 }}
-      />
+        <Table
+          className="case-documents-table"
+          rowKey="id"
+          loading={docsQ.isLoading}
+          dataSource={docsQ.data || []}
+          columns={columns as any}
+          pagination={false}
+          size="small"
+          locale={{
+            emptyText: (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={
+                  <span style={{ fontFamily: FONT, color: TEXT_SECONDARY }}>
+                    لا توجد مستندات — استخدم «رفع PDF» أعلاه
+                  </span>
+                }
+              />
+            ),
+          }}
+        />
+      </section>
 
       {/* Viewer */}
       <DocumentViewer
@@ -388,6 +567,23 @@ export function CaseWorkspace() {
         filename={viewerName}
         basePath="/documents"
         onClose={() => setViewerId(null)}
+      />
+
+      <JudgmentSummaryDrawer
+        documentId={summaryDocId}
+        onClose={() => setSummaryDocId(null)}
+        stream={summaryStream}
+      />
+
+      <RenameDocumentModal
+        document={renameDoc}
+        onClose={() => setRenameDoc(null)}
+        onSave={async (documentId, titleAr) => {
+          await updateTitle.mutateAsync({ documentId, titleAr })
+          message.success('تم تحديث اسم المستند')
+          setRenameDoc(null)
+        }}
+        onSuggest={suggestDocumentTitle}
       />
 
       {/* Case chat drawer */}

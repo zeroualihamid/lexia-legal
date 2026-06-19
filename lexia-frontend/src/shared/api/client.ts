@@ -25,8 +25,10 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      const keycloak = useAuthStore.getState().keycloak
-      if (keycloak) {
+      const { token, keycloak } = useAuthStore.getState()
+      // Only redirect to Keycloak when we had a session that expired.
+      // Background 401s while logged out should not trigger a login loop.
+      if (token && keycloak) {
         keycloak.login({ redirectUri: cleanCurrentUrl() })
       }
     }

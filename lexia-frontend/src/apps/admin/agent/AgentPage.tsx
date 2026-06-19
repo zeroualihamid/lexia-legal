@@ -14,7 +14,6 @@ import {
   Space,
   message,
   Tooltip,
-  Badge,
   Radio,
   InputNumber,
 } from 'antd'
@@ -24,7 +23,6 @@ import {
   DeleteOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
-  ApiOutlined,
   ThunderboltOutlined,
   RobotOutlined,
   PlayCircleOutlined,
@@ -32,21 +30,10 @@ import {
 } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import apiClient from '../../../shared/api/client'
-import { GOLD, DARK_CARD, BORDER_COLOR, NAVY } from '../../../shared/constants'
+import { GOLD, DARK_CARD, BORDER_COLOR } from '../../../shared/constants'
+import { useAdminUi } from '../locale/useAdminI18n'
 
 const { TextArea } = Input
-
-const COLLECTION_OPTIONS = [
-  { value: 'legal_laws', label: 'القوانين التشريعية' },
-  { value: 'judgments_commercial', label: 'الأحكام التجارية' },
-  { value: 'judgments_civil', label: 'الأحكام المدنية' },
-  { value: 'judgments_admin', label: 'الأحكام الإدارية' },
-  { value: 'judgments_criminal', label: 'الأحكام الجنائية' },
-  { value: 'judgments_family', label: 'أحكام الأسرة' },
-  { value: 'judgments_social', label: 'الأحكام الاجتماعية' },
-  { value: 'judgments_real_estate', label: 'الأحكام العقارية' },
-  { value: 'judgments_constitutional', label: 'الأحكام الدستورية' },
-]
 
 const MOCK_SKILLS = [
   { id: '1', name: 'legal_qa', name_ar: 'الاستشارة القانونية', name_fr: 'Consultation Juridique', is_active: true, is_default: true, applicable_collections: ['legal_laws', 'judgments_civil'], system_prompt: 'أنت مساعد قانوني متخصص في القانون المغربي...' },
@@ -75,22 +62,29 @@ const MOCK_AGENT_CONFIG = {
   active_mcp_servers: ['1'],
 }
 
-const HEALTH_CONFIG: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
-  healthy: { color: '#52c41a', label: 'سليم', icon: <CheckCircleOutlined /> },
-  degraded: { color: '#fa8c16', label: 'متدهور', icon: <ExclamationCircleOutlined /> },
-  unhealthy: { color: '#f5222d', label: 'غير سليم', icon: <ExclamationCircleOutlined /> },
-  unknown: { color: '#8c8c8c', label: 'غير معروف', icon: <ExclamationCircleOutlined /> },
+const HEALTH_STYLE: Record<string, { color: string; icon: React.ReactNode }> = {
+  healthy: { color: '#52c41a', icon: <CheckCircleOutlined /> },
+  degraded: { color: '#fa8c16', icon: <ExclamationCircleOutlined /> },
+  unhealthy: { color: '#f5222d', icon: <ExclamationCircleOutlined /> },
+  unknown: { color: '#8c8c8c', icon: <ExclamationCircleOutlined /> },
+}
+
+function healthStatusLabel(t: ReturnType<typeof useAdminUi>['t'], status: string) {
+  return t.agent.healthStatus[status as keyof typeof t.agent.healthStatus] ?? t.agent.healthStatus.unknown
 }
 
 function SkillModal({
   open,
   editSkill,
   onClose,
+  ui,
 }: {
   open: boolean
   editSkill: any | null
   onClose: () => void
+  ui: ReturnType<typeof useAdminUi>
 }) {
+  const { t, font, formStyle, labelStyle, titleStyle, collectionOptions } = ui
   const [form] = Form.useForm()
   const qc = useQueryClient()
 
@@ -105,47 +99,43 @@ function SkillModal({
       else await apiClient.post('/admin/agent/skills', values)
     },
     onSuccess: () => {
-      message.success(editSkill ? 'تم تحديث المهارة' : 'تم إضافة المهارة')
+      message.success(editSkill ? t.agent.skillUpdated : t.agent.skillAdded)
       qc.invalidateQueries({ queryKey: ['agent-skills'] })
       onClose()
     },
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   return (
     <Modal
-      title={
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
-          {editSkill ? 'تعديل المهارة' : 'إضافة مهارة جديدة'}
-        </span>
-      }
+      title={<span style={titleStyle}>{editSkill ? t.agent.editSkill : t.agent.newSkill}</span>}
       open={open}
       onCancel={onClose}
       onOk={() => form.submit()}
-      okText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>حفظ</span>}
-      cancelText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إلغاء</span>}
+      okText={<span style={{ fontFamily: font }}>{t.common.save}</span>}
+      cancelText={<span style={{ fontFamily: font }}>{t.common.cancel}</span>}
       okButtonProps={{ loading: isPending, style: { background: GOLD, borderColor: GOLD, color: '#000' } }}
       centered
       width={600}
     >
-      <Form form={form} layout="vertical" onFinish={(v) => save(v)} style={{ direction: 'rtl', marginTop: 16 }}>
-        <Form.Item name="name_ar" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الاسم بالعربية</span>} rules={[{ required: true }]}>
-          <Input style={{ direction: 'rtl', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }} />
+      <Form form={form} layout="vertical" onFinish={(v) => save(v)} style={formStyle}>
+        <Form.Item name="name_ar" label={<span style={labelStyle}>{t.agent.nameAr}</span>} rules={[{ required: true, message: t.common.required }]}>
+          <Input style={{ direction: 'rtl', fontFamily: font }} />
         </Form.Item>
-        <Form.Item name="name_fr" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الاسم بالفرنسية</span>}>
-          <Input style={{ fontFamily: "'Cairo', sans-serif" }} />
+        <Form.Item name="name_fr" label={<span style={labelStyle}>{t.agent.nameFr}</span>}>
+          <Input style={{ fontFamily: font }} />
         </Form.Item>
-        <Form.Item name="applicable_collections" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المجموعات المطبقة</span>}>
-          <Select mode="multiple" options={COLLECTION_OPTIONS} style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }} />
+        <Form.Item name="applicable_collections" label={<span style={labelStyle}>{t.agent.applicableCollections}</span>}>
+          <Select mode="multiple" options={collectionOptions} style={{ fontFamily: font }} />
         </Form.Item>
-        <Form.Item name="is_default" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المهارة الافتراضية</span>}>
+        <Form.Item name="is_default" label={<span style={labelStyle}>{t.agent.defaultSkill}</span>}>
           <Radio.Group>
-            <Radio value={true} style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}>نعم</Radio>
-            <Radio value={false} style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}>لا</Radio>
+            <Radio value={true} style={{ fontFamily: font, color: 'var(--color-text-secondary)' }}>{t.common.yes}</Radio>
+            <Radio value={false} style={{ fontFamily: font, color: 'var(--color-text-secondary)' }}>{t.common.no}</Radio>
           </Radio.Group>
         </Form.Item>
-        <Form.Item name="system_prompt" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الرسالة النظامية (System Prompt)</span>} rules={[{ required: true }]}>
-          <TextArea rows={6} style={{ direction: 'rtl', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }} placeholder="أنت مساعد قانوني متخصص في القانون المغربي..." />
+        <Form.Item name="system_prompt" label={<span style={labelStyle}>{t.agent.systemPrompt}</span>} rules={[{ required: true, message: t.common.required }]}>
+          <TextArea rows={6} style={{ direction: 'rtl', fontFamily: font }} placeholder={t.agent.systemPromptPlaceholder} />
         </Form.Item>
       </Form>
     </Modal>
@@ -156,11 +146,14 @@ function ToolModal({
   open,
   editTool,
   onClose,
+  ui,
 }: {
   open: boolean
   editTool: any | null
   onClose: () => void
+  ui: ReturnType<typeof useAdminUi>
 }) {
+  const { t, font, formStyle, labelStyle, titleStyle } = ui
   const [form] = Form.useForm()
   const [testInput, setTestInput] = useState('')
   const [testResult, setTestResult] = useState('')
@@ -181,11 +174,11 @@ function ToolModal({
       else await apiClient.post('/admin/agent/tools', payload)
     },
     onSuccess: () => {
-      message.success(editTool ? 'تم تحديث الأداة' : 'تم إضافة الأداة')
+      message.success(editTool ? t.agent.toolUpdated : t.agent.toolAdded)
       qc.invalidateQueries({ queryKey: ['agent-tools'] })
       onClose()
     },
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   const handleTest = async () => {
@@ -196,7 +189,7 @@ function ToolModal({
       const res = await apiClient.post(`/admin/agent/tools/${editTool.id}/test`, { args })
       setTestResult(JSON.stringify(res.data, null, 2))
     } catch (e: any) {
-      setTestResult(e.message || 'خطأ في الاختبار')
+      setTestResult(e.message || t.agent.testError)
     } finally {
       setTesting(false)
     }
@@ -204,44 +197,40 @@ function ToolModal({
 
   return (
     <Modal
-      title={
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
-          {editTool ? 'تعديل الأداة' : 'إضافة أداة جديدة'}
-        </span>
-      }
+      title={<span style={titleStyle}>{editTool ? t.agent.editTool : t.agent.newTool}</span>}
       open={open}
       onCancel={onClose}
       onOk={() => form.submit()}
-      okText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>حفظ</span>}
-      cancelText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إلغاء</span>}
+      okText={<span style={{ fontFamily: font }}>{t.common.save}</span>}
+      cancelText={<span style={{ fontFamily: font }}>{t.common.cancel}</span>}
       okButtonProps={{ loading: isPending, style: { background: GOLD, borderColor: GOLD, color: '#000' } }}
       centered
       width={680}
     >
-      <Form form={form} layout="vertical" onFinish={(v) => save(v)} style={{ direction: 'rtl', marginTop: 16 }}>
-        <Form.Item name="name" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المعرّف (name)</span>} rules={[{ required: true }]}>
-          <Input style={{ fontFamily: "'Cairo', sans-serif", direction: 'ltr' }} placeholder="search_laws" />
+      <Form form={form} layout="vertical" onFinish={(v) => save(v)} style={formStyle}>
+        <Form.Item name="name" label={<span style={labelStyle}>{t.agent.identifier}</span>} rules={[{ required: true, message: t.common.required }]}>
+          <Input style={{ fontFamily: font, direction: 'ltr' }} placeholder="search_laws" />
         </Form.Item>
-        <Form.Item name="name_ar" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الاسم بالعربية</span>} rules={[{ required: true }]}>
-          <Input style={{ direction: 'rtl', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }} />
+        <Form.Item name="name_ar" label={<span style={labelStyle}>{t.agent.nameAr}</span>} rules={[{ required: true, message: t.common.required }]}>
+          <Input style={{ direction: 'rtl', fontFamily: font }} />
         </Form.Item>
-        <Form.Item name="name_fr" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الاسم بالفرنسية</span>}>
-          <Input style={{ fontFamily: "'Cairo', sans-serif" }} />
+        <Form.Item name="name_fr" label={<span style={labelStyle}>{t.agent.nameFr}</span>}>
+          <Input style={{ fontFamily: font }} />
         </Form.Item>
-        <Form.Item name="timeout_ms" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>مهلة الانتظار (ms)</span>} initialValue={5000}>
+        <Form.Item name="timeout_ms" label={<span style={labelStyle}>{t.agent.timeoutMs}</span>} initialValue={5000}>
           <InputNumber min={100} max={60000} step={500} style={{ width: '100%' }} />
         </Form.Item>
-        <Form.Item name="function_schema" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>مخطط الدالة (JSON)</span>}>
+        <Form.Item name="function_schema" label={<span style={labelStyle}>{t.agent.functionSchema}</span>}>
           <TextArea rows={4} style={{ fontFamily: 'monospace', direction: 'ltr', fontSize: 12 }} placeholder='{"type": "object", "properties": {...}}' />
         </Form.Item>
-        <Form.Item name="implementation_code" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>كود التنفيذ</span>}>
+        <Form.Item name="implementation_code" label={<span style={labelStyle}>{t.agent.implementationCode}</span>}>
           <TextArea rows={5} style={{ fontFamily: 'monospace', direction: 'ltr', fontSize: 12 }} placeholder="async def execute(args): ..." />
         </Form.Item>
 
         {editTool && (
           <div style={{ border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, padding: 12, marginBottom: 16 }}>
-            <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 8 }}>
-              اختبار الأداة
+            <div style={{ ...labelStyle, fontSize: 13, marginBottom: 8 }}>
+              {t.agent.testTool}
             </div>
             <TextArea
               value={testInput}
@@ -255,9 +244,9 @@ function ToolModal({
               icon={<PlayCircleOutlined />}
               onClick={handleTest}
               loading={testing}
-              style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginBottom: 8 }}
+              style={{ fontFamily: font, marginBottom: 8 }}
             >
-              اختبار
+              {t.agent.testTool}
             </Button>
             {testResult && (
               <pre style={{ background: 'rgba(0,0,0,0.3)', padding: 8, borderRadius: 6, fontSize: 11, color: '#52c41a', direction: 'ltr', overflow: 'auto', maxHeight: 120 }}>
@@ -275,11 +264,14 @@ function McpModal({
   open,
   editServer,
   onClose,
+  ui,
 }: {
   open: boolean
   editServer: any | null
   onClose: () => void
+  ui: ReturnType<typeof useAdminUi>
 }) {
+  const { t, font, formStyle, labelStyle, titleStyle } = ui
   const [form] = Form.useForm()
   const qc = useQueryClient()
 
@@ -294,37 +286,33 @@ function McpModal({
       else await apiClient.post('/admin/agent/mcp', values)
     },
     onSuccess: () => {
-      message.success('تم الحفظ')
+      message.success(editServer ? t.agent.serverUpdated : t.agent.serverAdded)
       qc.invalidateQueries({ queryKey: ['agent-mcp'] })
       onClose()
     },
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   return (
     <Modal
-      title={
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
-          {editServer ? 'تعديل خادم MCP' : 'إضافة خادم MCP'}
-        </span>
-      }
+      title={<span style={titleStyle}>{editServer ? t.agent.editServer : t.agent.newServer}</span>}
       open={open}
       onCancel={onClose}
       onOk={() => form.submit()}
-      okText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>حفظ</span>}
-      cancelText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إلغاء</span>}
+      okText={<span style={{ fontFamily: font }}>{t.common.save}</span>}
+      cancelText={<span style={{ fontFamily: font }}>{t.common.cancel}</span>}
       okButtonProps={{ loading: isPending, style: { background: GOLD, borderColor: GOLD, color: '#000' } }}
       centered
       width={520}
     >
-      <Form form={form} layout="vertical" onFinish={(v) => save(v)} style={{ direction: 'rtl', marginTop: 16 }}>
-        <Form.Item name="name_ar" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>اسم الخادم</span>} rules={[{ required: true }]}>
-          <Input style={{ direction: 'rtl', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }} />
+      <Form form={form} layout="vertical" onFinish={(v) => save(v)} style={formStyle}>
+        <Form.Item name="name_ar" label={<span style={labelStyle}>{t.agent.server}</span>} rules={[{ required: true, message: t.common.required }]}>
+          <Input style={{ direction: 'rtl', fontFamily: font }} />
         </Form.Item>
-        <Form.Item name="endpoint_url" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>رابط الخادم</span>} rules={[{ required: true }]}>
-          <Input style={{ fontFamily: "'Cairo', sans-serif", direction: 'ltr' }} placeholder="http://localhost:3001/mcp" />
+        <Form.Item name="endpoint_url" label={<span style={labelStyle}>{t.common.url}</span>} rules={[{ required: true, message: t.common.required }]}>
+          <Input style={{ fontFamily: font, direction: 'ltr' }} placeholder="http://localhost:3001/mcp" />
         </Form.Item>
-        <Form.Item name="transport_type" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>نوع النقل</span>} initialValue="http">
+        <Form.Item name="transport_type" label={<span style={labelStyle}>{t.agent.transport}</span>} initialValue="http">
           <Select options={[
             { value: 'http', label: 'HTTP' },
             { value: 'websocket', label: 'WebSocket' },
@@ -337,6 +325,9 @@ function McpModal({
 }
 
 export function AgentPage() {
+  const ui = useAdminUi()
+  const { t, locale, font, dir, pageStyle, tableStyle, h1Style, labelStyle, cellStyle, mutedStyle } = ui
+
   const [skillModalOpen, setSkillModalOpen] = useState(false)
   const [editSkill, setEditSkill] = useState<any | null>(null)
   const [toolModalOpen, setToolModalOpen] = useState(false)
@@ -346,6 +337,9 @@ export function AgentPage() {
   const [agentConfig, setAgentConfig] = useState(MOCK_AGENT_CONFIG)
   const [savingConfig, setSavingConfig] = useState(false)
   const qc = useQueryClient()
+
+  const skillLabel = (item: { name_ar: string; name_fr?: string }) =>
+    locale === 'fr' ? item.name_fr || item.name_ar : item.name_ar
 
   const { data: skills } = useQuery({
     queryKey: ['agent-skills'],
@@ -373,7 +367,7 @@ export function AgentPage() {
       await apiClient.patch(`/admin/agent/skills/${id}`, { is_active: active })
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['agent-skills'] }),
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   const { mutate: toggleTool } = useMutation({
@@ -381,7 +375,7 @@ export function AgentPage() {
       await apiClient.patch(`/admin/agent/tools/${id}`, { is_active: active })
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['agent-tools'] }),
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   const { mutate: pingMcp } = useMutation({
@@ -389,10 +383,10 @@ export function AgentPage() {
       return (await apiClient.post(`/admin/agent/mcp/${id}/ping`)).data
     },
     onSuccess: (data) => {
-      message.success(`الخادم ${data.healthy ? 'سليم' : 'غير متاح'}`)
+      message.success(`${t.agent.server}: ${data.healthy ? t.agent.healthStatus.healthy : t.agent.healthStatus.unhealthy}`)
       qc.invalidateQueries({ queryKey: ['agent-mcp'] })
     },
-    onError: () => message.error('تعذّر الاتصال'),
+    onError: () => message.error(t.common.error),
   })
 
   const { mutate: discoverTools } = useMutation({
@@ -400,19 +394,19 @@ export function AgentPage() {
       return (await apiClient.post(`/admin/agent/mcp/${id}/discover`)).data
     },
     onSuccess: (data) => {
-      message.success(`تم اكتشاف ${data.tools_count} أداة`)
+      message.success(`${t.agent.discoverTools} (${data.tools_count})`)
       qc.invalidateQueries({ queryKey: ['agent-mcp'] })
     },
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   const handleSaveConfig = async () => {
     setSavingConfig(true)
     try {
       await apiClient.put('/admin/agent/config', agentConfig)
-      message.success('تم حفظ الإعدادات')
+      message.success(t.agent.settingsSaved)
     } catch {
-      message.error('حدث خطأ')
+      message.error(t.common.error)
     } finally {
       setSavingConfig(false)
     }
@@ -420,29 +414,33 @@ export function AgentPage() {
 
   const skillsColumns = [
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الاسم</span>,
+      title: <span style={labelStyle}>{t.agent.nameAr}</span>,
       dataIndex: 'name_ar',
       render: (v: string, r: any) => (
         <div>
-          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 13 }}>{v}</span>
-          {r.is_default && <Tag style={{ marginRight: 8, background: `${GOLD}20`, color: GOLD, border: `1px solid ${GOLD}40`, fontSize: 10 }}>افتراضي</Tag>}
+          <span style={cellStyle}>{v}</span>
+          {r.is_default && (
+            <Tag style={{ marginRight: 8, background: `${GOLD}20`, color: GOLD, border: `1px solid ${GOLD}40`, fontSize: 10, fontFamily: font }}>
+              {t.agent.defaultSkill}
+            </Tag>
+          )}
         </div>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>بالفرنسية</span>,
+      title: <span style={labelStyle}>{t.agent.nameFr}</span>,
       dataIndex: 'name_fr',
-      render: (v: string) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-tertiary)', fontSize: 12 }}>{v}</span>,
+      render: (v: string) => <span style={mutedStyle}>{v}</span>,
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>مفعّل</span>,
+      title: <span style={labelStyle}>{t.agent.enabled}</span>,
       dataIndex: 'is_active',
       render: (v: boolean, r: any) => (
         <Switch checked={v} onChange={(c) => toggleSkill({ id: r.id, active: c })} style={{ background: v ? GOLD : undefined }} />
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إجراءات</span>,
+      title: <span style={labelStyle}>{t.common.actions}</span>,
       render: (_: any, r: any) => (
         <Space>
           <Button type="text" size="small" icon={<EditOutlined />} style={{ color: GOLD }} onClick={() => { setEditSkill(r); setSkillModalOpen(true) }} />
@@ -454,38 +452,38 @@ export function AgentPage() {
 
   const toolsColumns = [
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الاسم</span>,
+      title: <span style={labelStyle}>{t.agent.nameAr}</span>,
       dataIndex: 'name_ar',
       render: (v: string, r: any) => (
         <div>
-          <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 13 }}>{v}</div>
-          <div style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-quaternary)', fontSize: 11 }}>{r.name}</div>
+          <div style={cellStyle}>{v}</div>
+          <div style={{ ...mutedStyle, fontSize: 11, color: 'var(--color-text-quaternary)' }}>{r.name}</div>
         </div>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>يتطلب اشتراك</span>,
+      title: <span style={labelStyle}>{t.agent.requiresSubscription}</span>,
       dataIndex: 'requires_subscription',
       render: (v: boolean) => (
-        <Tag style={{ background: v ? 'rgba(201,168,76,0.15)' : 'var(--color-surface-soft)', color: v ? GOLD : 'var(--color-text-quaternary)', border: 'none', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
-          {v ? 'نعم' : 'لا'}
+        <Tag style={{ background: v ? 'rgba(201,168,76,0.15)' : 'var(--color-surface-soft)', color: v ? GOLD : 'var(--color-text-quaternary)', border: 'none', fontFamily: font }}>
+          {v ? t.common.yes : t.common.no}
         </Tag>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المهلة</span>,
+      title: <span style={labelStyle}>{t.agent.timeoutMs}</span>,
       dataIndex: 'timeout_ms',
-      render: (v: number) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-tertiary)', fontSize: 12 }}>{v}ms</span>,
+      render: (v: number) => <span style={mutedStyle}>{v}ms</span>,
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>مفعّل</span>,
+      title: <span style={labelStyle}>{t.agent.enabled}</span>,
       dataIndex: 'is_active',
       render: (v: boolean, r: any) => (
         <Switch checked={v} onChange={(c) => toggleTool({ id: r.id, active: c })} style={{ background: v ? GOLD : undefined }} />
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إجراءات</span>,
+      title: <span style={labelStyle}>{t.common.actions}</span>,
       render: (_: any, r: any) => (
         <Space>
           <Button type="text" size="small" icon={<EditOutlined />} style={{ color: GOLD }} onClick={() => { setEditTool(r); setToolModalOpen(true) }} />
@@ -497,45 +495,45 @@ export function AgentPage() {
 
   const mcpColumns = [
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الخادم</span>,
+      title: <span style={labelStyle}>{t.agent.server}</span>,
       dataIndex: 'name_ar',
-      render: (v: string) => <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 13 }}>{v}</span>,
+      render: (v: string) => <span style={cellStyle}>{v}</span>,
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الرابط</span>,
+      title: <span style={labelStyle}>{t.common.url}</span>,
       dataIndex: 'endpoint_url',
-      render: (v: string) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-tertiary)', fontSize: 11, direction: 'ltr', display: 'inline-block' }}>{v}</span>,
+      render: (v: string) => <span style={{ ...mutedStyle, fontSize: 11, direction: 'ltr', display: 'inline-block' }}>{v}</span>,
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>النقل</span>,
+      title: <span style={labelStyle}>{t.agent.transport}</span>,
       dataIndex: 'transport_type',
-      render: (v: string) => <Tag style={{ fontFamily: "'Cairo', sans-serif", fontSize: 11 }}>{v}</Tag>,
+      render: (v: string) => <Tag style={{ fontFamily: font, fontSize: 11 }}>{v}</Tag>,
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الأدوات</span>,
+      title: <span style={labelStyle}>{t.agent.tools}</span>,
       dataIndex: 'tools_count',
-      render: (v: number) => <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-tertiary)' }}>{v || 0}</span>,
+      render: (v: number) => <span style={mutedStyle}>{v || 0}</span>,
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الحالة</span>,
+      title: <span style={labelStyle}>{t.agent.health}</span>,
       dataIndex: 'health_status',
       render: (v: string) => {
-        const cfg = HEALTH_CONFIG[v] || HEALTH_CONFIG.unknown
+        const cfg = HEALTH_STYLE[v] || HEALTH_STYLE.unknown
         return (
-          <Tag style={{ background: `${cfg.color}20`, border: `1px solid ${cfg.color}40`, color: cfg.color, borderRadius: 12, fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
-            {cfg.icon} {cfg.label}
+          <Tag style={{ background: `${cfg.color}20`, border: `1px solid ${cfg.color}40`, color: cfg.color, borderRadius: 12, fontFamily: font, display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
+            {cfg.icon} {healthStatusLabel(t, v)}
           </Tag>
         )
       },
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إجراءات</span>,
+      title: <span style={labelStyle}>{t.common.actions}</span>,
       render: (_: any, r: any) => (
         <Space>
-          <Tooltip title="فحص الصحة">
+          <Tooltip title={t.agent.healthCheck}>
             <Button type="text" size="small" icon={<HeartOutlined />} style={{ color: '#52c41a' }} onClick={() => pingMcp(r.id)} />
           </Tooltip>
-          <Tooltip title="اكتشاف الأدوات">
+          <Tooltip title={t.agent.discoverTools}>
             <Button type="text" size="small" icon={<ThunderboltOutlined />} style={{ color: '#1677ff' }} onClick={() => discoverTools(r.id)} />
           </Tooltip>
           <Button type="text" size="small" icon={<EditOutlined />} style={{ color: GOLD }} onClick={() => { setEditServer(r); setMcpModalOpen(true) }} />
@@ -548,59 +546,59 @@ export function AgentPage() {
   const tabItems = [
     {
       key: 'skills',
-      label: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المهارات</span>,
+      label: <span style={{ fontFamily: font }}>{t.agent.skills}</span>,
       children: (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditSkill(null); setSkillModalOpen(true) }} style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
-              إضافة مهارة
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditSkill(null); setSkillModalOpen(true) }} style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: font }}>
+              {t.agent.addSkill}
             </Button>
           </div>
-          <Table dataSource={skills || MOCK_SKILLS} columns={skillsColumns} rowKey="id" pagination={{ pageSize: 10 }} style={{ direction: 'rtl' }} />
+          <Table dataSource={skills || MOCK_SKILLS} columns={skillsColumns} rowKey="id" pagination={{ pageSize: 10 }} style={tableStyle} />
         </div>
       ),
     },
     {
       key: 'tools',
-      label: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الأدوات</span>,
+      label: <span style={{ fontFamily: font }}>{t.agent.tools}</span>,
       children: (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditTool(null); setToolModalOpen(true) }} style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
-              إضافة أداة
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditTool(null); setToolModalOpen(true) }} style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: font }}>
+              {t.agent.addTool}
             </Button>
           </div>
-          <Table dataSource={tools || MOCK_TOOLS} columns={toolsColumns} rowKey="id" pagination={{ pageSize: 10 }} style={{ direction: 'rtl' }} />
+          <Table dataSource={tools || MOCK_TOOLS} columns={toolsColumns} rowKey="id" pagination={{ pageSize: 10 }} style={tableStyle} />
         </div>
       ),
     },
     {
       key: 'mcp',
-      label: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>خوادم MCP</span>,
+      label: <span style={{ fontFamily: font }}>{t.agent.mcpServers}</span>,
       children: (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditServer(null); setMcpModalOpen(true) }} style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
-              إضافة خادم
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditServer(null); setMcpModalOpen(true) }} style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: font }}>
+              {t.agent.addServer}
             </Button>
           </div>
-          <Table dataSource={mcpServers || MOCK_MCP_SERVERS} columns={mcpColumns} rowKey="id" pagination={{ pageSize: 10 }} style={{ direction: 'rtl' }} />
+          <Table dataSource={mcpServers || MOCK_MCP_SERVERS} columns={mcpColumns} rowKey="id" pagination={{ pageSize: 10 }} style={tableStyle} />
         </div>
       ),
     },
     {
       key: 'config',
-      label: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إعداد الوكيل</span>,
+      label: <span style={{ fontFamily: font }}>{t.agent.config}</span>,
       children: (
         <div style={{ maxWidth: 640 }}>
           <Card style={{ background: DARK_CARD, border: `1px solid ${BORDER_COLOR}`, borderRadius: 16 }} bodyStyle={{ padding: 24 }}>
-            <h3 style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', marginBottom: 24 }}>
-              إعدادات النموذج
+            <h3 style={{ ...h1Style, marginBottom: 24 }}>
+              {t.agent.modelSettings}
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div>
-                <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 8 }}>النموذج</div>
+                <div style={{ ...labelStyle, fontSize: 13, marginBottom: 8 }}>{t.agent.model}</div>
                 <Select
                   value={agentConfig.model}
                   onChange={(v) => setAgentConfig({ ...agentConfig, model: v })}
@@ -616,8 +614,8 @@ export function AgentPage() {
 
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13 }}>درجة الإبداعية (Temperature)</span>
-                  <span style={{ fontFamily: "'Cairo', sans-serif", color: GOLD, fontSize: 13 }}>{agentConfig.temperature}</span>
+                  <span style={{ ...labelStyle, fontSize: 13 }}>{t.agent.temperature}</span>
+                  <span style={{ fontFamily: font, color: GOLD, fontSize: 13 }}>{agentConfig.temperature}</span>
                 </div>
                 <Slider
                   min={0}
@@ -631,8 +629,8 @@ export function AgentPage() {
 
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13 }}>الحد الأقصى للرموز (Max Tokens)</span>
-                  <span style={{ fontFamily: "'Cairo', sans-serif", color: GOLD, fontSize: 13 }}>{agentConfig.max_tokens}</span>
+                  <span style={{ ...labelStyle, fontSize: 13 }}>{t.agent.maxTokens}</span>
+                  <span style={{ fontFamily: font, color: GOLD, fontSize: 13 }}>{agentConfig.max_tokens}</span>
                 </div>
                 <Slider
                   min={512}
@@ -645,29 +643,29 @@ export function AgentPage() {
               </div>
 
               <div>
-                <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 8 }}>المهارات النشطة</div>
+                <div style={{ ...labelStyle, fontSize: 13, marginBottom: 8 }}>{t.agent.activeSkills}</div>
                 <Select
                   mode="multiple"
                   value={agentConfig.active_skills}
                   onChange={(v) => setAgentConfig({ ...agentConfig, active_skills: v })}
                   style={{ width: '100%' }}
-                  options={(skills || MOCK_SKILLS).map((s: any) => ({ value: s.id, label: s.name_ar }))}
+                  options={(skills || MOCK_SKILLS).map((s: any) => ({ value: s.id, label: skillLabel(s) }))}
                 />
               </div>
 
               <div>
-                <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 8 }}>الأدوات النشطة</div>
+                <div style={{ ...labelStyle, fontSize: 13, marginBottom: 8 }}>{t.agent.activeTools}</div>
                 <Select
                   mode="multiple"
                   value={agentConfig.active_tools}
                   onChange={(v) => setAgentConfig({ ...agentConfig, active_tools: v })}
                   style={{ width: '100%' }}
-                  options={(tools || MOCK_TOOLS).map((t: any) => ({ value: t.id, label: t.name_ar }))}
+                  options={(tools || MOCK_TOOLS).map((tool: any) => ({ value: tool.id, label: skillLabel(tool) }))}
                 />
               </div>
 
               <div>
-                <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 8 }}>خوادم MCP النشطة</div>
+                <div style={{ ...labelStyle, fontSize: 13, marginBottom: 8 }}>{t.agent.activeMcpServers}</div>
                 <Select
                   mode="multiple"
                   value={agentConfig.active_mcp_servers}
@@ -681,9 +679,9 @@ export function AgentPage() {
                 type="primary"
                 onClick={handleSaveConfig}
                 loading={savingConfig}
-                style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontWeight: 600, height: 44 }}
+                style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: font, fontWeight: 600, height: 44 }}
               >
-                حفظ الإعدادات
+                {t.agent.saveSettings}
               </Button>
             </div>
           </Card>
@@ -693,19 +691,19 @@ export function AgentPage() {
   ]
 
   return (
-    <div style={{ direction: 'rtl' }}>
+    <div style={pageStyle}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <RobotOutlined style={{ fontSize: 22, color: GOLD }} />
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
-          إعداد الوكيل
+        <h1 style={h1Style}>
+          {t.agent.title}
         </h1>
       </div>
 
-      <Tabs items={tabItems} style={{ direction: 'rtl' }} />
+      <Tabs items={tabItems} style={{ direction: dir }} />
 
-      <SkillModal open={skillModalOpen} editSkill={editSkill} onClose={() => { setSkillModalOpen(false); setEditSkill(null) }} />
-      <ToolModal open={toolModalOpen} editTool={editTool} onClose={() => { setToolModalOpen(false); setEditTool(null) }} />
-      <McpModal open={mcpModalOpen} editServer={editServer} onClose={() => { setMcpModalOpen(false); setEditServer(null) }} />
+      <SkillModal open={skillModalOpen} editSkill={editSkill} onClose={() => { setSkillModalOpen(false); setEditSkill(null) }} ui={ui} />
+      <ToolModal open={toolModalOpen} editTool={editTool} onClose={() => { setToolModalOpen(false); setEditTool(null) }} ui={ui} />
+      <McpModal open={mcpModalOpen} editServer={editServer} onClose={() => { setMcpModalOpen(false); setEditServer(null) }} ui={ui} />
     </div>
   )
 }

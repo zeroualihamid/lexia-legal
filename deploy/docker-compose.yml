@@ -85,8 +85,6 @@ services:
     ports:
       - "${LEXIA_BACKEND_PORT:-${BACKEND_PORT:-6002}}:4000"
     volumes:
-      - ${HOME}/.claude:/root/.claude
-      - ${HOME}/.claude.json:/root/.claude.json
       - claude_tmp:/tmp/judgments
     networks:
       - lexia-internal
@@ -118,6 +116,9 @@ services:
       args:
         VITE_API_URL: ""
         VITE_BASE: "/"
+        VITE_KEYCLOAK_URL: "http://localhost:8080"
+        VITE_KEYCLOAK_REALM: "legal-ai"
+        VITE_KEYCLOAK_CLIENT_ID: "legal-ai-frontend"
     image: lexia-admin:${VERSION:-latest}
     container_name: lexia-legal-admin
     ports:
@@ -267,6 +268,28 @@ services:
       retries: 10
       start_period: 60s
 
+  # Idempotent dev seed: admin/admin with admin+superadmin roles, role mappers, redirect URIs.
+  keycloak-seed:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: lexia-keycloak-seed
+    entrypoint: ["/bin/sh", "/seed/seed-dev-users.sh"]
+    volumes:
+      - ../infra/keycloak/seed-dev-users.sh:/seed/seed-dev-users.sh:ro
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: legal-ai
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      LEXIA_DEV_USER: ${LEXIA_DEV_USER:-admin}
+      LEXIA_DEV_PASSWORD: ${LEXIA_DEV_PASSWORD:-admin}
+      LEXIA_DEV_EMAIL: ${LEXIA_DEV_EMAIL:-admin@lexia.local}
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    networks:
+      - lexia-internal
+    restart: "no"
+
   # ── Qdrant ───────────────────────────────────────────────────
   qdrant:
     image: qdrant/qdrant:v1.13.4
@@ -334,16 +357,26 @@ services:
       - lexia-internal
 
   # ── Redis ────────────────────────────────────────────────────
+  # Loads REDIS_PASSWORD from repo-root .env at runtime (compose project dir is deploy/).
   redis:
     image: redis:7-alpine
     container_name: lexia-legal-redis
     restart: unless-stopped
-    command: >
-      redis-server
-      --requirepass ${REDIS_PASSWORD}
-      --appendonly yes
-      --maxmemory 512mb
-      --maxmemory-policy allkeys-lru
+    env_file:
+      - ../.env
+    command:
+      - sh
+      - -c
+      - |
+        if [ -z "$$REDIS_PASSWORD" ]; then
+          echo "REDIS_PASSWORD is required (set it in .env)" >&2
+          exit 1
+        fi
+        exec redis-server \
+          --requirepass "$$REDIS_PASSWORD" \
+          --appendonly yes \
+          --maxmemory 512mb \
+          --maxmemory-policy allkeys-lru
     volumes:
       - lexia_redis_data:/data
     expose:
@@ -353,7 +386,7 @@ services:
     networks:
       - lexia-internal
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 5

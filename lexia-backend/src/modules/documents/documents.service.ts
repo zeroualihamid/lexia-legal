@@ -13,7 +13,13 @@ import { MinioService } from '../storage/minio.service';
 import { AgentDocsClient } from '../agent-docs/agent-docs.client';
 import { AuthUser } from '../../common/guards/keycloak.guard';
 import { normalizeDocumentType } from './document-types';
+import {
+  assertLegalClassification,
+  resolveLegalClassification,
+} from './legal-classification';
+import { JUDGMENT_PROMPT_VERSION } from '../admin/judgment-analysis/prompts';
 import { v4 as uuidv4 } from 'uuid';
+import OpenAI from 'openai';
 
 @Injectable()
 export class DocumentsService {
@@ -25,6 +31,7 @@ export class DocumentsService {
     private agentDocsClient: AgentDocsClient,
     private configService: ConfigService,
     @InjectQueue('document-processing') private docQueue: Queue,
+    @InjectQueue('judgment-analysis') private judgmentQueue: Queue,
   ) {}
 
   async uploadDocument(
@@ -112,17 +119,40 @@ export class DocumentsService {
       await this.incrementUploadUsage(user.userId, file.size);
     }
 
-    const job = await this.docQueue.add('process-document', {
-      documentId: docId,
-      bucket,
-      key,
-      ownerType,
-      ownerId: user.userId,
-      caseId,
-      documentType,
-    });
+    const job = await this.docQueue.add(
+      'process-document',
+      {
+        documentId: docId,
+        bucket,
+        key,
+        ownerType,
+        ownerId: user.userId,
+        caseId,
+        documentType,
+      },
+      {
+        jobId: `document-upload-${docId}`,
+        removeOnComplete: false,
+        removeOnFail: false,
+      },
+    );
 
-    return { document: doc, jobId: job.id };
+    await this.postgresService.query(
+      `UPDATE documents
+       SET metadata = metadata || jsonb_build_object(
+             'processingJobId', $1::text,
+             'taskStartedAt', NOW()::text
+           ),
+           updated_at = NOW()
+       WHERE id = $2`,
+      [String(job.id), docId],
+    );
+
+    return {
+      document: doc,
+      taskId: `upload:${docId}`,
+      jobId: job.id,
+    };
   }
 
   // ─── Quota helpers ──────────────────────────────────────────
@@ -230,11 +260,36 @@ export class DocumentsService {
   async getCaseDocuments(caseId: string, userId: string): Promise<any[]> {
     await this.assertCaseOwnership(caseId, userId);
     return this.postgresService.query<any>(
-      `SELECT id, title_ar, title_fr, document_type, status, pages_status,
-              page_count, file_size_bytes, content_type, created_at, error_message
-       FROM documents
-       WHERE case_id = $1 AND owner_id = $2
-       ORDER BY created_at DESC`,
+      `SELECT d.id, d.title_ar, d.title_fr, d.document_type, d.status, d.pages_status,
+              d.page_count, d.file_size_bytes, d.content_type, d.created_at, d.error_message,
+              COALESCE(ja.id::text, d.metadata->>'analysisId') AS analysis_id,
+              ja.status AS analysis_status,
+              (ja.status = 'completed') AS summary_ready
+       FROM documents d
+       LEFT JOIN LATERAL (
+         SELECT j.id, j.status
+         FROM judgment_analyses j
+         WHERE (
+           (d.metadata->>'analysisId' IS NOT NULL AND j.id = (d.metadata->>'analysisId')::uuid)
+           OR (
+             j.pdf_bucket = d.minio_bucket
+             AND j.pdf_key = d.minio_key
+           )
+         )
+           AND j.status IN ('pending', 'running', 'completed')
+         ORDER BY
+           CASE j.status
+             WHEN 'completed' THEN 0
+             WHEN 'running' THEN 1
+             WHEN 'pending' THEN 2
+             ELSE 3
+           END,
+           j.completed_at DESC NULLS LAST,
+           j.created_at DESC
+         LIMIT 1
+       ) ja ON true
+       WHERE d.case_id = $1 AND d.owner_id = $2
+       ORDER BY d.created_at DESC`,
       [caseId, userId],
     );
   }
@@ -373,6 +428,523 @@ export class DocumentsService {
       `UPDATE documents SET visibility = $1 WHERE id = $2 RETURNING *`,
       [visibility, id],
     );
+  }
+
+  async updateDocumentType(
+    id: string,
+    userId: string,
+    documentType: string,
+  ): Promise<any> {
+    const doc = await this.getOwnedDocument(id, userId);
+    const normalized = normalizeDocumentType(documentType);
+
+    const updated = await this.postgresService.queryOne<any>(
+      `UPDATE documents
+       SET document_type = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [normalized, id],
+    );
+
+    if (
+      doc.status === 'ready' &&
+      doc.ocr_text &&
+      doc.owner_id &&
+      doc.case_id
+    ) {
+      try {
+        await this.agentDocsClient.index({
+          ownerId: doc.owner_id,
+          caseId: doc.case_id,
+          documentId: id,
+          documentType: normalized,
+          title: doc.title_ar,
+          text: doc.ocr_text,
+        });
+      } catch (err: any) {
+        this.logger.warn(
+          `Agent re-index after type change failed for ${id}: ${err.message}`,
+        );
+      }
+    }
+
+    return updated;
+  }
+
+  async updateDocumentTitle(
+    id: string,
+    userId: string,
+    titleAr: string,
+  ): Promise<{ id: string; title_ar: string }> {
+    const trimmed = titleAr?.trim();
+    if (!trimmed) {
+      throw new BadRequestException('Le titre est requis');
+    }
+    if (trimmed.length > 255) {
+      throw new BadRequestException('Le titre est trop long (255 caractères max)');
+    }
+
+    const doc = await this.getOwnedDocument(id, userId);
+    const updated = await this.postgresService.queryOne<any>(
+      `UPDATE documents
+       SET title_ar = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, title_ar`,
+      [trimmed, id],
+    );
+
+    if (
+      doc.status === 'ready' &&
+      doc.ocr_text &&
+      doc.owner_id &&
+      doc.case_id
+    ) {
+      try {
+        await this.agentDocsClient.index({
+          ownerId: doc.owner_id,
+          caseId: doc.case_id,
+          documentId: id,
+          documentType: doc.document_type || 'other',
+          title: trimmed,
+          text: doc.ocr_text,
+        });
+      } catch (err: any) {
+        this.logger.warn(
+          `Agent re-index after title change failed for ${id}: ${err.message}`,
+        );
+      }
+    }
+
+    return updated;
+  }
+
+  async updateDocumentLegalClassification(
+    id: string,
+    userId: string,
+    legalFamily: string,
+    legalClass: string,
+  ): Promise<{
+    id: string;
+    legal_family: string;
+    legal_class: string;
+    classification_manual: boolean;
+  }> {
+    let validated: { family: string; legalClass: string };
+    try {
+      validated = assertLegalClassification(legalFamily, legalClass);
+    } catch {
+      throw new BadRequestException('تصنيف قانوني غير صالح');
+    }
+
+    await this.getOwnedDocument(id, userId);
+
+    const patch = {
+      legal_family: validated.family,
+      legal_class: validated.legalClass,
+      legal_class_manual: true,
+    };
+
+    await this.postgresService.query(
+      `UPDATE documents
+       SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb,
+           updated_at = NOW()
+       WHERE id = $2`,
+      [JSON.stringify(patch), id],
+    );
+
+    return {
+      id,
+      legal_family: validated.family,
+      legal_class: validated.legalClass,
+      classification_manual: true,
+    };
+  }
+
+  async resetDocumentLegalClassification(
+    id: string,
+    userId: string,
+  ): Promise<{
+    id: string;
+    legal_family: string;
+    legal_class: string;
+    classification_manual: boolean;
+  }> {
+    const doc = await this.getOwnedDocument(id, userId);
+    await this.postgresService.query(
+      `UPDATE documents
+       SET metadata = COALESCE(metadata, '{}'::jsonb)
+         - 'legal_family' - 'legal_class' - 'legal_class_manual',
+           updated_at = NOW()
+       WHERE id = $1`,
+      [id],
+    );
+
+    const classification = resolveLegalClassification({
+      collection: doc.collection,
+      document_type: doc.document_type,
+      title_ar: doc.title_ar,
+      title_fr: doc.title_fr,
+      metadata: {},
+    });
+
+    return {
+      id,
+      legal_family: classification.family,
+      legal_class: classification.legalClass,
+      classification_manual: false,
+    };
+  }
+
+  async suggestDocumentTitle(
+    id: string,
+    userId: string,
+  ): Promise<{ suggestedTitle: string }> {
+    const doc = await this.getOwnedDocument(id, userId);
+    const sample = await this.getDocumentTextSample(doc);
+
+    const client = new OpenAI({
+      apiKey: this.configService.get<string>('llm.apiKey'),
+      baseURL: this.configService.get<string>('llm.baseURL') || undefined,
+    });
+    const model =
+      this.configService.get<string>('llm.chatModel') || 'gpt-4o';
+    const chunksPreview = this.formatChunksPreview(sample, 1500, 3);
+    const typeLabel = doc.document_type || 'other';
+
+    const response = await client.chat.completions.create({
+      model,
+      temperature: 0.25,
+      max_tokens: 120,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: `You name Moroccan legal PDF documents for lawyers.
+Read the opening chunks and return JSON: { "title": "..." }.
+Rules:
+- Arabic title, concise and descriptive (court, parties, subject, or date if obvious)
+- No file extension, no quotes inside
+- Max 80 characters
+- Prefer formal legal wording`,
+        },
+        {
+          role: 'user',
+          content: `نوع المستند: ${typeLabel}
+الاسم الحالي: ${doc.title_ar || '—'}
+
+مقتطفات من بداية الوثيقة:
+${chunksPreview}`,
+        },
+      ],
+    });
+
+    let suggestedTitle = doc.title_ar;
+    try {
+      const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+      if (typeof parsed.title === 'string' && parsed.title.trim()) {
+        suggestedTitle = parsed.title.trim().slice(0, 255);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Title suggestion parse failed for ${id}: ${err.message}`);
+      throw new BadRequestException('تعذّر توليد اسم مقترح');
+    }
+
+    return { suggestedTitle };
+  }
+
+  private async getDocumentTextSample(doc: any): Promise<string> {
+    if (doc.ocr_text?.trim()) {
+      return doc.ocr_text.trim();
+    }
+
+    try {
+      const buffer = await this.minioService.downloadFile(
+        'ocr-output',
+        `${doc.id}/ocr.md`,
+      );
+      const text = buffer.toString('utf-8').trim();
+      if (text) return text;
+    } catch {
+      /* fall through */
+    }
+
+    if (doc.status === 'processing') {
+      throw new BadRequestException(
+        'المستند قيد المعالجة — انتظر اكتمال استخراج النص',
+      );
+    }
+
+    throw new BadRequestException(
+      'لا يتوفر نص لهذا المستند بعد — لا يمكن اقتراح اسم',
+    );
+  }
+
+  private formatChunksPreview(
+    text: string,
+    chunkSize: number,
+    maxChunks: number,
+  ): string {
+    const chunks: string[] = [];
+    for (let i = 0; i < maxChunks; i++) {
+      const start = i * chunkSize;
+      const slice = text.slice(start, start + chunkSize);
+      if (!slice.trim()) break;
+      chunks.push(`--- مقطع ${i + 1} ---\n${slice.trim()}`);
+    }
+    return chunks.join('\n\n');
+  }
+
+  /** Launch bilingual judgment summary for a case document marked as judgment. */
+  async requestJudgmentSummary(
+    id: string,
+    userId: string,
+  ): Promise<{
+    analysisId: string;
+    analysisStatus: string;
+    jobId: string | number;
+  }> {
+    const doc = await this.getOwnedDocument(id, userId);
+    return this.enqueueJudgmentAnalysis(doc, userId);
+  }
+
+  /** Shared corpus summary — any user with access can trigger; stored on the document row. */
+  async requestSharedJudgmentSummary(
+    id: string,
+    user: AuthUser,
+  ): Promise<{
+    analysisId: string;
+    analysisStatus: string;
+    jobId: string | number;
+  }> {
+    const doc = await this.getDocumentIfAccessible(id, user);
+    if (!doc) throw new NotFoundException('Document not found');
+    if (!user.userId) throw new ForbiddenException('Authentication required');
+    return this.enqueueJudgmentAnalysis(doc, user.userId);
+  }
+
+  async getSharedJudgmentSummary(
+    id: string,
+    user?: AuthUser,
+  ): Promise<{ status: string; markdown: string; error: string | null }> {
+    const doc = await this.getDocumentIfAccessible(id, user);
+    if (!doc) throw new NotFoundException('Document not found');
+    const analysisId = await this.resolveJudgmentAnalysisId(doc);
+    if (!analysisId) {
+      throw new NotFoundException('Aucune analyse pour ce document');
+    }
+    const row = await this.postgresService.queryOne<{
+      status: string;
+      markdown_result: string | null;
+      error_message: string | null;
+    }>(
+      `SELECT status, markdown_result, error_message
+       FROM judgment_analyses WHERE id = $1`,
+      [analysisId],
+    );
+    if (!row) throw new NotFoundException('Analyse introuvable');
+    return {
+      status: row.status,
+      markdown: row.markdown_result || '',
+      error: row.error_message,
+    };
+  }
+
+  async getSharedJudgmentAnalysisId(
+    id: string,
+    user?: AuthUser,
+  ): Promise<string> {
+    const doc = await this.getDocumentIfAccessible(id, user);
+    if (!doc) throw new NotFoundException('Document not found');
+    const analysisId = await this.resolveJudgmentAnalysisId(doc);
+    if (!analysisId) {
+      throw new NotFoundException('Aucune analyse pour ce document');
+    }
+    return analysisId;
+  }
+
+  /** Resolve analysis id from document metadata or an existing row for the same PDF. */
+  private async resolveJudgmentAnalysisId(doc: any): Promise<string | null> {
+    const fromMeta: string | null = doc.metadata?.analysisId || null;
+    if (fromMeta) return fromMeta;
+
+    const existing = await this.findExistingAnalysisForPdf(
+      doc.minio_bucket,
+      doc.minio_key,
+    );
+    if (!existing) return null;
+
+    await this.linkDocumentToAnalysis(doc.id, existing.id);
+    return existing.id;
+  }
+
+  private async findExistingAnalysisForPdf(
+    bucket: string,
+    key: string,
+  ): Promise<{ id: string; status: string } | null> {
+    return this.postgresService.queryOne<{ id: string; status: string }>(
+      `SELECT id, status
+       FROM judgment_analyses
+       WHERE pdf_bucket = $1 AND pdf_key = $2
+         AND status IN ('pending', 'running', 'completed')
+       ORDER BY
+         CASE status
+           WHEN 'completed' THEN 0
+           WHEN 'running' THEN 1
+           WHEN 'pending' THEN 2
+           ELSE 3
+         END,
+         completed_at DESC NULLS LAST,
+         created_at DESC
+       LIMIT 1`,
+      [bucket, key],
+    );
+  }
+
+  private async linkDocumentToAnalysis(
+    documentId: string,
+    analysisId: string,
+  ): Promise<void> {
+    await this.postgresService.query(
+      `UPDATE documents
+       SET metadata = metadata || jsonb_build_object(
+             'analysisId', $1::text,
+             'sharedJudgmentSummary', true
+           ),
+           updated_at = NOW()
+       WHERE id = $2`,
+      [analysisId, documentId],
+    );
+  }
+
+  private async getDocumentIfAccessible(
+    id: string,
+    user?: AuthUser,
+  ): Promise<any | null> {
+    const doc = await this.postgresService.queryOne<any>(
+      `SELECT * FROM documents WHERE id = $1`,
+      [id],
+    );
+    if (!doc) return null;
+
+    const accessLevel = user?.accessLevel || 'PUBLIC';
+    const userId = user?.userId;
+
+    if (accessLevel === 'ADMIN' || accessLevel === 'SUPERADMIN') {
+      return doc;
+    }
+    if (userId && doc.owner_id === userId) {
+      return doc;
+    }
+    if (doc.status !== 'published') {
+      return null;
+    }
+    if (doc.visibility === 'public') {
+      return doc;
+    }
+    if (
+      doc.visibility === 'pro_only' &&
+      userId &&
+      accessLevel !== 'PUBLIC'
+    ) {
+      return doc;
+    }
+    return null;
+  }
+
+  private assertSummarizableJudgment(doc: any): void {
+    const isJudgment =
+      doc.document_type === 'judgment' ||
+      (typeof doc.collection === 'string' &&
+        doc.collection.startsWith('judgments_'));
+    if (!isJudgment) {
+      throw new BadRequestException('Le document doit être un حكم');
+    }
+    if (doc.status !== 'ready' && doc.status !== 'published') {
+      throw new BadRequestException(
+        'Le document doit être entièrement traité avant le résumé',
+      );
+    }
+  }
+
+  private async enqueueJudgmentAnalysis(
+    doc: any,
+    userId: string | null,
+  ): Promise<{
+    analysisId: string;
+    analysisStatus: string;
+    jobId: string | number;
+  }> {
+    this.assertSummarizableJudgment(doc);
+
+    const linkedId = await this.resolveJudgmentAnalysisId(doc);
+    if (linkedId) {
+      const existing = await this.postgresService.queryOne<{
+        id: string;
+        status: string;
+      }>(
+        `SELECT id, status FROM judgment_analyses WHERE id = $1`,
+        [linkedId],
+      );
+      if (
+        existing &&
+        (existing.status === 'pending' ||
+          existing.status === 'running' ||
+          existing.status === 'completed')
+      ) {
+        return {
+          analysisId: existing.id,
+          analysisStatus: existing.status,
+          jobId: doc.metadata?.analysisJobId || '',
+        };
+      }
+    }
+
+    const analysisId = uuidv4();
+    await this.postgresService.query(
+      `INSERT INTO judgment_analyses
+         (id, filename, pdf_bucket, pdf_key, status, prompt_version, created_by)
+       VALUES ($1, $2, $3, $4, 'pending', $5, $6)`,
+      [
+        analysisId,
+        doc.title_ar,
+        doc.minio_bucket,
+        doc.minio_key,
+        JUDGMENT_PROMPT_VERSION,
+        userId,
+      ],
+    );
+
+    const job = await this.judgmentQueue.add(
+      'analyze',
+      {
+        analysisId,
+        bucket: doc.minio_bucket,
+        key: doc.minio_key,
+      },
+      {
+        jobId: `judgment-doc-${analysisId}`,
+        removeOnComplete: false,
+        removeOnFail: false,
+      },
+    );
+
+    await this.postgresService.query(
+      `UPDATE documents
+       SET metadata = metadata || jsonb_build_object(
+             'analysisId', $1::text,
+             'analysisJobId', $2::text,
+             'sharedJudgmentSummary', true
+           ),
+           updated_at = NOW()
+       WHERE id = $3`,
+      [analysisId, String(job.id), doc.id],
+    );
+
+    return {
+      analysisId,
+      analysisStatus: 'pending',
+      jobId: job.id,
+    };
   }
 
   // ─── Admin review (unchanged) ───────────────────────────────

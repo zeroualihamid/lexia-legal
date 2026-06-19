@@ -50,11 +50,16 @@ export class ChatUploadsService {
     @InjectQueue('document-processing') private readonly docQueue: Queue,
   ) {}
 
-  /** Accept a file dropped in the main chat, store it and start processing. */
+  /** Accept a file dropped in the main chat or search library, store it and start processing. */
   async create(
     file: Express.Multer.File,
     user: AuthUser,
-  ): Promise<{ documentId: string; jobId: string | number }> {
+    origin: 'chat' | 'search' = 'chat',
+  ): Promise<{
+    documentId: string;
+    taskId: string;
+    jobId: string | number;
+  }> {
     if (!file) throw new BadRequestException('Aucun fichier fourni');
     if (!user.userId) throw new ForbiddenException('Authentication required');
     if (file.mimetype !== 'application/pdf') {
@@ -76,6 +81,11 @@ export class ChatUploadsService {
       file.mimetype,
     );
 
+    const originMeta =
+      origin === 'search'
+        ? { searchUpload: true }
+        : { chatUpload: true };
+
     const doc = await this.postgres.queryOne<any>(
       `INSERT INTO documents
          (id, title_ar, collection, source_type, owner_type, owner_id,
@@ -83,7 +93,7 @@ export class ChatUploadsService {
           file_size_bytes, content_type, metadata)
        VALUES ($1, $2, 'user_documents', 'user_upload', 'user', $3,
                NULL, 'processing', 'private', $4, $5, $6, $7,
-               jsonb_build_object('chatUpload', true))
+               $8::jsonb)
        RETURNING id`,
       [
         docId,
@@ -93,17 +103,41 @@ export class ChatUploadsService {
         key,
         file.size,
         file.mimetype,
+        JSON.stringify(originMeta),
       ],
     );
 
-    const job = await this.docQueue.add('process-chat-upload', {
-      documentId: doc.id,
-      bucket: CHAT_UPLOAD_BUCKET,
-      key,
-      ownerId: user.userId,
-    });
+    const job = await this.docQueue.add(
+      'process-chat-upload',
+      {
+        documentId: doc.id,
+        bucket: CHAT_UPLOAD_BUCKET,
+        key,
+        ownerId: user.userId,
+      },
+      {
+        jobId: `chat-upload-${doc.id}`,
+        removeOnComplete: false,
+        removeOnFail: false,
+      },
+    );
 
-    return { documentId: doc.id, jobId: job.id };
+    await this.postgres.query(
+      `UPDATE documents
+       SET metadata = metadata || jsonb_build_object(
+             'processingJobId', $1::text,
+             'taskStartedAt', NOW()::text
+           ),
+           updated_at = NOW()
+       WHERE id = $2`,
+      [String(job.id), doc.id],
+    );
+
+    return {
+      documentId: doc.id,
+      taskId: `upload:${doc.id}`,
+      jobId: job.id,
+    };
   }
 
   /** Status + classification + summary readiness for a chat upload. */

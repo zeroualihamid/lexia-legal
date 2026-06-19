@@ -19,6 +19,8 @@ import { AuthGuard } from "./auth/auth.guard";
 import { AuditModule } from "./audit/audit.module";
 import { AgentChatController } from "./agent-chat/chat.controller";
 import { CrossTowerModule } from "./cross-tower/cross-tower.module";
+import { TasksModule } from "./modules/tasks/tasks.module";
+import { LegalAuthModule } from "./modules/auth/legal-auth.module";
 
 @Module({
   imports: [
@@ -54,6 +56,8 @@ import { CrossTowerModule } from "./cross-tower/cross-tower.module";
     HealthModule,
     AuditModule,
     CrossTowerModule,
+    TasksModule,
+    LegalAuthModule,
   ],
   controllers: [AgentChatController],
   providers: [AuthGuard],

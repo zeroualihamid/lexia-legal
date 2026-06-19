@@ -3,7 +3,6 @@ import { useOutletContext, useNavigate } from 'react-router-dom'
 import {
   Button,
   Input,
-  Collapse,
   Tag,
   Alert,
   Tooltip,
@@ -11,13 +10,12 @@ import {
   Empty,
   Dropdown,
   App as AntApp,
+  Popconfirm,
 } from 'antd'
 import {
   SendOutlined,
-  LinkOutlined,
   ToolOutlined,
   LoadingOutlined,
-  LockOutlined,
   InfoCircleOutlined,
   FolderOpenOutlined,
   PaperClipOutlined,
@@ -30,13 +28,19 @@ import {
   ArrowUpOutlined,
   PlusOutlined,
   ProfileOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons'
-import { useChat, ChatMessage } from '../../../shared/hooks/useChat'
+import { useChat, ChatMessage, buildSourceCatalog } from '../../../shared/hooks/useChat'
 import { useChatUpload, ChatUploadItem } from '../../../shared/hooks/useChatUpload'
 import { ChatUploadCards, JudgmentsManagerDrawer } from './ChatUploadPanel'
+import { ChatStreamContent } from '../../../shared/components/ChatStreamContent'
+import { JudgmentSummaryDrawer } from '../../../shared/components/JudgmentSummaryDrawer'
+import { useSearchJudgmentSummary } from '../../../shared/hooks/useJudgmentSummary'
 import { useAuthStore } from '../../../shared/store/authStore'
 import {
   useCreateConversation,
+  useDeleteConversation,
+  useConversations,
   fetchConversationMessages,
 } from '../../../shared/hooks/useConversations'
 import { useCases } from '../../../shared/hooks/useCases'
@@ -59,6 +63,65 @@ interface OutletCtx {
 }
 
 const ARABIC_FONT = "'Noto Naskh Arabic', 'Cairo', sans-serif"
+
+function DeleteConversationButton({
+  onConfirm,
+  loading,
+  disabled,
+  compact,
+}: {
+  onConfirm: () => void
+  loading?: boolean
+  disabled?: boolean
+  compact?: boolean
+}) {
+  return (
+    <Popconfirm
+      title={<span style={{ fontFamily: ARABIC_FONT }}>حذف هذه المحادثة؟</span>}
+      description={
+        <span style={{ fontFamily: ARABIC_FONT, fontSize: 12 }}>
+          لن تتمكن من استرجاع الرسائل بعد الحذف.
+        </span>
+      }
+      okText="حذف"
+      cancelText="إلغاء"
+      okButtonProps={{ danger: true }}
+      onConfirm={onConfirm}
+      disabled={disabled}
+    >
+      <Tooltip title="حذف المحادثة">
+        {compact ? (
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            loading={loading}
+            disabled={disabled}
+            style={{
+              background: DARK_CARD,
+              border: '1px solid var(--color-border-subtle)',
+              height: 42,
+              width: 42,
+              borderRadius: 10,
+              flexShrink: 0,
+            }}
+          />
+        ) : (
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            loading={loading}
+            disabled={disabled}
+            style={{ fontFamily: ARABIC_FONT, flexShrink: 0 }}
+          >
+            حذف
+          </Button>
+        )}
+      </Tooltip>
+    </Popconfirm>
+  )
+}
 
 function ComposerPill({
   icon,
@@ -148,40 +211,52 @@ function IconButton({
   )
 }
 
-/** The LEXIA landing composer shown when a conversation has no messages yet. */
-function StartComposer({
-  value,
-  onChange,
-  onSubmit,
-  onKeyDown,
-  isStreaming,
-  inputRef,
-  onAttach,
-  onOpenJudgments,
+const CHAT_CASE_STORAGE_KEY = 'lexia-chat-selected-case'
+
+type ChatCaseSelection = { id: string; title: string }
+
+function readStoredChatCase(): ChatCaseSelection | null {
+  try {
+    const raw = sessionStorage.getItem(CHAT_CASE_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<ChatCaseSelection>
+    if (parsed?.id && parsed?.title) return { id: parsed.id, title: parsed.title }
+  } catch {
+    /* ignore */
+  }
+  return null
+}
+
+/** Case picker for general chat — scopes user-document retrieval without leaving the page. */
+function CaseMatterDropdown({
+  selectedCase,
+  onSelectedCaseChange,
+  cases,
+  token,
+  compact,
 }: {
-  value: string
-  onChange: (v: string) => void
-  onSubmit: () => void
-  onKeyDown: (e: React.KeyboardEvent) => void
-  isStreaming: boolean
-  inputRef: React.RefObject<any>
-  onAttach: () => void
-  onOpenJudgments: () => void
+  selectedCase: ChatCaseSelection | null
+  onSelectedCaseChange: (c: ChatCaseSelection | null) => void
+  cases: Array<{ id: string; title: string }> | undefined
+  token: string | null | undefined
+  compact?: boolean
 }) {
   const navigate = useNavigate()
-  const { token } = useAuthStore()
-  const { data: cases } = useCases(!!token)
-  const [matter, setMatter] = useState<{ id: string; title: string } | null>(null)
-  const [focused, setFocused] = useState(false)
 
   const matterMenu = {
     items: [
-      { key: 'general', label: <span style={{ fontFamily: ARABIC_FONT }}>بحث عام (دون قضية)</span> },
+      {
+        key: 'general',
+        label: <span style={{ fontFamily: ARABIC_FONT }}>بحث عام (دون قضية)</span>,
+      },
       ...(cases && cases.length > 0
-        ? [{ type: 'divider' as const }, ...cases.map((c) => ({
-            key: c.id,
-            label: <span style={{ fontFamily: ARABIC_FONT }}>{c.title}</span>,
-          }))]
+        ? [
+            { type: 'divider' as const },
+            ...cases.map((c) => ({
+              key: c.id,
+              label: <span style={{ fontFamily: ARABIC_FONT }}>{c.title}</span>,
+            })),
+          ]
         : []),
       ...(token
         ? [
@@ -198,14 +273,70 @@ function StartComposer({
         : []),
     ],
     onClick: ({ key }: { key: string }) => {
-      if (key === 'general') setMatter(null)
+      if (key === 'general') onSelectedCaseChange(null)
       else if (key === '__manage') navigate('/cases')
       else {
         const c = cases?.find((x) => x.id === key)
-        if (c) navigate(`/cases/${c.id}`)
+        if (c) onSelectedCaseChange({ id: c.id, title: c.title })
       }
     },
   }
+
+  return (
+    <Dropdown menu={matterMenu} trigger={['click']} placement="bottomRight">
+      <button
+        type="button"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          background: selectedCase ? 'rgba(201,168,76,0.12)' : 'transparent',
+          border: selectedCase ? `1px solid rgba(201,168,76,0.35)` : 'none',
+          borderRadius: compact ? 8 : 0,
+          color: selectedCase ? GOLD : 'var(--color-text-secondary)',
+          fontSize: compact ? 12 : 13,
+          fontFamily: ARABIC_FONT,
+          cursor: 'pointer',
+          padding: compact ? '4px 10px' : 4,
+        }}
+      >
+        {selectedCase ? selectedCase.title : 'القضية'}
+        <DownOutlined style={{ fontSize: 10, opacity: 0.6 }} />
+      </button>
+    </Dropdown>
+  )
+}
+
+/** The LEXIA landing composer shown when a conversation has no messages yet. */
+function StartComposer({
+  value,
+  onChange,
+  onSubmit,
+  onKeyDown,
+  isStreaming,
+  inputRef,
+  onAttach,
+  onOpenJudgments,
+  selectedCase,
+  onSelectedCaseChange,
+  cases,
+  token,
+}: {
+  value: string
+  onChange: (v: string) => void
+  onSubmit: () => void
+  onKeyDown: (e: React.KeyboardEvent) => void
+  isStreaming: boolean
+  inputRef: React.RefObject<any>
+  onAttach: () => void
+  onOpenJudgments: () => void
+  selectedCase: ChatCaseSelection | null
+  onSelectedCaseChange: (c: ChatCaseSelection | null) => void
+  cases: Array<{ id: string; title: string }> | undefined
+  token: string | null | undefined
+}) {
+  const navigate = useNavigate()
+  const [focused, setFocused] = useState(false)
 
   const promptMenu = {
     items: EXAMPLE_PROMPTS.map((p, i) => ({
@@ -259,26 +390,18 @@ function StartComposer({
       >
         {/* Top row: client matter + prompts */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-          <Dropdown menu={matterMenu} trigger={['click']} placement="bottomRight">
-            <button
-              type="button"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--color-text-secondary)',
-                fontSize: 13,
-                fontFamily: ARABIC_FONT,
-                cursor: 'pointer',
-                padding: 4,
-              }}
-            >
-              {matter ? matter.title : 'القضية'}
-              <DownOutlined style={{ fontSize: 10, opacity: 0.6 }} />
-            </button>
-          </Dropdown>
+          {token ? (
+            <CaseMatterDropdown
+              selectedCase={selectedCase}
+              onSelectedCaseChange={onSelectedCaseChange}
+              cases={cases}
+              token={token}
+            />
+          ) : (
+            <span style={{ fontSize: 13, color: 'var(--color-text-quaternary)', fontFamily: ARABIC_FONT }}>
+              القضية
+            </span>
+          )}
 
           <Dropdown menu={promptMenu} trigger={['click']} placement="bottomLeft">
             <button
@@ -476,7 +599,13 @@ export function ChatPage() {
   const isPro = accessLevel === 'PRO' || accessLevel === 'ADMIN' || accessLevel === 'SUPERADMIN'
 
   const { message } = AntApp.useApp()
-  const { messages, isStreaming, currentMessage, sources, collections, tools, sendMessage, loadMessages } = useChat()
+  const { data: cases } = useCases(!!token)
+  const [selectedCase, setSelectedCase] = useState<ChatCaseSelection | null>(() => readStoredChatCase())
+  const selectedCaseRef = useRef<ChatCaseSelection | null>(selectedCase)
+  selectedCaseRef.current = selectedCase
+  const { messages, isStreaming, currentMessage, sources, collections, tools, sendMessage, loadMessages, clearMessages } = useChat()
+  const { mutate: deleteConversation, isPending: isDeletingConversation } = useDeleteConversation()
+  const { data: conversations } = useConversations(isPro)
   const { mutateAsync: createConversation } = useCreateConversation()
   const upload = useChatUpload()
   const [inputValue, setInputValue] = useState('')
@@ -484,6 +613,29 @@ export function ChatPage() {
   const inputRef = useRef<any>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showJudgments, setShowJudgments] = useState(false)
+  const [summaryDocId, setSummaryDocId] = useState<string | null>(null)
+  const [summaryReload, setSummaryReload] = useState(0)
+  const summaryStream = useSearchJudgmentSummary(summaryDocId, summaryReload)
+
+  const openDocumentSummary = useCallback((documentId: string) => {
+    setSummaryDocId(documentId)
+    setSummaryReload((n) => n + 1)
+  }, [])
+
+  useEffect(() => {
+    if (selectedCase) {
+      sessionStorage.setItem(CHAT_CASE_STORAGE_KEY, JSON.stringify(selectedCase))
+    } else {
+      sessionStorage.removeItem(CHAT_CASE_STORAGE_KEY)
+    }
+  }, [selectedCase])
+
+  useEffect(() => {
+    if (!selectedCase || !cases) return
+    if (!cases.some((c) => c.id === selectedCase.id)) {
+      setSelectedCase(null)
+    }
+  }, [cases, selectedCase])
 
   const openJudgments = useCallback(() => {
     if (!token) {
@@ -595,7 +747,8 @@ export function ChatPage() {
       }
     }
 
-    sendMessage(convId || 'default', q, token)
+    const activeCase = selectedCaseRef.current
+    sendMessage(convId || 'default', q, token, activeCase?.id)
   }, [
     inputValue,
     isStreaming,
@@ -606,6 +759,7 @@ export function ChatPage() {
     createConversation,
     setConversationId,
     refetchConversations,
+    selectedCase?.id,
   ])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -614,6 +768,31 @@ export function ChatPage() {
       handleSend()
     }
   }
+
+  const activeConversationTitle =
+    conversations?.find((c) => c.id === conversationId)?.title_ar || 'محادثة'
+
+  const handleDeleteConversation = useCallback(() => {
+    if (!conversationId || isStreaming) return
+    deleteConversation(conversationId, {
+      onSuccess: () => {
+        message.success('تم حذف المحادثة')
+        loadedConvRef.current = null
+        setConversationId?.(null)
+        clearMessages()
+        refetchConversations?.()
+      },
+      onError: () => message.error('تعذّر حذف المحادثة'),
+    })
+  }, [
+    conversationId,
+    isStreaming,
+    deleteConversation,
+    message,
+    setConversationId,
+    clearMessages,
+    refetchConversations,
+  ])
 
   const showMessages = messages.length > 0 || isStreaming
 
@@ -647,6 +826,39 @@ export function ChatPage() {
         />
       )}
 
+      {isPro && conversationId && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            padding: '8px 16px',
+            borderBottom: `1px solid ${BORDER_COLOR}`,
+            direction: 'rtl',
+          }}
+        >
+          <span
+            style={{
+              fontFamily: ARABIC_FONT,
+              fontSize: 13,
+              color: 'var(--color-text-secondary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: 1,
+            }}
+          >
+            {activeConversationTitle}
+          </span>
+          <DeleteConversationButton
+            onConfirm={handleDeleteConversation}
+            loading={isDeletingConversation}
+            disabled={isStreaming}
+          />
+        </div>
+      )}
+
       {/* Messages */}
       <div
         style={{
@@ -668,6 +880,10 @@ export function ChatPage() {
             inputRef={inputRef}
             onAttach={triggerAttach}
             onOpenJudgments={openJudgments}
+            selectedCase={selectedCase}
+            onSelectedCaseChange={setSelectedCase}
+            cases={cases}
+            token={token}
           />
         ) : (
           <>
@@ -693,7 +909,15 @@ export function ChatPage() {
                     fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
                   }}
                 >
-                  {msg.content}
+                  {msg.role === 'assistant' ? (
+                    <ChatStreamContent
+                      content={msg.content}
+                      sourceCatalog={buildSourceCatalog(msg.sources)}
+                      onOpenSummary={token ? openDocumentSummary : undefined}
+                    />
+                  ) : (
+                    msg.content
+                  )}
                 </div>
 
                 {/* Matched cases — clickable links to open the case workspace */}
@@ -805,95 +1029,6 @@ export function ChatPage() {
                   </div>
                 )}
 
-                {/* Sources (PRO only) */}
-                {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
-                  isPro ? (
-                    <Collapse
-                      size="small"
-                      ghost
-                      style={{ maxWidth: '80%', paddingRight: 8 }}
-                      items={[
-                        {
-                          key: 'sources',
-                          label: (
-                            <span style={{
-                              fontSize: 12,
-                              color: 'var(--color-text-secondary)',
-                              fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
-                            }}>
-                              المصادر ({msg.sources.length})
-                            </span>
-                          ),
-                          children: (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                              {msg.sources.map((src, i) => (
-                                <div
-                                  key={i}
-                                  style={{
-                                    background: 'var(--color-surface-faint)',
-                                    border: '1px solid var(--color-border-subtle)',
-                                    borderRadius: 8,
-                                    padding: '8px 12px',
-                                    direction: 'rtl',
-                                  }}
-                                >
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                    <CollectionTag collection={src.collection} size="small" />
-                                    {src.url && (
-                                      <a href={src.url} target="_blank" rel="noopener noreferrer">
-                                        <LinkOutlined style={{ color: GOLD, fontSize: 12 }} />
-                                      </a>
-                                    )}
-                                  </div>
-                                  <div style={{
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    color: 'var(--color-text-primary)',
-                                    fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
-                                    marginBottom: 4,
-                                  }}>
-                                    {src.title}
-                                  </div>
-                                  {src.snippet && (
-                                    <div style={{
-                                      fontSize: 12,
-                                      color: 'var(--color-text-tertiary)',
-                                      fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
-                                      lineHeight: 1.6,
-                                    }}>
-                                      {src.snippet}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          ),
-                        },
-                      ]}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '6px 12px',
-                        borderRadius: 8,
-                        background: 'rgba(201,168,76,0.08)',
-                        border: `1px solid rgba(201,168,76,0.2)`,
-                        fontSize: 12,
-                        color: 'var(--color-text-secondary)',
-                        fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
-                        cursor: 'pointer',
-                        maxWidth: '80%',
-                        marginRight: 8,
-                      }}
-                    >
-                      <LockOutlined style={{ color: GOLD }} />
-                      اشترك في الخطة المدفوعة لرؤية المصادر والوثائق المرجعية
-                    </div>
-                  )
-                )}
               </div>
             ))}
 
@@ -922,7 +1057,13 @@ export function ChatPage() {
                     minHeight: 24,
                   }}
                 >
-                  {currentMessage || (
+                  {currentMessage ? (
+                    <ChatStreamContent
+                      content={currentMessage}
+                      sourceCatalog={buildSourceCatalog(sources)}
+                      onOpenSummary={token ? openDocumentSummary : undefined}
+                    />
+                  ) : (
                     <span style={{ color: 'var(--color-text-tertiary)', fontStyle: 'italic' }}>
                       جاري التفكير...
                     </span>
@@ -972,6 +1113,12 @@ export function ChatPage() {
         onAsk={askAboutUpload}
       />
 
+      <JudgmentSummaryDrawer
+        documentId={summaryDocId}
+        onClose={() => setSummaryDocId(null)}
+        stream={summaryStream}
+      />
+
       {/* Input area — only once a conversation has started; the empty state
           uses the centered LEXIA composer instead. */}
       {showMessages && (
@@ -986,6 +1133,37 @@ export function ChatPage() {
           direction: 'rtl',
         }}
       >
+        <div
+          style={{
+            maxWidth: 800,
+            margin: '0 auto 8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}
+        >
+          {token ? (
+            <CaseMatterDropdown
+              selectedCase={selectedCase}
+              onSelectedCaseChange={setSelectedCase}
+              cases={cases}
+              token={token}
+              compact
+            />
+          ) : null}
+          {selectedCase ? (
+            <span
+              style={{
+                fontSize: 11,
+                color: 'var(--color-text-tertiary)',
+                fontFamily: ARABIC_FONT,
+              }}
+            >
+              الإجابة تستند إلى مستندات هذه القضية + المكتبة القانونية العامة
+            </span>
+          ) : null}
+        </div>
         <div
           style={{
             maxWidth: 800,
@@ -1032,6 +1210,14 @@ export function ChatPage() {
               }}
             />
           </Tooltip>
+          {isPro && conversationId ? (
+            <DeleteConversationButton
+              compact
+              onConfirm={handleDeleteConversation}
+              loading={isDeletingConversation}
+              disabled={isStreaming}
+            />
+          ) : null}
           <TextArea
             ref={inputRef}
             value={inputValue}

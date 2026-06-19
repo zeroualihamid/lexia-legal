@@ -1,0 +1,1375 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vérificateur de décomposition d'un jugement difficile</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1f211e;
+        --muted: #6d675d;
+        --paper: #f5efe2;
+        --paper-2: #ebe0cf;
+        --panel: #fffaf0;
+        --line: #c4b7a2;
+        --red: #ae3c32;
+        --blue: #245a7a;
+        --green: #34705d;
+        --gold: #b37a1f;
+        --slate: #313742;
+        --shadow: rgba(31, 33, 30, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--ink);
+        background:
+          linear-gradient(90deg, rgba(31, 33, 30, 0.052) 1px, transparent 1px),
+          linear-gradient(rgba(31, 33, 30, 0.046) 1px, transparent 1px),
+          var(--paper);
+        background-size: 28px 28px;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+
+      button,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      main {
+        width: min(1240px, calc(100vw - 28px));
+        margin: 0 auto;
+        padding: 28px 0 44px;
+      }
+
+      .topbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+        gap: 22px;
+        align-items: end;
+        padding-bottom: 20px;
+        border-bottom: 2px solid var(--ink);
+      }
+
+      .kicker {
+        display: inline-flex;
+        width: max-content;
+        margin-bottom: 12px;
+        padding: 7px 10px 6px;
+        border: 1px solid var(--ink);
+        background: var(--panel);
+        color: var(--blue);
+        font-family: "Courier New", monospace;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 780px;
+        font-size: clamp(2.25rem, 6vw, 5.15rem);
+        line-height: 0.94;
+        font-weight: 700;
+        letter-spacing: 0;
+      }
+
+      .summary {
+        display: grid;
+        gap: 12px;
+      }
+
+      .scoreboard {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        min-height: 92px;
+        padding: 12px;
+        border: 1px solid var(--ink);
+        background: var(--panel);
+        box-shadow: 5px 5px 0 var(--shadow);
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-family: "Courier New", monospace;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 8px;
+        font-size: clamp(1.65rem, 3.4vw, 2.8rem);
+        line-height: 1;
+      }
+
+      .status-strip {
+        min-height: 44px;
+        padding: 10px 12px;
+        border: 1px solid var(--ink);
+        background: var(--slate);
+        color: #fffaf0;
+        font-family: "Courier New", monospace;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .workbench {
+        display: grid;
+        grid-template-columns: 330px minmax(0, 1fr);
+        gap: 22px;
+        margin-top: 24px;
+      }
+
+      .panel,
+      .node,
+      .verifier,
+      .log {
+        border: 1px solid var(--ink);
+        background: var(--panel);
+        box-shadow: 7px 7px 0 var(--shadow);
+      }
+
+      .panel {
+        padding: 16px;
+      }
+
+      .panel h2,
+      .verifier h2,
+      .log h2 {
+        margin: 0 0 12px;
+        font-size: 1.08rem;
+        letter-spacing: 0;
+      }
+
+      .scenario-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .scenario {
+        width: 100%;
+        min-height: 78px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        background: #fffdf8;
+        color: var(--ink);
+        text-align: left;
+        transition:
+          transform 160ms ease,
+          box-shadow 160ms ease,
+          border-color 160ms ease;
+      }
+
+      .scenario:hover,
+      .scenario:focus-visible {
+        border-color: var(--ink);
+        box-shadow: 4px 4px 0 var(--shadow);
+        outline: none;
+        transform: translate(-2px, -2px);
+      }
+
+      .scenario.active {
+        border-color: var(--blue);
+        background:
+          linear-gradient(135deg, rgba(36, 90, 122, 0.12), transparent 55%),
+          #fffdf8;
+        box-shadow: 4px 4px 0 rgba(36, 90, 122, 0.22);
+      }
+
+      .scenario strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 0.98rem;
+      }
+
+      .scenario span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.85rem;
+        line-height: 1.28;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .action {
+        min-height: 42px;
+        padding: 9px 11px;
+        border: 1px solid var(--ink);
+        background: var(--ink);
+        color: #fffaf0;
+        font-family: "Courier New", monospace;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .action.secondary {
+        background: var(--panel);
+        color: var(--ink);
+      }
+
+      .action.warning {
+        background: var(--red);
+        color: #fffaf0;
+      }
+
+      .action:focus-visible {
+        outline: 3px solid rgba(179, 122, 31, 0.55);
+        outline-offset: 2px;
+      }
+
+      .judgment-card {
+        margin-top: 18px;
+        padding: 16px;
+        border: 2px solid var(--red);
+        background:
+          linear-gradient(135deg, rgba(174, 60, 50, 0.12), transparent 44%),
+          #fffdf8;
+      }
+
+      .label {
+        display: block;
+        color: var(--muted);
+        font-family: "Courier New", monospace;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .judgment-card p {
+        margin: 9px 0 0;
+        font-size: 1.22rem;
+        line-height: 1.26;
+      }
+
+      .process-rail {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .phase {
+        min-height: 86px;
+        padding: 12px;
+        border: 1px solid var(--ink);
+        background: var(--paper-2);
+        position: relative;
+      }
+
+      .phase.done {
+        background:
+          linear-gradient(135deg, rgba(52, 112, 93, 0.15), transparent 54%),
+          var(--panel);
+      }
+
+      .phase.blocked {
+        background:
+          linear-gradient(135deg, rgba(174, 60, 50, 0.16), transparent 54%),
+          var(--panel);
+      }
+
+      .phase strong {
+        display: block;
+        margin-bottom: 7px;
+        font-family: "Courier New", monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+
+      .phase span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.27;
+      }
+
+      .nodes {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .node {
+        min-height: 360px;
+        padding: 15px;
+        display: grid;
+        grid-template-rows: auto auto 1fr auto;
+        gap: 12px;
+        transition:
+          border-color 160ms ease,
+          transform 160ms ease,
+          box-shadow 160ms ease;
+      }
+
+      .node.fail {
+        border-color: var(--red);
+      }
+
+      .node.pass {
+        border-color: var(--green);
+      }
+
+      .node.focused {
+        transform: translate(-3px, -3px);
+        box-shadow: 10px 10px 0 rgba(179, 122, 31, 0.24);
+      }
+
+      .node-head {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .node h3 {
+        margin: 0;
+        font-size: 1.08rem;
+        line-height: 1.18;
+      }
+
+      .badge {
+        flex: 0 0 auto;
+        min-width: 76px;
+        padding: 5px 7px;
+        border: 1px solid currentColor;
+        font-family: "Courier New", monospace;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      .badge.human {
+        color: var(--red);
+      }
+
+      .badge.agent {
+        color: var(--blue);
+      }
+
+      .badge.verifier {
+        color: var(--green);
+      }
+
+      .node-meta {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .field {
+        display: grid;
+        gap: 5px;
+      }
+
+      select,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: #fffdf8;
+        color: var(--ink);
+      }
+
+      select {
+        height: 38px;
+        padding: 6px 8px;
+      }
+
+      textarea {
+        min-height: 76px;
+        resize: vertical;
+        padding: 9px;
+        line-height: 1.34;
+      }
+
+      select:focus,
+      textarea:focus {
+        border-color: var(--blue);
+        outline: 3px solid rgba(36, 90, 122, 0.16);
+      }
+
+      .check-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .toggle {
+        min-height: 54px;
+        padding: 8px;
+        border: 1px solid var(--line);
+        background: #fffdf8;
+        color: var(--muted);
+        text-align: left;
+        transition:
+          border-color 160ms ease,
+          background 160ms ease,
+          color 160ms ease;
+      }
+
+      .toggle.active {
+        border-color: var(--green);
+        background:
+          linear-gradient(135deg, rgba(52, 112, 93, 0.14), transparent 58%),
+          #fffdf8;
+        color: var(--ink);
+      }
+
+      .toggle strong {
+        display: block;
+        color: inherit;
+        font-family: "Courier New", monospace;
+        font-size: 0.7rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .toggle span {
+        display: block;
+        margin-top: 3px;
+        font-size: 0.78rem;
+        line-height: 1.18;
+      }
+
+      .node-output {
+        display: grid;
+        gap: 8px;
+      }
+
+      .node-result {
+        min-height: 48px;
+        padding: 9px;
+        border: 1px dashed var(--line);
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.28;
+      }
+
+      .node-result.pass {
+        border-color: var(--green);
+        color: var(--green);
+      }
+
+      .node-result.fail {
+        border-color: var(--red);
+        color: var(--red);
+      }
+
+      .lower {
+        display: grid;
+        grid-template-columns: minmax(0, 1.18fr) minmax(310px, 0.82fr);
+        gap: 22px;
+        margin-top: 22px;
+      }
+
+      .verifier,
+      .log {
+        padding: 16px;
+      }
+
+      .verifier-head {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .verifier-list,
+      .decision-list {
+        display: grid;
+        gap: 9px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .verifier-list li {
+        display: grid;
+        grid-template-columns: 76px 1fr;
+        gap: 10px;
+        min-height: 46px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        background: #fffdf8;
+        line-height: 1.3;
+      }
+
+      .verifier-list .pass {
+        color: var(--green);
+        font-family: "Courier New", monospace;
+        font-size: 0.73rem;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .verifier-list .fail {
+        color: var(--red);
+        font-family: "Courier New", monospace;
+        font-size: 0.73rem;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .decision-list li {
+        min-height: 48px;
+        padding: 10px 10px 10px 13px;
+        border-left: 4px solid var(--gold);
+        background: #fffdf8;
+        line-height: 1.34;
+      }
+
+      .decision-list strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--gold);
+        font-family: "Courier New", monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .empty {
+        color: var(--muted);
+        font-style: italic;
+      }
+
+      @media (max-width: 980px) {
+        .topbar,
+        .workbench,
+        .lower {
+          grid-template-columns: 1fr;
+        }
+
+        .process-rail {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .nodes {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 640px) {
+        main {
+          width: min(100vw - 20px, 1240px);
+          padding-top: 18px;
+        }
+
+        .scoreboard,
+        .process-rail,
+        .controls,
+        .node-meta,
+        .check-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .verifier-head {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .verifier-list li {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="topbar" aria-labelledby="page-title">
+        <div>
+          <span class="kicker">Vérificateur cliquable</span>
+          <h1 id="page-title">Décomposer un jugement difficile en petits noeuds de travail</h1>
+        </div>
+
+        <section class="summary" aria-label="Résumé de vérification">
+          <div class="scoreboard">
+            <div class="metric">
+              <span>Progression</span>
+              <strong id="progressValue">0%</strong>
+            </div>
+            <div class="metric">
+              <span>Validés</span>
+              <strong id="passedValue">0/0</strong>
+            </div>
+            <div class="metric">
+              <span>Blocages</span>
+              <strong id="blockerValue">0</strong>
+            </div>
+          </div>
+          <div class="status-strip" id="statusStrip">Sélectionnez ou testez un scénario</div>
+        </section>
+      </section>
+
+      <section class="workbench">
+        <aside class="panel" aria-label="Contrôles du scénario">
+          <h2>Jugement difficile</h2>
+          <div class="scenario-list" id="scenarioList"></div>
+
+          <div class="controls">
+            <button class="action" id="runVerifier" type="button">Vérifier</button>
+            <button class="action secondary" id="nextBlocker" type="button">Blocage suivant</button>
+            <button class="action secondary" id="fillSample" type="button">Exemple valide</button>
+            <button class="action warning" id="resetScenario" type="button">Réinitialiser</button>
+          </div>
+
+          <div class="judgment-card" aria-live="polite">
+            <span class="label">Jugement actuel</span>
+            <p id="judgmentText"></p>
+          </div>
+        </aside>
+
+        <section aria-label="Zone de test du processus">
+          <div class="process-rail" id="processRail"></div>
+          <div class="nodes" id="nodes"></div>
+        </section>
+      </section>
+
+      <section class="lower">
+        <section class="verifier" aria-label="Sortie du vérificateur">
+          <div class="verifier-head">
+            <h2>Résultats du vérificateur</h2>
+            <button class="action secondary" id="copyReport" type="button">Copier le rapport</button>
+          </div>
+          <ul class="verifier-list" id="verifierList"></ul>
+        </section>
+
+        <section class="log" aria-label="Journal de décisions">
+          <h2>Journal de décisions</h2>
+          <ul class="decision-list" id="decisionLog"></ul>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const scenarios = [
+        {
+          id: "contract",
+          title: "Profil de risque contractuel",
+          summary: "Transformer un jugement de rédaction large en noeuds juridiques contrôlés.",
+          judgment: "Quel profil de risque ce contrat doit-il suivre ?",
+          nodes: [
+            {
+              id: "risk-posture",
+              title: "Choisir la posture de risque",
+              owner: "human",
+              requiredOwner: "human",
+              type: "judgment",
+              prompt: "Notez la posture conservatrice, équilibrée ou agressive, avec sa justification.",
+              controls: ["evidence", "output", "human", "check"],
+            },
+            {
+              id: "precedents",
+              title: "Sélectionner les précédents",
+              owner: "human",
+              requiredOwner: "human",
+              type: "judgment",
+              prompt: "Choisissez des exemples de référence adaptés au type de dossier, à la juridiction et au rapport de force.",
+              controls: ["evidence", "output", "human", "check"],
+            },
+            {
+              id: "patterns",
+              title: "Extraire les modèles de clauses réutilisables",
+              owner: "agent",
+              requiredOwner: "agent",
+              type: "execution",
+              prompt: "Reliez les modèles de clauses aux précédents approuvés.",
+              controls: ["evidence", "output", "check", "log"],
+            },
+            {
+              id: "linting",
+              title: "Appliquer les contrôles mécaniques",
+              owner: "verifier",
+              requiredOwner: "verifier",
+              type: "verification",
+              prompt: "Vérifiez les définitions, citations, formats, omissions et écarts de posture.",
+              controls: ["evidence", "output", "check"],
+            },
+          ],
+        },
+        {
+          id: "litigation",
+          title: "Stratégie contentieuse",
+          summary: "Séparer la stratégie incertaine de l'examen des preuves et des contrôles tactiques.",
+          judgment: "Quelle stratégie contentieuse l'équipe doit-elle suivre ?",
+          nodes: [
+            {
+              id: "objectives",
+              title: "Confirmer l'objectif du client",
+              owner: "human",
+              requiredOwner: "human",
+              type: "judgment",
+              prompt: "Définissez l'appétence pour une transaction, les contraintes de délai, le budget et les risques de réputation.",
+              controls: ["evidence", "output", "human", "check"],
+            },
+            {
+              id: "facts",
+              title: "Construire la matrice factuelle",
+              owner: "agent",
+              requiredOwner: "agent",
+              type: "execution",
+              prompt: "Reliez les faits allégués aux documents, témoins, dates et niveaux de confiance.",
+              controls: ["evidence", "output", "check", "log"],
+            },
+            {
+              id: "claims",
+              title: "Évaluer la force des prétentions",
+              owner: "agent",
+              requiredOwner: "agent",
+              type: "execution",
+              prompt: "Notez les demandes et moyens de défense selon leurs éléments, lacunes probatoires et droit applicable.",
+              controls: ["evidence", "output", "check", "log"],
+            },
+            {
+              id: "strategy",
+              title: "Choisir la voie tactique",
+              owner: "human",
+              requiredOwner: "human",
+              type: "judgment",
+              prompt: "Approuvez la posture de négociation, de dépôt, d'instruction ou d'escalade.",
+              controls: ["evidence", "output", "human", "check"],
+            },
+          ],
+        },
+        {
+          id: "employment-report",
+          title: "Rapport sur contrats de travail",
+          summary: "Découper un grand arbre de revue en lignes que l'humain peut inspecter vite.",
+          judgment: "Quels problèmes de ces contrats de travail méritent d'être signalés ?",
+          nodes: [
+            {
+              id: "scope",
+              title: "Définir le périmètre de revue",
+              owner: "human",
+              requiredOwner: "human",
+              type: "judgment",
+              prompt: "Confirmez les clauses, juridictions et groupes de salariés inclus dans le périmètre.",
+              controls: ["evidence", "output", "human", "check"],
+            },
+            {
+              id: "extract",
+              title: "Extraire l'inventaire des clauses",
+              owner: "agent",
+              requiredOwner: "agent",
+              type: "execution",
+              prompt: "Créez des lignes pour rupture, confidentialité, propriété intellectuelle, non-concurrence, avantages et exceptions.",
+              controls: ["evidence", "output", "check", "log"],
+            },
+            {
+              id: "flag",
+              title: "Signaler les anomalies",
+              owner: "verifier",
+              requiredOwner: "verifier",
+              type: "verification",
+              prompt: "Comparez chaque ligne à la politique, aux exemples de référence et aux contrôles de clauses requis.",
+              controls: ["evidence", "output", "check"],
+            },
+            {
+              id: "triage",
+              title: "Trier les lignes signalées",
+              owner: "human",
+              requiredOwner: "human",
+              type: "judgment",
+              prompt: "Approuvez les alertes qui exigent une révision, une escalade ou aucune action.",
+              controls: ["evidence", "output", "human", "check"],
+            },
+          ],
+        },
+      ];
+
+      const controls = {
+        evidence: {
+          title: "Preuves",
+          body: "Sources jointes",
+        },
+        output: {
+          title: "Sortie",
+          body: "Résultat rédigé",
+        },
+        human: {
+          title: "Contrôle",
+          body: "Humain approuvé",
+        },
+        check: {
+          title: "Test",
+          body: "Vérificateur défini",
+        },
+        log: {
+          title: "Journal",
+          body: "Décision consignée",
+        },
+      };
+
+      const roleLabels = {
+        human: "Humain",
+        agent: "Agent",
+        verifier: "Vérificateur",
+      };
+
+      const phases = [
+        {
+          id: "isolate",
+          title: "Isoler",
+          body: "Choix subjectifs séparés du travail mécanique.",
+        },
+        {
+          id: "evidence",
+          title: "Preuves",
+          body: "Chaque noeud dispose de sources exploitables.",
+        },
+        {
+          id: "control",
+          title: "Contrôle",
+          body: "Les choix stratégiques ont une approbation humaine.",
+        },
+        {
+          id: "verify",
+          title: "Vérifier",
+          body: "Les tests capturent les défauts avant revue.",
+        },
+        {
+          id: "review",
+          title: "Revoir",
+          body: "Journal de décisions et blocages visibles.",
+        },
+      ];
+
+      const state = {
+        scenarioId: "contract",
+        focusedNodeId: null,
+        hasRun: false,
+        nodeState: {},
+      };
+
+      const scenarioList = document.querySelector("#scenarioList");
+      const judgmentText = document.querySelector("#judgmentText");
+      const processRail = document.querySelector("#processRail");
+      const nodesEl = document.querySelector("#nodes");
+      const progressValue = document.querySelector("#progressValue");
+      const passedValue = document.querySelector("#passedValue");
+      const blockerValue = document.querySelector("#blockerValue");
+      const statusStrip = document.querySelector("#statusStrip");
+      const verifierList = document.querySelector("#verifierList");
+      const decisionLog = document.querySelector("#decisionLog");
+
+      function activeScenario() {
+        return scenarios.find((scenario) => scenario.id === state.scenarioId);
+      }
+
+      function defaultNodeState(node) {
+        const toggles = {};
+        Object.keys(controls).forEach((key) => {
+          toggles[key] = false;
+        });
+
+        return {
+          owner: node.owner,
+          note: "",
+          toggles,
+        };
+      }
+
+      function ensureScenarioState() {
+        activeScenario().nodes.forEach((node) => {
+          if (!state.nodeState[node.id]) {
+            state.nodeState[node.id] = defaultNodeState(node);
+          }
+        });
+      }
+
+      function resetCurrentScenario() {
+        activeScenario().nodes.forEach((node) => {
+          state.nodeState[node.id] = defaultNodeState(node);
+        });
+        state.focusedNodeId = null;
+        state.hasRun = false;
+        render();
+      }
+
+      function passCurrentScenario() {
+        activeScenario().nodes.forEach((node) => {
+          const item = state.nodeState[node.id] || defaultNodeState(node);
+          item.owner = node.requiredOwner;
+          node.controls.forEach((control) => {
+            item.toggles[control] = true;
+          });
+          if (node.controls.includes("log")) {
+            item.note = "Décision par défaut consignée avec point de réversibilité et lien source.";
+          } else if (node.requiredOwner === "human") {
+            item.note = "Approbation humaine consignée avec justification.";
+          } else {
+            item.note = "La sortie est liée aux preuves et au test de vérification.";
+          }
+          state.nodeState[node.id] = item;
+        });
+        state.hasRun = true;
+        state.focusedNodeId = null;
+        render();
+      }
+
+      function nodeChecks(node) {
+        const item = state.nodeState[node.id] || defaultNodeState(node);
+        const failures = [];
+
+        if (item.owner !== node.requiredOwner) {
+          failures.push(`Le responsable doit être ${roleLabels[node.requiredOwner]}.`);
+        }
+
+        node.controls.forEach((control) => {
+          if (!item.toggles[control]) {
+            failures.push(`${controls[control].title} manquant.`);
+          }
+        });
+
+        if (node.type === "judgment" && !item.toggles.human) {
+          failures.push("Ce noeud de jugement exige un point de contrôle humain explicite.");
+        }
+
+        if (item.toggles.log && item.note.trim().length < 12) {
+          failures.push("Une décision consignée exige une note utile.");
+        }
+
+        if (item.toggles.output && item.note.trim().length < 8) {
+          failures.push("La sortie doit inclure une courte justification ou trace.");
+        }
+
+        return failures;
+      }
+
+      function scenarioChecks() {
+        const scenario = activeScenario();
+        const nodeResults = scenario.nodes.map((node) => ({
+          node,
+          failures: nodeChecks(node),
+        }));
+
+        const failures = [];
+        const hasHumanControl = scenario.nodes.some((node) => {
+          const item = state.nodeState[node.id] || defaultNodeState(node);
+          return item.toggles.human;
+        });
+        const hasVerifier = scenario.nodes.some((node) => {
+          const item = state.nodeState[node.id] || defaultNodeState(node);
+          return item.owner === "verifier" || item.toggles.check;
+        });
+        const hasDecisionLog = scenario.nodes.some((node) => {
+          const item = state.nodeState[node.id] || defaultNodeState(node);
+          return item.toggles.log && item.note.trim().length >= 12;
+        });
+
+        if (!hasHumanControl) {
+          failures.push("Au moins un point de contrôle humain est requis.");
+        }
+
+        if (!hasVerifier) {
+          failures.push("Au moins un vérificateur ou test explicite est requis.");
+        }
+
+        if (!hasDecisionLog) {
+          failures.push("Au moins une incertitude ou décision d'agent doit être consignée.");
+        }
+
+        return { nodeResults, failures };
+      }
+
+      function completionStats() {
+        const scenario = activeScenario();
+        const required = scenario.nodes.reduce((sum, node) => {
+          return sum + node.controls.length + 2;
+        }, 0);
+        const done = scenario.nodes.reduce((sum, node) => {
+          const item = state.nodeState[node.id] || defaultNodeState(node);
+          const toggleCount = node.controls.filter((control) => item.toggles[control]).length;
+          const ownerCount = item.owner === node.requiredOwner ? 1 : 0;
+          const noteCount = item.note.trim().length >= 8 ? 1 : 0;
+          return sum + toggleCount + ownerCount + noteCount;
+        }, 0);
+
+        const allChecks = scenarioChecks();
+        const blockers =
+          allChecks.failures.length +
+          allChecks.nodeResults.reduce((sum, result) => sum + result.failures.length, 0);
+        const passedNodes = allChecks.nodeResults.filter((result) => result.failures.length === 0).length;
+        const progress = required === 0 ? 0 : Math.round((done / required) * 100);
+
+        return {
+          progress,
+          passedNodes,
+          totalNodes: scenario.nodes.length,
+          blockers,
+          allChecks,
+        };
+      }
+
+      function setScenario(id) {
+        state.scenarioId = id;
+        state.focusedNodeId = null;
+        state.hasRun = false;
+        ensureScenarioState();
+        render();
+      }
+
+      function toggleControl(nodeId, control) {
+        const item = state.nodeState[nodeId];
+        item.toggles[control] = !item.toggles[control];
+        state.hasRun = false;
+        render();
+      }
+
+      function updateOwner(nodeId, owner) {
+        state.nodeState[nodeId].owner = owner;
+        state.hasRun = false;
+        render();
+      }
+
+      function updateNote(nodeId, note) {
+        state.nodeState[nodeId].note = note;
+        renderSummaryOnly();
+      }
+
+      function runVerifier() {
+        state.hasRun = true;
+        const stats = completionStats();
+        const firstFail = stats.allChecks.nodeResults.find((result) => result.failures.length > 0);
+        state.focusedNodeId = firstFail ? firstFail.node.id : null;
+        render();
+      }
+
+      function focusNextBlocker() {
+        const stats = completionStats();
+        const failedNodes = stats.allChecks.nodeResults
+          .filter((result) => result.failures.length > 0)
+          .map((result) => result.node.id);
+
+        if (failedNodes.length === 0) {
+          state.focusedNodeId = null;
+          render();
+          return;
+        }
+
+        const currentIndex = failedNodes.indexOf(state.focusedNodeId);
+        const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % failedNodes.length;
+        state.focusedNodeId = failedNodes[nextIndex];
+        render();
+
+        const card = document.querySelector(`[data-node-id="${state.focusedNodeId}"]`);
+        if (card) {
+          card.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+
+      function copyReport() {
+        const stats = completionStats();
+        const lines = [
+          `Scénario : ${activeScenario().title}`,
+          `Progression : ${stats.progress}%`,
+          `Noeuds validés : ${stats.passedNodes}/${stats.totalNodes}`,
+          `Blocages : ${stats.blockers}`,
+          "",
+          "Résultats par noeud :",
+        ];
+
+        stats.allChecks.nodeResults.forEach((result) => {
+          lines.push(`- ${result.node.title}: ${result.failures.length === 0 ? "OK" : "ÉCHEC"}`);
+          result.failures.forEach((failure) => lines.push(`  - ${failure}`));
+        });
+
+        if (stats.allChecks.failures.length > 0) {
+          lines.push("", "Échecs du processus :");
+          stats.allChecks.failures.forEach((failure) => lines.push(`- ${failure}`));
+        }
+
+        const text = lines.join("\n");
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            statusStrip.textContent = "Rapport copié";
+          });
+        } else {
+          statusStrip.textContent = text;
+        }
+      }
+
+      function renderScenarios() {
+        scenarioList.innerHTML = "";
+        scenarios.forEach((scenario) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `scenario${scenario.id === state.scenarioId ? " active" : ""}`;
+          button.innerHTML = `<strong>${scenario.title}</strong><span>${scenario.summary}</span>`;
+          button.addEventListener("click", () => setScenario(scenario.id));
+          scenarioList.append(button);
+        });
+      }
+
+      function renderRail(stats) {
+        processRail.innerHTML = "";
+        const scenario = activeScenario();
+        const hasAllEvidence = scenario.nodes.every((node) => {
+          const item = state.nodeState[node.id] || defaultNodeState(node);
+          return item.toggles.evidence;
+        });
+        const hasAllOutputs = scenario.nodes.every((node) => {
+          const item = state.nodeState[node.id] || defaultNodeState(node);
+          return item.toggles.output;
+        });
+        const hasAllHumanControls = scenario.nodes
+          .filter((node) => node.type === "judgment")
+          .every((node) => {
+            const item = state.nodeState[node.id] || defaultNodeState(node);
+            return item.toggles.human;
+          });
+        const hasAnyHumanControl = scenario.nodes.some((node) => {
+          const item = state.nodeState[node.id] || defaultNodeState(node);
+          return item.toggles.human;
+        });
+        const hasChecks = scenario.nodes.every((node) => {
+          const item = state.nodeState[node.id] || defaultNodeState(node);
+          return item.toggles.check;
+        });
+        const hasLog = scenario.nodes.some((node) => {
+          const item = state.nodeState[node.id] || defaultNodeState(node);
+          return item.toggles.log && item.note.trim().length >= 12;
+        });
+
+        const statusByPhase = {
+          isolate: hasAllOutputs,
+          evidence: hasAllEvidence,
+          control: hasAllHumanControls && hasAnyHumanControl,
+          verify: hasChecks,
+          review: hasLog && state.hasRun,
+        };
+
+        phases.forEach((phase) => {
+          const item = document.createElement("article");
+          const done = statusByPhase[phase.id];
+          item.className = `phase ${done ? "done" : state.hasRun ? "blocked" : ""}`;
+          item.innerHTML = `<strong>${phase.title}</strong><span>${phase.body}</span>`;
+          processRail.append(item);
+        });
+      }
+
+      function renderNodes(stats) {
+        nodesEl.innerHTML = "";
+        activeScenario().nodes.forEach((node) => {
+          const item = state.nodeState[node.id] || defaultNodeState(node);
+          const failures = nodeChecks(node);
+          const hasPassed = failures.length === 0;
+          const article = document.createElement("article");
+          article.className = [
+            "node",
+            state.hasRun ? (hasPassed ? "pass" : "fail") : "",
+            state.focusedNodeId === node.id ? "focused" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          article.dataset.nodeId = node.id;
+
+          const controlButtons = node.controls
+            .map((control) => {
+              const config = controls[control];
+              const active = item.toggles[control];
+              return `<button class="toggle ${active ? "active" : ""}" type="button" data-node="${node.id}" data-control="${control}" aria-pressed="${active}">
+                <strong>${config.title}</strong>
+                <span>${config.body}</span>
+              </button>`;
+            })
+            .join("");
+
+          const resultClass = state.hasRun ? (hasPassed ? "pass" : "fail") : "";
+          const resultText = state.hasRun
+            ? hasPassed
+              ? "OK : le noeud est décomposé, attribué, étayé, contrôlé et vérifiable."
+              : `ÉCHEC : ${failures.join(" ")}`
+            : node.prompt;
+
+          article.innerHTML = `
+            <div class="node-head">
+              <h3>${node.title}</h3>
+              <span class="badge ${item.owner}">${roleLabels[item.owner]}</span>
+            </div>
+            <div class="node-meta">
+              <label class="field">
+                <span class="label">Responsable</span>
+                <select data-owner="${node.id}">
+                  <option value="human" ${item.owner === "human" ? "selected" : ""}>Humain</option>
+                  <option value="agent" ${item.owner === "agent" ? "selected" : ""}>Agent</option>
+                  <option value="verifier" ${item.owner === "verifier" ? "selected" : ""}>Vérificateur</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="label">Requis</span>
+                <select disabled>
+                  <option>${roleLabels[node.requiredOwner]}</option>
+                </select>
+              </label>
+            </div>
+            <div class="check-grid">${controlButtons}</div>
+            <div class="node-output">
+              <label class="field">
+                <span class="label">Justification ou journal</span>
+                <textarea data-note="${node.id}" placeholder="Notez la justification, la trace source ou le point de réversibilité.">${item.note}</textarea>
+              </label>
+              <div class="node-result ${resultClass}" aria-live="polite">${resultText}</div>
+            </div>
+          `;
+
+          nodesEl.append(article);
+        });
+
+        nodesEl.querySelectorAll("[data-control]").forEach((button) => {
+          button.addEventListener("click", () => {
+            toggleControl(button.dataset.node, button.dataset.control);
+          });
+        });
+
+        nodesEl.querySelectorAll("[data-owner]").forEach((select) => {
+          select.addEventListener("change", () => {
+            updateOwner(select.dataset.owner, select.value);
+          });
+        });
+
+        nodesEl.querySelectorAll("[data-note]").forEach((textarea) => {
+          textarea.addEventListener("input", () => {
+            updateNote(textarea.dataset.note, textarea.value);
+          });
+        });
+      }
+
+      function renderVerifier(stats) {
+        verifierList.innerHTML = "";
+
+        const rows = [];
+        stats.allChecks.nodeResults.forEach((result) => {
+          if (result.failures.length === 0) {
+            rows.push({
+              state: "pass",
+              text: `${result.node.title} est prêt.`,
+            });
+          } else {
+            result.failures.forEach((failure) => {
+              rows.push({
+                state: "fail",
+                text: `${result.node.title}: ${failure}`,
+              });
+            });
+          }
+        });
+
+        stats.allChecks.failures.forEach((failure) => {
+          rows.push({
+            state: "fail",
+            text: failure,
+          });
+        });
+
+        if (rows.length === 0) {
+          verifierList.innerHTML = `<li><span class="pass">OK</span><span>Le processus est décomposé et prêt pour une exécution contrôlée.</span></li>`;
+          return;
+        }
+
+        rows.forEach((row) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<span class="${row.state}">${row.state === "pass" ? "OK" : "Échec"}</span><span>${row.text}</span>`;
+          verifierList.append(li);
+        });
+      }
+
+      function renderDecisionLog() {
+        decisionLog.innerHTML = "";
+        const entries = activeScenario().nodes
+          .map((node) => {
+            const item = state.nodeState[node.id] || defaultNodeState(node);
+            return {
+              node,
+              note: item.note.trim(),
+              logged: item.toggles.log,
+              human: item.toggles.human,
+            };
+          })
+          .filter((entry) => entry.note.length > 0 || entry.logged || entry.human);
+
+        if (entries.length === 0) {
+          decisionLog.innerHTML = `<li class="empty">Aucune décision consignée pour l'instant.</li>`;
+          return;
+        }
+
+        entries.forEach((entry) => {
+          const li = document.createElement("li");
+          const tag = entry.human ? "Contrôle humain" : entry.logged ? "Décision d'agent" : "Justification";
+          li.innerHTML = `<strong>${tag} : ${entry.node.title}</strong>${entry.note || "Marqué, mais aucune note n'a été rédigée."}`;
+          decisionLog.append(li);
+        });
+      }
+
+      function renderSummaryOnly() {
+        const stats = completionStats();
+        progressValue.textContent = `${Math.min(stats.progress, 100)}%`;
+        passedValue.textContent = `${stats.passedNodes}/${stats.totalNodes}`;
+        blockerValue.textContent = String(stats.blockers);
+
+        if (stats.blockers === 0) {
+          statusStrip.textContent = "Processus vérifié";
+        } else if (state.hasRun) {
+          statusStrip.textContent = `${stats.blockers} blocage${stats.blockers === 1 ? "" : "s"} restant${stats.blockers === 1 ? "" : "s"}`;
+        } else {
+          statusStrip.textContent = "Processus pas encore vérifié";
+        }
+
+        renderDecisionLog();
+      }
+
+      function render() {
+        ensureScenarioState();
+        const stats = completionStats();
+        judgmentText.textContent = activeScenario().judgment;
+        renderScenarios();
+        renderRail(stats);
+        renderNodes(stats);
+        renderVerifier(stats);
+        renderSummaryOnly();
+      }
+
+      document.querySelector("#runVerifier").addEventListener("click", runVerifier);
+      document.querySelector("#nextBlocker").addEventListener("click", focusNextBlocker);
+      document.querySelector("#fillSample").addEventListener("click", passCurrentScenario);
+      document.querySelector("#resetScenario").addEventListener("click", resetCurrentScenario);
+      document.querySelector("#copyReport").addEventListener("click", copyReport);
+
+      render();
+    </script>
+  </body>
+</html>

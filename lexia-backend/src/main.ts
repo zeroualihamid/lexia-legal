@@ -142,8 +142,8 @@ async function bootstrap(): Promise<void> {
   SwaggerModule.setup("docs", app, baseDoc, { jsonDocumentUrl: "docs-json" });
 
   app.enableShutdownHooks();
-  await app.listen(port, "0.0.0.0");
-  console.log(`Lexia backend listening on 0.0.0.0:${port}`);
+  await app.listen(port, "::");
+  console.log(`Lexia backend listening on [::]:${port}`);
   console.log(`Legal Swagger: http://localhost:${port}/api/docs`);
   console.log(`Merged Swagger: http://localhost:${port}/docs`);
   console.log(`Bull Board: http://localhost:${port}/bull-board`);

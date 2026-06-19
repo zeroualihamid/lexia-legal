@@ -28,12 +28,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import apiClient from '../../../shared/api/client'
 import { GOLD, DARK_CARD, BORDER_COLOR } from '../../../shared/constants'
 import dayjs from 'dayjs'
+import { useAdminUi } from '../locale/useAdminI18n'
 
-const ROLE_CONFIG: Record<string, { color: string; label: string }> = {
-  PUBLIC: { color: '#8c8c8c', label: 'عام' },
-  PRO: { color: GOLD, label: 'محترف' },
-  ADMIN: { color: '#1677ff', label: 'مشرف' },
-  SUPERADMIN: { color: '#eb2f96', label: 'مشرف عام' },
+const ROLE_COLORS: Record<string, string> = {
+  PUBLIC: '#8c8c8c',
+  PRO: GOLD,
+  ADMIN: '#1677ff',
+  SUPERADMIN: '#eb2f96',
 }
 
 const MOCK_USERS = [
@@ -44,16 +45,21 @@ const MOCK_USERS = [
   { id: '5', email: 'karim@cabinet-legal.ma', name: 'كريم الحسني', role: 'PRO', is_active: true, created_at: '2024-01-25T09:00:00Z', last_login: '2024-03-15T08:00:00Z', subscription: 'pro', messages_today: 78 },
 ]
 
+type AdminUi = ReturnType<typeof useAdminUi>
+
 function EditUserModal({
   open,
   user,
   onClose,
+  ui,
 }: {
   open: boolean
   user: any | null
   onClose: () => void
+  ui: AdminUi
 }) {
   const { message } = App.useApp()
+  const { t, font, formStyle, labelStyle, titleStyle, roleOptions } = ui
   const [form] = Form.useForm()
   const qc = useQueryClient()
 
@@ -69,44 +75,33 @@ function EditUserModal({
       if (password) await apiClient.patch(`/admin/users/${user?.id}/password`, { password })
     },
     onSuccess: () => {
-      message.success('تم تحديث المستخدم')
+      message.success(t.users.updateSuccess)
       qc.invalidateQueries({ queryKey: ['admin-users'] })
       onClose()
     },
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   return (
     <Modal
-      title={
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
-          تعديل المستخدم
-        </span>
-      }
+      title={<span style={titleStyle}>{t.users.editUser}</span>}
       open={open}
       onCancel={onClose}
       onOk={() => form.submit()}
-      okText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>حفظ</span>}
-      cancelText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إلغاء</span>}
+      okText={<span style={{ fontFamily: font }}>{t.common.save}</span>}
+      cancelText={<span style={{ fontFamily: font }}>{t.common.cancel}</span>}
       okButtonProps={{ loading: isPending, style: { background: GOLD, borderColor: GOLD, color: '#000' } }}
       centered
     >
-      <Form form={form} layout="vertical" onFinish={(v) => save(v)} style={{ direction: 'rtl', marginTop: 16 }}>
-        <Form.Item name="name" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الاسم الكامل</span>}>
-          <Input style={{ direction: 'rtl', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }} />
+      <Form form={form} layout="vertical" onFinish={(v) => save(v)} style={formStyle}>
+        <Form.Item name="name" label={<span style={labelStyle}>{t.users.fullName}</span>}>
+          <Input style={{ direction: ui.dir, fontFamily: font }} />
         </Form.Item>
-        <Form.Item name="role" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الدور</span>} rules={[{ required: true }]}>
-          <Select
-            options={[
-              { value: 'PUBLIC', label: 'عام' },
-              { value: 'PRO', label: 'محترف' },
-              { value: 'ADMIN', label: 'مشرف' },
-              { value: 'SUPERADMIN', label: 'مشرف عام' },
-            ]}
-          />
+        <Form.Item name="role" label={<span style={labelStyle}>{t.users.role}</span>} rules={[{ required: true }]}>
+          <Select options={roleOptions()} />
         </Form.Item>
-        <Form.Item name="password" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>كلمة مرور جديدة</span>}>
-          <Input.Password placeholder="اتركها فارغة بدون تغيير" />
+        <Form.Item name="password" label={<span style={labelStyle}>{t.users.newPassword}</span>}>
+          <Input.Password placeholder={t.users.passwordPlaceholder} />
         </Form.Item>
       </Form>
     </Modal>
@@ -116,11 +111,14 @@ function EditUserModal({
 function CreateUserModal({
   open,
   onClose,
+  ui,
 }: {
   open: boolean
   onClose: () => void
+  ui: AdminUi
 }) {
   const { message } = App.useApp()
+  const { t, font, formStyle, labelStyle, titleStyle, roleOptions } = ui
   const [form] = Form.useForm()
   const qc = useQueryClient()
 
@@ -129,22 +127,22 @@ function CreateUserModal({
       await apiClient.post('/admin/users', values)
     },
     onSuccess: () => {
-      message.success('تم إنشاء المستخدم')
+      message.success(t.users.createSuccess)
       qc.invalidateQueries({ queryKey: ['admin-users'] })
       form.resetFields()
       onClose()
     },
-    onError: (err: any) => message.error(err?.response?.data?.message || 'حدث خطأ'),
+    onError: (err: any) => message.error(err?.response?.data?.message || t.common.error),
   })
 
   return (
     <Modal
-      title={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>إضافة مستخدم</span>}
+      title={<span style={titleStyle}>{t.users.createUser}</span>}
       open={open}
       onCancel={onClose}
       onOk={() => form.submit()}
-      okText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إنشاء</span>}
-      cancelText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إلغاء</span>}
+      okText={<span style={{ fontFamily: font }}>{t.common.create}</span>}
+      cancelText={<span style={{ fontFamily: font }}>{t.common.cancel}</span>}
       okButtonProps={{ loading: isPending, style: { background: GOLD, borderColor: GOLD, color: '#000' } }}
       centered
     >
@@ -153,29 +151,22 @@ function CreateUserModal({
         layout="vertical"
         initialValues={{ role: 'ADMIN', enabled: true }}
         onFinish={(v) => create(v)}
-        style={{ direction: 'rtl', marginTop: 16 }}
+        style={formStyle}
       >
-        <Form.Item name="username" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>اسم المستخدم</span>} rules={[{ required: true }]}>
+        <Form.Item name="username" label={<span style={labelStyle}>{t.users.username}</span>} rules={[{ required: true }]}>
           <Input />
         </Form.Item>
-        <Form.Item name="email" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>البريد الإلكتروني</span>} rules={[{ required: true, type: 'email' }]}>
+        <Form.Item name="email" label={<span style={labelStyle}>{t.users.email}</span>} rules={[{ required: true, type: 'email' }]}>
           <Input />
         </Form.Item>
-        <Form.Item name="name" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الاسم الكامل</span>}>
+        <Form.Item name="name" label={<span style={labelStyle}>{t.users.fullName}</span>}>
           <Input />
         </Form.Item>
-        <Form.Item name="password" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>كلمة المرور</span>} rules={[{ required: true }]}>
+        <Form.Item name="password" label={<span style={labelStyle}>{t.users.password}</span>} rules={[{ required: true }]}>
           <Input.Password />
         </Form.Item>
-        <Form.Item name="role" label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الدور</span>} rules={[{ required: true }]}>
-          <Select
-            options={[
-              { value: 'PUBLIC', label: 'عام' },
-              { value: 'PRO', label: 'محترف' },
-              { value: 'ADMIN', label: 'مشرف' },
-              { value: 'SUPERADMIN', label: 'مشرف عام' },
-            ]}
-          />
+        <Form.Item name="role" label={<span style={labelStyle}>{t.users.role}</span>} rules={[{ required: true }]}>
+          <Select options={roleOptions()} />
         </Form.Item>
       </Form>
     </Modal>
@@ -183,6 +174,8 @@ function CreateUserModal({
 }
 
 export function UsersPage() {
+  const ui = useAdminUi()
+  const { t, font, pageStyle, tableStyle, h1Style, labelStyle, mutedStyle, roleOptions } = ui
   const { message } = App.useApp()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('')
@@ -208,7 +201,7 @@ export function UsersPage() {
       await apiClient.patch(`/admin/users/${id}`, { is_active: active })
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   const { mutate: deleteUser } = useMutation({
@@ -216,15 +209,15 @@ export function UsersPage() {
       await apiClient.delete(`/admin/users/${id}`)
     },
     onSuccess: () => {
-      message.success('تم حذف المستخدم')
+      message.success(t.users.deleteSuccess)
       qc.invalidateQueries({ queryKey: ['admin-users'] })
     },
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   const columns = [
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المستخدم</span>,
+      title: <span style={labelStyle}>{t.users.userColumn}</span>,
       key: 'user',
       render: (_: any, r: any) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -235,10 +228,10 @@ export function UsersPage() {
             {r.name?.[0] || r.email?.[0]?.toUpperCase()}
           </Avatar>
           <div>
-            <div style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 13, fontWeight: 500 }}>
+            <div style={{ fontFamily: font, color: 'var(--color-text-primary)', fontSize: 13, fontWeight: 500 }}>
               {r.name}
             </div>
-            <div style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-quaternary)', fontSize: 11 }}>
+            <div style={{ ...mutedStyle, color: 'var(--color-text-quaternary)', fontSize: 11 }}>
               {r.email}
             </div>
           </div>
@@ -246,77 +239,78 @@ export function UsersPage() {
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الدور</span>,
+      title: <span style={labelStyle}>{t.users.role}</span>,
       dataIndex: 'role',
       key: 'role',
       render: (v: string) => {
-        const cfg = ROLE_CONFIG[v] || { color: '#8c8c8c', label: v }
+        const color = ROLE_COLORS[v] || '#8c8c8c'
+        const label = t.roles[v as keyof typeof t.roles] || v
         return (
-          <Tag style={{ background: `${cfg.color}20`, border: `1px solid ${cfg.color}40`, color: cfg.color, borderRadius: 12, fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
+          <Tag style={{ background: `${color}20`, border: `1px solid ${color}40`, color, borderRadius: 12, fontFamily: font }}>
             {v === 'SUPERADMIN' && <CrownOutlined style={{ marginLeft: 4 }} />}
-            {cfg.label}
+            {label}
           </Tag>
         )
       },
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الاشتراك</span>,
+      title: <span style={labelStyle}>{t.users.subscription}</span>,
       dataIndex: 'subscription',
       key: 'subscription',
       render: (v: string | null) => (
         v ? (
-          <Tag style={{ background: 'rgba(201,168,76,0.15)', color: GOLD, border: `1px solid rgba(201,168,76,0.3)`, borderRadius: 12, fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 11 }}>
-            {v === 'pro' ? 'محترف' : v === 'enterprise' ? 'مؤسسي' : v}
+          <Tag style={{ background: 'rgba(201,168,76,0.15)', color: GOLD, border: `1px solid rgba(201,168,76,0.3)`, borderRadius: 12, fontFamily: font, fontSize: 11 }}>
+            {v === 'pro' ? t.users.proPlan : v === 'enterprise' ? t.users.enterprisePlan : v}
           </Tag>
         ) : (
-          <span style={{ color: 'var(--color-text-quaternary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 12 }}>بدون اشتراك</span>
+          <span style={mutedStyle}>{t.users.noSubscription}</span>
         )
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الرسائل اليوم</span>,
+      title: <span style={labelStyle}>{t.users.messagesToday}</span>,
       dataIndex: 'messages_today',
       key: 'messages_today',
       render: (v: number) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: v > 50 ? GOLD : 'var(--color-text-tertiary)', fontWeight: v > 50 ? 600 : 400 }}>
+        <span style={{ fontFamily: font, color: v > 50 ? GOLD : 'var(--color-text-tertiary)', fontWeight: v > 50 ? 600 : 400 }}>
           {v}
         </span>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>آخر دخول</span>,
+      title: <span style={labelStyle}>{t.users.lastLogin}</span>,
       dataIndex: 'last_login',
       key: 'last_login',
       render: (v: string | null) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-quaternary)', fontSize: 12 }}>
-          {v ? dayjs(v).format('DD/MM HH:mm') : 'لم يسجل دخولاً'}
+        <span style={mutedStyle}>
+          {v ? dayjs(v).format('DD/MM HH:mm') : t.users.neverLoggedIn}
         </span>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الحالة</span>,
+      title: <span style={labelStyle}>{t.common.status}</span>,
       dataIndex: 'is_active',
       key: 'is_active',
       render: (v: boolean) => (
         <Badge
           color={v ? '#52c41a' : '#f5222d'}
           text={
-            <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 12, color: v ? '#52c41a' : '#f5222d' }}>
-              {v ? 'نشط' : 'موقوف'}
+            <span style={{ fontFamily: font, fontSize: 12, color: v ? '#52c41a' : '#f5222d' }}>
+              {v ? t.common.active : t.common.inactive}
             </span>
           }
         />
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الإجراءات</span>,
+      title: <span style={labelStyle}>{t.common.actions}</span>,
       key: 'actions',
       render: (_: any, r: any) => (
         <Space>
-          <Tooltip title="تعديل">
+          <Tooltip title={t.common.edit}>
             <Button type="text" size="small" icon={<EditOutlined />} style={{ color: GOLD }} onClick={() => setEditUser(r)} />
           </Tooltip>
-          <Tooltip title={r.is_active ? 'إيقاف' : 'تفعيل'}>
+          <Tooltip title={r.is_active ? t.users.suspend : t.users.activate}>
             <Button
               type="text"
               size="small"
@@ -326,9 +320,9 @@ export function UsersPage() {
             />
           </Tooltip>
           <Popconfirm
-            title={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>هل تريد حذف هذا المستخدم؟</span>}
-            okText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>حذف</span>}
-            cancelText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إلغاء</span>}
+            title={<span style={{ fontFamily: font }}>{t.users.deleteConfirm}</span>}
+            okText={<span style={{ fontFamily: font }}>{t.common.delete}</span>}
+            cancelText={<span style={{ fontFamily: font }}>{t.common.cancel}</span>}
             okButtonProps={{ danger: true }}
             onConfirm={() => deleteUser(r.id)}
           >
@@ -342,13 +336,11 @@ export function UsersPage() {
   const displayUsers = users || MOCK_USERS
 
   return (
-    <div style={{ direction: 'rtl' }}>
+    <div style={pageStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <UserOutlined style={{ fontSize: 22, color: GOLD }} />
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
-            إدارة المستخدمين
-          </h1>
+          <h1 style={h1Style}>{t.users.title}</h1>
           <Badge
             count={displayUsers.length}
             style={{ background: 'var(--color-border-subtle)', color: 'var(--color-text-secondary)', boxShadow: 'none' }}
@@ -358,16 +350,15 @@ export function UsersPage() {
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => setCreateOpen(true)}
-          style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}
+          style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: font }}
         >
-          إضافة مستخدم
+          {t.users.addUser}
         </Button>
       </div>
 
-      {/* Filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <Input
-          placeholder="بحث بالاسم أو البريد..."
+          placeholder={t.users.searchPlaceholder}
           prefix={<SearchOutlined style={{ color: 'var(--color-text-quaternary)' }} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -375,8 +366,8 @@ export function UsersPage() {
             maxWidth: 280,
             background: DARK_CARD,
             border: `1px solid ${BORDER_COLOR}`,
-            direction: 'rtl',
-            fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
+            direction: ui.dir,
+            fontFamily: font,
           }}
           allowClear
         />
@@ -384,26 +375,20 @@ export function UsersPage() {
           value={roleFilter}
           onChange={setRoleFilter}
           style={{ minWidth: 160 }}
-          options={[
-            { value: '', label: 'جميع الأدوار' },
-            { value: 'PUBLIC', label: 'عام' },
-            { value: 'PRO', label: 'محترف' },
-            { value: 'ADMIN', label: 'مشرف' },
-            { value: 'SUPERADMIN', label: 'مشرف عام' },
-          ]}
+          options={roleOptions(true)}
         />
       </div>
 
-      {/* Stats summary */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        {Object.entries(ROLE_CONFIG).map(([role, cfg]) => {
+        {Object.entries(ROLE_COLORS).map(([role, color]) => {
           const count = displayUsers.filter((u: any) => u.role === role).length
+          const label = t.roles[role as keyof typeof t.roles]
           return (
             <div
               key={role}
               style={{
                 background: DARK_CARD,
-                border: `1px solid ${cfg.color}30`,
+                border: `1px solid ${color}30`,
                 borderRadius: 10,
                 padding: '8px 16px',
                 display: 'flex',
@@ -411,8 +396,8 @@ export function UsersPage() {
                 alignItems: 'center',
               }}
             >
-              <span style={{ fontSize: 13, color: cfg.color, fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>{cfg.label}</span>
-              <span style={{ fontSize: 16, fontWeight: 700, color: cfg.color, fontFamily: "'Cairo', sans-serif" }}>{count}</span>
+              <span style={{ fontSize: 13, color, fontFamily: font }}>{label}</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color, fontFamily: font }}>{count}</span>
             </div>
           )
         })}
@@ -423,13 +408,13 @@ export function UsersPage() {
         columns={columns}
         rowKey="id"
         loading={isLoading}
-        pagination={{ pageSize: 20, showTotal: (t) => <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-tertiary)' }}>{t} مستخدم</span> }}
-        style={{ direction: 'rtl' }}
-        locale={{ emptyText: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>لا توجد نتائج</span> }}
+        pagination={{ pageSize: 20, showTotal: (total) => <span style={mutedStyle}>{t.common.usersCount(total)}</span> }}
+        style={tableStyle}
+        locale={{ emptyText: <span style={{ fontFamily: font }}>{t.users.empty}</span> }}
       />
 
-      <EditUserModal open={!!editUser} user={editUser} onClose={() => setEditUser(null)} />
-      <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <EditUserModal open={!!editUser} user={editUser} onClose={() => setEditUser(null)} ui={ui} />
+      <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} ui={ui} />
     </div>
   )
 }

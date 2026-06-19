@@ -67,6 +67,9 @@ export interface CaseDocument {
   content_type: string | null
   created_at: string
   error_message: string | null
+  analysis_id?: string | null
+  analysis_status?: string | null
+  summary_ready?: boolean
 }
 
 export interface CaseSearchHit {
@@ -142,7 +145,14 @@ export function useCaseDocuments(id: string | null) {
     refetchInterval: (q) => {
       const data = q.state.data
       if (!data) return false
-      return data.some((d) => d.status === 'processing') ? 3000 : false
+      return data.some(
+        (d) =>
+          d.status === 'processing' ||
+          d.analysis_status === 'pending' ||
+          d.analysis_status === 'running',
+      )
+        ? 3000
+        : false
     },
   })
 }
@@ -186,6 +196,70 @@ export function useDeleteCaseDocument(caseId: string) {
       qc.invalidateQueries({ queryKey: ['cases'] })
     },
   })
+}
+
+export function useUpdateCaseDocumentType(caseId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      documentId,
+      documentType,
+    }: {
+      documentId: string
+      documentType: string
+    }) =>
+      (
+        await apiClient.patch(`/documents/${documentId}/document-type`, {
+          documentType,
+        })
+      ).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['case-documents', caseId] })
+    },
+  })
+}
+
+export function useSummarizeJudgment(caseId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (documentId: string) =>
+      (await apiClient.post(`/documents/${documentId}/summarize-judgment`)).data as {
+        analysisId: string
+        analysisStatus: string
+        jobId: string | number
+      },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['case-documents', caseId] })
+    },
+  })
+}
+
+export function useUpdateDocumentTitle(caseId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      documentId,
+      titleAr,
+    }: {
+      documentId: string
+      titleAr: string
+    }) =>
+      (
+        await apiClient.patch(`/documents/${documentId}/title`, {
+          titleAr,
+        })
+      ).data as { id: string; title_ar: string },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['case-documents', caseId] })
+      qc.invalidateQueries({ queryKey: ['cases'] })
+      qc.invalidateQueries({ queryKey: ['search-files'] })
+    },
+  })
+}
+
+export async function suggestDocumentTitle(documentId: string): Promise<string> {
+  const res = await apiClient.post(`/documents/${documentId}/suggest-title`)
+  return res.data.suggestedTitle as string
 }
 
 export async function searchCase(

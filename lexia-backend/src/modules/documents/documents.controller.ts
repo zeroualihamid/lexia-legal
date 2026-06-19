@@ -127,6 +127,73 @@ export class DocumentsController {
     return this.documentsService.updateVisibility(id, user.userId, visibility);
   }
 
+  @Patch(':id/document-type')
+  @UseGuards(AuthenticatedGuard)
+  @ApiOperation({ summary: 'Update document type' })
+  async updateDocumentType(
+    @Param('id') id: string,
+    @Body('documentType') documentType: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.documentsService.updateDocumentType(id, user.userId, documentType);
+  }
+
+  @Patch(':id/title')
+  @UseGuards(AuthenticatedGuard)
+  @ApiOperation({ summary: 'Rename document (display title)' })
+  async updateDocumentTitle(
+    @Param('id') id: string,
+    @Body('titleAr') titleAr: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.documentsService.updateDocumentTitle(id, user.userId, titleAr);
+  }
+
+  @Patch(':id/legal-classification')
+  @UseGuards(AuthenticatedGuard)
+  @ApiOperation({ summary: 'Set or reset legal document classification (search library)' })
+  async updateLegalClassification(
+    @Param('id') id: string,
+    @Body() body: { legalFamily?: string; legalClass?: string; reset?: boolean },
+    @CurrentUser() user: AuthUser,
+  ) {
+    if (body.reset) {
+      return this.documentsService.resetDocumentLegalClassification(id, user.userId);
+    }
+    if (!body.legalFamily || !body.legalClass) {
+      throw new BadRequestException('legalFamily and legalClass are required');
+    }
+    return this.documentsService.updateDocumentLegalClassification(
+      id,
+      user.userId,
+      body.legalFamily,
+      body.legalClass,
+    );
+  }
+
+  @Post(':id/suggest-title')
+  @UseGuards(AuthenticatedGuard)
+  @ApiOperation({ summary: 'AI-suggest a document title from opening text chunks' })
+  async suggestDocumentTitle(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.documentsService.suggestDocumentTitle(id, user.userId);
+  }
+
+  @Post(':id/summarize-judgment')
+  @UseGuards(AuthenticatedGuard)
+  @ApiOperation({ summary: 'Generate bilingual summary for a judgment document' })
+  async summarizeJudgment(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.documentsService.requestJudgmentSummary(id, user.userId);
+  }
+
+  @Get(':id/judgment-summary')
+  @ApiOperation({ summary: 'Get saved bilingual judgment summary markdown' })
+  async getJudgmentSummary(
+    @Param('id') id: string,
+    @CurrentUser() user?: AuthUser,
+  ) {
+    return this.documentsService.getSharedJudgmentSummary(id, user);
+  }
+
   // ─── Admin review ───────────────────────────────────────────
 
   @Get('admin/pending')

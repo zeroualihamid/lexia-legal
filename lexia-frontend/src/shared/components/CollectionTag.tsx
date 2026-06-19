@@ -4,11 +4,13 @@ import { COLLECTION_COLORS, COLLECTION_LABELS } from '../constants'
 interface CollectionTagProps {
   collection: string
   size?: 'small' | 'default'
+  label?: string
+  fontFamily?: string
 }
 
-export function CollectionTag({ collection, size = 'default' }: CollectionTagProps) {
+export function CollectionTag({ collection, size = 'default', label, fontFamily }: CollectionTagProps) {
   const color = COLLECTION_COLORS[collection] || '#8c8c8c'
-  const label = COLLECTION_LABELS[collection] || collection
+  const displayLabel = label ?? COLLECTION_LABELS[collection] ?? collection
 
   return (
     <span
@@ -23,10 +25,10 @@ export function CollectionTag({ collection, size = 'default' }: CollectionTagPro
         background: `${color}20`,
         border: `1px solid ${color}40`,
         whiteSpace: 'nowrap',
-        fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
+        fontFamily: fontFamily || "'Noto Naskh Arabic', 'Cairo', sans-serif",
       }}
     >
-      {label}
+      {displayLabel}
     </span>
   )
 }

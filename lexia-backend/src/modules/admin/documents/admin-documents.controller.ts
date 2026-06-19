@@ -22,6 +22,7 @@ import {
 import { DocumentsService } from '../../documents/documents.service';
 import { PostgresService } from '../../../database/postgres.service';
 import { MinioService } from '../../storage/minio.service';
+import { UsersService } from '../users/users.service';
 import { KeycloakGuard } from '../../../common/guards/keycloak.guard';
 import { AccessLevelGuard } from '../../../common/guards/access-level.guard';
 import { RequireAccessLevel } from '../../../common/decorators/access-level.decorator';
@@ -44,6 +45,13 @@ interface DocumentRow {
   created_at: string;
 }
 
+interface AdminDocumentListItem extends DocumentRow {
+  uploaded_by: string | null;
+  uploaded_by_email: string | null;
+  analysis_status: string | null;
+  summary_ready: boolean;
+}
+
 interface DocumentPageRow {
   id: string;
   document_id: string;
@@ -64,6 +72,7 @@ export class AdminDocumentsController {
     private readonly documentsService: DocumentsService,
     private readonly postgres: PostgresService,
     private readonly minio: MinioService,
+    private readonly usersService: UsersService,
   ) {}
 
   @Post('upload')
@@ -110,25 +119,75 @@ export class AdminDocumentsController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
     @Query('status') status?: string,
-  ): Promise<DocumentRow[]> {
+  ): Promise<AdminDocumentListItem[]> {
     const lim = limit ? Math.min(parseInt(limit, 10) || 50, 500) : 100;
     const off = offset ? parseInt(offset, 10) || 0 : 0;
     const params: any[] = [lim, off];
     let where = '';
     if (status) {
-      where = 'WHERE status = $3';
+      where = 'WHERE d.status = $3';
       params.push(status);
     }
-    return this.postgres.query<DocumentRow>(
-      `SELECT id, title_ar, title_fr, collection, status, visibility,
-              owner_type, owner_id, page_count, pages_status,
-              minio_bucket, minio_key, created_at
-       FROM documents
+    const rows = await this.postgres.query<DocumentRow & {
+      analysis_status: string | null;
+      summary_ready: boolean;
+    }>(
+      `SELECT d.id, d.title_ar, d.title_fr, d.collection, d.status, d.visibility,
+              d.owner_type, d.owner_id, d.page_count, d.pages_status,
+              d.minio_bucket, d.minio_key, d.created_at,
+              ja.status AS analysis_status,
+              (ja.status = 'completed') AS summary_ready
+       FROM documents d
+       LEFT JOIN LATERAL (
+         SELECT j.status
+         FROM judgment_analyses j
+         WHERE (
+           (d.metadata->>'analysisId' IS NOT NULL AND j.id = (d.metadata->>'analysisId')::uuid)
+           OR (j.pdf_bucket = d.minio_bucket AND j.pdf_key = d.minio_key)
+         )
+           AND j.status IN ('pending', 'running', 'completed', 'failed')
+         ORDER BY
+           CASE j.status
+             WHEN 'completed' THEN 0
+             WHEN 'running' THEN 1
+             WHEN 'pending' THEN 2
+             WHEN 'failed' THEN 3
+             ELSE 4
+           END,
+           j.completed_at DESC NULLS LAST,
+           j.created_at DESC
+         LIMIT 1
+       ) ja ON true
        ${where}
-       ORDER BY created_at DESC
+       ORDER BY d.created_at DESC
        LIMIT $1 OFFSET $2`,
       params,
     );
+
+    const ownerIds = rows
+      .filter((r) => r.owner_id)
+      .map((r) => r.owner_id as string);
+    const owners = await this.usersService.getUsersBriefMap(ownerIds);
+
+    return rows.map((row) => {
+      const owner = row.owner_id ? owners.get(row.owner_id) : null;
+      let uploadedBy: string | null = null;
+      if (row.owner_type === 'system') {
+        uploadedBy = null;
+      } else if (owner) {
+        uploadedBy = owner.username || owner.email || owner.name;
+      } else if (row.owner_id) {
+        uploadedBy = row.owner_id;
+      }
+
+      return {
+        ...row,
+        uploaded_by: uploadedBy,
+        uploaded_by_email: owner?.email || null,
+        analysis_status: row.analysis_status ?? null,
+        summary_ready: !!row.summary_ready,
+      };
+    });
   }
 
   @Get(':id')

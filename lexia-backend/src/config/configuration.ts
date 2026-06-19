@@ -72,6 +72,10 @@ export default () => ({
   // the interactive CLI login, which can't be carried into the container.
   claude: {
     oauthToken: process.env.CLAUDE_CODE_OAUTH_TOKEN || '',
+    analysisTimeoutMs:
+      parseInt(process.env.CLAUDE_ANALYSIS_TIMEOUT_MS, 10) || 10 * 60 * 1000,
+    killGraceMs:
+      parseInt(process.env.CLAUDE_KILL_GRACE_MS, 10) || 5 * 1000,
   },
   agent: {
     url: process.env.LEXIA_AGENT_URL || 'http://localhost:8000',

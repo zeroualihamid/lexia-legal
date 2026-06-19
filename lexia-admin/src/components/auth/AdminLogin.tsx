@@ -4,14 +4,8 @@ import { signIn } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { asset } from '@/lib/asset';
+import { cleanCurrentUrl, keycloak, isKeycloakAuthMode } from '@/lib/keycloak';
 
-/**
- * Minimal credentials login for the internal admin tool.
- *
- * better-auth uses email/password; a bare username like "admin" is mapped to a
- * synthetic email (`admin@qclick.local`) so the operator can sign in with the
- * seeded `admin / admin` account.
- */
 function toEmail(username: string): string {
   const u = username.trim();
   return u.includes('@') ? u : `${u || 'admin'}@qclick.local`;
@@ -19,10 +13,15 @@ function toEmail(username: string): string {
 
 export default function AdminLogin() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin');
+  const keycloakMode = isKeycloakAuthMode();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const onKeycloakLogin = () => {
+    keycloak.login({ redirectUri: cleanCurrentUrl() });
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,25 +31,37 @@ export default function AdminLogin() {
       const res = await signIn.email({ email: toEmail(username), password });
       const authError = (res as { error?: { message?: string; code?: string } })?.error;
       if (authError) {
-        if (authError.code === 'INVALID_EMAIL_OR_PASSWORD') {
-          setError('Identifiant ou mot de passe incorrect (admin / admin par défaut).');
-        } else {
-          setError(authError.message || 'Échec de connexion');
-        }
+        setError(authError.message || 'Échec de connexion');
         return;
       }
       navigate('/', { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Échec de connexion';
-      if (/fetch|network|failed/i.test(message)) {
-        setError('Impossible de joindre le backend. Vérifiez VITE_BACKEND_URL et que brikz-backend tourne.');
-      } else {
-        setError(message);
-      }
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
+
+  if (keycloakMode) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-sm space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="flex flex-col items-center gap-2">
+            <img src={asset('logo.png')} alt="Lexia Legal" className="h-10 w-10 rounded" />
+            <h1 className="text-lg font-semibold text-foreground">Lexia Legal · administration</h1>
+            <p className="text-center text-xs text-muted-foreground">
+              Connectez-vous avec votre compte administrateur Keycloak.
+            </p>
+          </div>
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <Button type="button" className="w-full" onClick={onKeycloakLogin}>
+            Se connecter
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen items-center justify-center bg-background p-4">
@@ -59,9 +70,9 @@ export default function AdminLogin() {
         className="w-full max-w-sm space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm"
       >
         <div className="flex flex-col items-center gap-2">
-          <img src={asset('logo.png')} alt="Brikz" className="h-10 w-10 rounded" />
-          <h1 className="text-lg font-semibold text-foreground">Brikz · admin</h1>
-          <p className="text-xs text-muted-foreground">Cross Tower · agent tooling</p>
+          <img src={asset('logo.png')} alt="Lexia Legal" className="h-10 w-10 rounded" />
+          <h1 className="text-lg font-semibold text-foreground">Lexia Legal · administration</h1>
+          <p className="text-xs text-muted-foreground">Connexion interne</p>
         </div>
         <div className="space-y-1">
           <label className="text-sm font-medium text-foreground">Identifiant</label>

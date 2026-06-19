@@ -394,11 +394,19 @@ export class DocumentProcessor {
            VALUES ($1, $2, $3, $4, 'pending', $5, $6)`,
           [analysisId, title, bucket, key, JUDGMENT_PROMPT_VERSION, ownerId || null],
         );
-        await this.judgmentQueue.add('analyze', {
-          analysisId,
-          bucket,
-          key,
-        });
+        const analysisJob = await this.judgmentQueue.add(
+          'analyze',
+          {
+            analysisId,
+            bucket,
+            key,
+          },
+          {
+            jobId: `judgment-upload-${analysisId}`,
+            removeOnComplete: false,
+            removeOnFail: false,
+          },
+        );
 
         await this.postgresService.query(
           `UPDATE documents SET
@@ -410,9 +418,14 @@ export class DocumentProcessor {
              ocr_text = $3,
              word_count = $4,
              jurisdiction = $5,
-             metadata = jsonb_build_object(
-               'chatUpload', true, 'isJudgment', true, 'analysisId', $6::text)
-           WHERE id = $7`,
+             metadata = metadata || jsonb_build_object(
+               'chatUpload', true,
+               'isJudgment', true,
+               'analysisId', $6::text,
+               'analysisJobId', $7::text
+             ),
+             updated_at = NOW()
+           WHERE id = $8`,
           [
             title,
             collection,
@@ -420,6 +433,7 @@ export class DocumentProcessor {
             ocrText.split(/\s+/).length,
             JSON.stringify(classification.jurisdiction || {}),
             analysisId,
+            String(analysisJob.id),
             documentId,
           ],
         );
@@ -444,7 +458,11 @@ export class DocumentProcessor {
              status = 'ready',
              ocr_text = $1,
              word_count = $2,
-             metadata = jsonb_build_object('chatUpload', true, 'isJudgment', false)
+             metadata = metadata || jsonb_build_object(
+               'chatUpload', true,
+               'isJudgment', false
+             ),
+             updated_at = NOW()
            WHERE id = $3`,
           [ocrText.slice(0, 10000), ocrText.split(/\s+/).length, documentId],
         );

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import apiClient from '../api/client'
 import { useAuthStore } from '../store/authStore'
 
@@ -36,6 +36,7 @@ function isSettled(item: ChatUploadItem): boolean {
  * and link the result to a case.
  */
 export function useChatUpload() {
+  const queryClient = useQueryClient()
   const [items, setItems] = useState<ChatUploadItem[]>([])
   const [uploading, setUploading] = useState(false)
   const pollRef = useRef<number | null>(null)
@@ -109,11 +110,12 @@ export function useChatUpload() {
           errorMessage: null,
         },
       ])
+      queryClient.invalidateQueries({ queryKey: ['upload-tasks'] })
       return id
     } finally {
       setUploading(false)
     }
-  }, [])
+  }, [queryClient])
 
   const linkToCase = useCallback(
     async (

@@ -99,6 +99,35 @@ export class UsersService {
     return withRoles;
   }
 
+  async getUserBrief(
+    userId: string,
+  ): Promise<{ email: string; username: string; name: string } | null> {
+    try {
+      const user = await this.getUser(userId);
+      return {
+        email: user.email || user.username,
+        username: user.username,
+        name: user.name,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async getUsersBriefMap(
+    userIds: string[],
+  ): Promise<Map<string, { email: string; username: string; name: string }>> {
+    const unique = [...new Set(userIds.filter(Boolean))];
+    const map = new Map<string, { email: string; username: string; name: string }>();
+    await Promise.all(
+      unique.map(async (id) => {
+        const brief = await this.getUserBrief(id);
+        if (brief) map.set(id, brief);
+      }),
+    );
+    return map;
+  }
+
   async getUser(userId: string): Promise<any> {
     const token = await this.getAdminToken();
     const { url, realm } = this.adminBase;
