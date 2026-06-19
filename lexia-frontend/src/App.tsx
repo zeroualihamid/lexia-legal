@@ -10,6 +10,8 @@ import { SearchPage } from './apps/user/search/SearchPage'
 import { BillingPage } from './apps/user/billing/BillingPage'
 import { CasesPage } from './apps/user/cases/CasesPage'
 import { CaseWorkspace } from './apps/user/cases/CaseWorkspace'
+import { TasksPage } from './apps/user/tasks/TasksPage'
+import { ComingSoonPage } from './apps/user/shared/ComingSoonPage'
 import { AdminLayout } from './apps/admin/layout/AdminLayout'
 import { AdminDashboard } from './apps/admin/AdminDashboard'
 import { DocumentsPage } from './apps/admin/documents/DocumentsPage'
@@ -20,6 +22,8 @@ import { UsersPage } from './apps/admin/users/UsersPage'
 import { JudgmentAnalysisPage } from './apps/admin/judgment-analysis/JudgmentAnalysisPage'
 import { DARK, GOLD } from './shared/constants'
 import { APP_BASE, appPath } from './shared/basePath'
+import { AdminLoginPage } from './apps/admin/AdminLoginPage'
+import { readAdminSession, clearAdminSession, type AdminSession } from './shared/auth/adminSession'
 import { RequireAuth } from './shared/components/RequireAuth'
 
 const keycloakConfig = {
@@ -50,40 +54,62 @@ const ensureKeycloakInit = () => {
       onLoad: 'check-sso',
       silentCheckSsoRedirectUri: window.location.origin + appPath('/silent-check-sso.html'),
       pkceMethod: 'S256',
+      // Disable the session-status iframe: it polls Keycloak in a hidden iframe
+      // and reloads the page when the session-state cookie appears to change.
+      // Under third-party-cookie restrictions (SPA and Keycloak on different
+      // origins/ports) this misfires and causes an infinite refresh loop.
+      // Token freshness is handled by onTokenExpired/updateToken below.
+      checkLoginIframe: false,
     })
   }
   return keycloakInitPromise
 }
 
+function applyAdminSession(session: AdminSession, setAuth: ReturnType<typeof useAuthStore.getState>['setAuth']) {
+  setAuth({
+    token: session.token,
+    userId: session.userId,
+    email: session.email,
+    accessLevel: session.accessLevel,
+  })
+}
+
 function RequireAdmin({ children }: { children: React.ReactNode }) {
-  const { token, accessLevel, keycloak } = useAuthStore()
+  const { token, email, accessLevel, setAuth } = useAuthStore()
+  const [adminSession, setAdminSession] = useState<AdminSession | null>(() => readAdminSession())
 
   useEffect(() => {
-    if (!token && keycloak) {
-      keycloak.login({ redirectUri: cleanCurrentUrl() })
+    const stored = readAdminSession()
+    if (stored) {
+      setAdminSession(stored)
+      applyAdminSession(stored, setAuth)
     }
-  }, [keycloak, token])
+  }, [setAuth])
 
-  if (!token) {
-    return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: DARK,
-          color: GOLD,
-          fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
-        }}
-      >
-        جارٍ تحويلك إلى تسجيل الدخول...
-      </div>
-    )
+  useEffect(() => {
+    if (adminSession && adminSession.token !== token) {
+      applyAdminSession(adminSession, setAuth)
+    }
+  }, [adminSession, token, setAuth])
+
+  const handleAdminLogin = (session: AdminSession) => {
+    applyAdminSession(session, setAuth)
+    setAdminSession(session)
   }
 
-  if (accessLevel !== 'ADMIN' && accessLevel !== 'SUPERADMIN') {
-    return <Navigate to="/" replace />
+  const isAdmin =
+    adminSession?.accessLevel === 'ADMIN' ||
+    adminSession?.accessLevel === 'SUPERADMIN' ||
+    accessLevel === 'ADMIN' ||
+    accessLevel === 'SUPERADMIN'
+
+  if (!isAdmin) {
+    return (
+      <AdminLoginPage
+        onSuccess={handleAdminLogin}
+        currentEmail={token && (accessLevel === 'PRO' || accessLevel === 'PUBLIC') ? email : null}
+      />
+    )
   }
 
   return <>{children}</>
@@ -218,8 +244,17 @@ export default function App() {
                 <Route path="/" element={<ChatPage />} />
                 <Route path="/cases" element={<CasesPage />} />
                 <Route path="/cases/:id" element={<CaseWorkspace />} />
+                <Route path="/tasks" element={<TasksPage />} />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/billing" element={<BillingPage />} />
+                <Route path="/drafting" element={<ComingSoonPage title="المولّد والصياغة" description="نماذج تلقائية لطلبات المحكمة وعقود الإيجار والعمل والإنذارات." />} />
+                <Route path="/clients" element={<ComingSoonPage title="إدارة الموكّلين" description="قاعدة بيانات جهات الاتصال وسجل المراسلات وربطها بالملفات." />} />
+                <Route path="/sessions" element={<ComingSoonPage title="إدارة الجلسات" description="جدول الجلسات وتعيين المحاكم والتذكيرات التلقائية." />} />
+                <Route path="/tools/severance" element={<ComingSoonPage title="حاسبة تعويضات الإنهاء" description="محاكاة الحقوق المالية للأجراء وفق مدونة الشغل المغربية." />} />
+                <Route path="/tools/notary" element={<ComingSoonPage title="حاسبة رسوم التوثيق" description="تقدير رسوم التسجيل والتوثيق للمعاملات العقارية والرسمية." />} />
+                <Route path="/tools/salary" element={<ComingSoonPage title="حاسبة الراتب والضريبة" description="تقدير صافي الأجر وضريبة الدخل." />} />
+                <Route path="/history" element={<ComingSoonPage title="سجل البحث" description="سجل الاستعلامات السابقة والوثائق التي تم تحليلها." />} />
+                <Route path="/directory" element={<ComingSoonPage title="دليل المحامين" description="قائمة المحامين المرجعيين على المنصة." />} />
               </Route>
             </Route>
             <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>

@@ -19,7 +19,7 @@ import { ScraperAdminService } from './scraper/scraper-admin.service';
 
 // Users
 import { UsersController } from './users/users.controller';
-import { UsersService } from './users/users.service';
+import { UsersModule } from './users/users.module';
 
 // Analytics
 import { AnalyticsController } from './analytics/analytics.controller';
@@ -42,6 +42,7 @@ import { AdminDocumentsModule } from './documents/admin-documents.module';
   imports: [
     ChatModule,
     JudgmentAnalysisModule,
+    UsersModule,
     AdminDocumentsModule,
     BullModule.registerQueue(
       { name: 'scraping' },
@@ -62,7 +63,6 @@ import { AdminDocumentsModule } from './documents/admin-documents.module';
     ToolsService,
     McpService,
     ScraperAdminService,
-    UsersService,
     AnalyticsService,
     AgentConfigService,
   ],

@@ -1,0 +1,1241 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vérificateur de garde-fous agentiques</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #20231f;
+        --muted: #696f68;
+        --paper: #f4f0e7;
+        --panel: #fffaf0;
+        --panel-2: #e8ded0;
+        --line: #c6b9a4;
+        --red: #aa3b36;
+        --blue: #255f7e;
+        --green: #35725d;
+        --gold: #ae761f;
+        --slate: #313842;
+        --shadow: rgba(32, 35, 31, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--ink);
+        background:
+          linear-gradient(90deg, rgba(32, 35, 31, 0.052) 1px, transparent 1px),
+          linear-gradient(rgba(32, 35, 31, 0.046) 1px, transparent 1px),
+          var(--paper);
+        background-size: 30px 30px;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+
+      button,
+      select,
+      textarea,
+      input {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      main {
+        width: min(1260px, calc(100vw - 28px));
+        margin: 0 auto;
+        padding: 28px 0 44px;
+      }
+
+      .topbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(330px, 0.9fr);
+        gap: 22px;
+        align-items: end;
+        padding-bottom: 20px;
+        border-bottom: 2px solid var(--ink);
+      }
+
+      .kicker {
+        display: inline-flex;
+        width: max-content;
+        margin-bottom: 12px;
+        padding: 7px 10px 6px;
+        border: 1px solid var(--ink);
+        background: var(--panel);
+        color: var(--blue);
+        font-family: "Courier New", monospace;
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 820px;
+        font-size: clamp(2.2rem, 5.8vw, 5rem);
+        line-height: 0.94;
+        font-weight: 700;
+        letter-spacing: 0;
+      }
+
+      .scoreboard {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric,
+      .panel,
+      .guardrail,
+      .verifier,
+      .contract {
+        border: 1px solid var(--ink);
+        background: var(--panel);
+        box-shadow: 7px 7px 0 var(--shadow);
+      }
+
+      .metric {
+        min-height: 92px;
+        padding: 12px;
+        box-shadow: 5px 5px 0 var(--shadow);
+      }
+
+      .metric span,
+      .label {
+        display: block;
+        color: var(--muted);
+        font-family: "Courier New", monospace;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 8px;
+        font-size: clamp(1.62rem, 3.3vw, 2.7rem);
+        line-height: 1;
+      }
+
+      .status {
+        margin-top: 10px;
+        min-height: 44px;
+        padding: 10px 12px;
+        border: 1px solid var(--ink);
+        background: var(--slate);
+        color: #fffaf0;
+        font-family: "Courier New", monospace;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .workbench {
+        display: grid;
+        grid-template-columns: 332px minmax(0, 1fr);
+        gap: 22px;
+        margin-top: 24px;
+      }
+
+      .panel {
+        padding: 16px;
+      }
+
+      h2 {
+        margin: 0 0 12px;
+        font-size: 1.08rem;
+      }
+
+      .scenario-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .scenario {
+        width: 100%;
+        min-height: 78px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        background: #fffdf8;
+        color: var(--ink);
+        text-align: left;
+        transition:
+          transform 160ms ease,
+          box-shadow 160ms ease,
+          border-color 160ms ease;
+      }
+
+      .scenario:hover,
+      .scenario:focus-visible {
+        border-color: var(--ink);
+        box-shadow: 4px 4px 0 var(--shadow);
+        outline: none;
+        transform: translate(-2px, -2px);
+      }
+
+      .scenario.active {
+        border-color: var(--blue);
+        background:
+          linear-gradient(135deg, rgba(37, 95, 126, 0.12), transparent 55%),
+          #fffdf8;
+      }
+
+      .scenario strong,
+      .scenario span {
+        display: block;
+      }
+
+      .scenario strong {
+        margin-bottom: 5px;
+        font-size: 0.98rem;
+      }
+
+      .scenario span {
+        color: var(--muted);
+        font-size: 0.85rem;
+        line-height: 1.28;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .action {
+        min-height: 42px;
+        padding: 9px 11px;
+        border: 1px solid var(--ink);
+        background: var(--ink);
+        color: #fffaf0;
+        font-family: "Courier New", monospace;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .action.secondary {
+        background: var(--panel);
+        color: var(--ink);
+      }
+
+      .action.warning {
+        background: var(--red);
+      }
+
+      .action:focus-visible,
+      .toggle:focus-visible,
+      .scenario:focus-visible {
+        outline: 3px solid rgba(174, 118, 31, 0.5);
+        outline-offset: 2px;
+      }
+
+      .risk-box {
+        margin-top: 18px;
+        padding: 15px;
+        border: 2px solid var(--red);
+        background:
+          linear-gradient(135deg, rgba(170, 59, 54, 0.12), transparent 44%),
+          #fffdf8;
+      }
+
+      .risk-box p {
+        margin: 8px 0 0;
+        font-size: 1.08rem;
+        line-height: 1.32;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      select,
+      textarea,
+      input {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: #fffdf8;
+        color: var(--ink);
+      }
+
+      select,
+      input {
+        height: 38px;
+        padding: 6px 8px;
+      }
+
+      textarea {
+        min-height: 80px;
+        resize: vertical;
+        padding: 9px;
+        line-height: 1.34;
+      }
+
+      select:focus,
+      textarea:focus,
+      input:focus {
+        border-color: var(--blue);
+        outline: 3px solid rgba(37, 95, 126, 0.16);
+      }
+
+      .policy-map {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .policy-step {
+        min-height: 92px;
+        padding: 12px;
+        border: 1px solid var(--ink);
+        background: var(--panel-2);
+      }
+
+      .policy-step.done {
+        background:
+          linear-gradient(135deg, rgba(53, 114, 93, 0.16), transparent 55%),
+          var(--panel);
+      }
+
+      .policy-step.blocked {
+        background:
+          linear-gradient(135deg, rgba(170, 59, 54, 0.16), transparent 55%),
+          var(--panel);
+      }
+
+      .policy-step strong {
+        display: block;
+        margin-bottom: 7px;
+        font-family: "Courier New", monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+
+      .policy-step span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.27;
+      }
+
+      .guardrails {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .guardrail {
+        min-height: 388px;
+        padding: 15px;
+        display: grid;
+        grid-template-rows: auto auto auto 1fr auto;
+        gap: 12px;
+        transition:
+          border-color 160ms ease,
+          transform 160ms ease,
+          box-shadow 160ms ease;
+      }
+
+      .guardrail.fail {
+        border-color: var(--red);
+      }
+
+      .guardrail.pass {
+        border-color: var(--green);
+      }
+
+      .guardrail.focused {
+        transform: translate(-3px, -3px);
+        box-shadow: 10px 10px 0 rgba(174, 118, 31, 0.24);
+      }
+
+      .guardrail header {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .guardrail h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        line-height: 1.18;
+      }
+
+      .badge {
+        flex: 0 0 auto;
+        min-width: 88px;
+        padding: 5px 7px;
+        border: 1px solid currentColor;
+        color: var(--blue);
+        font-family: "Courier New", monospace;
+        font-size: 0.66rem;
+        font-weight: 700;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      .badge.red {
+        color: var(--red);
+      }
+
+      .mode-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 10px;
+      }
+
+      .toggle-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .toggle {
+        min-height: 58px;
+        padding: 8px;
+        border: 1px solid var(--line);
+        background: #fffdf8;
+        color: var(--muted);
+        text-align: left;
+        transition:
+          border-color 160ms ease,
+          background 160ms ease,
+          color 160ms ease;
+      }
+
+      .toggle.active {
+        border-color: var(--green);
+        background:
+          linear-gradient(135deg, rgba(53, 114, 93, 0.14), transparent 58%),
+          #fffdf8;
+        color: var(--ink);
+      }
+
+      .toggle strong {
+        display: block;
+        color: inherit;
+        font-family: "Courier New", monospace;
+        font-size: 0.69rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .toggle span {
+        display: block;
+        margin-top: 3px;
+        font-size: 0.78rem;
+        line-height: 1.18;
+      }
+
+      .result {
+        min-height: 48px;
+        padding: 9px;
+        border: 1px dashed var(--line);
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.28;
+      }
+
+      .result.pass {
+        border-color: var(--green);
+        color: var(--green);
+      }
+
+      .result.fail {
+        border-color: var(--red);
+        color: var(--red);
+      }
+
+      .lower {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+        gap: 22px;
+        margin-top: 22px;
+      }
+
+      .verifier,
+      .contract {
+        padding: 16px;
+      }
+
+      .section-head {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .verifier-list,
+      .contract-list {
+        display: grid;
+        gap: 9px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .verifier-list li {
+        display: grid;
+        grid-template-columns: 84px 1fr;
+        gap: 10px;
+        min-height: 46px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        background: #fffdf8;
+        line-height: 1.3;
+      }
+
+      .verifier-list .pass,
+      .verifier-list .fail {
+        font-family: "Courier New", monospace;
+        font-size: 0.73rem;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .verifier-list .pass {
+        color: var(--green);
+      }
+
+      .verifier-list .fail {
+        color: var(--red);
+      }
+
+      .contract-list li {
+        min-height: 48px;
+        padding: 10px 10px 10px 13px;
+        border-left: 4px solid var(--gold);
+        background: #fffdf8;
+        line-height: 1.34;
+      }
+
+      .contract-list strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--gold);
+        font-family: "Courier New", monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .empty {
+        color: var(--muted);
+        font-style: italic;
+      }
+
+      @media (max-width: 1040px) {
+        .topbar,
+        .workbench,
+        .lower {
+          grid-template-columns: 1fr;
+        }
+
+        .policy-map {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .guardrails {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 640px) {
+        main {
+          width: min(100vw - 20px, 1260px);
+          padding-top: 18px;
+        }
+
+        .scoreboard,
+        .controls,
+        .policy-map,
+        .mode-row,
+        .toggle-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .section-head {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .verifier-list li {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="topbar" aria-labelledby="page-title">
+        <div>
+          <span class="kicker">Vérificateur de garde-fous</span>
+          <h1 id="page-title">Définir les garde-fous pour fichiers, sources, outils et actions</h1>
+        </div>
+
+        <section aria-label="Résumé de vérification">
+          <div class="scoreboard">
+            <div class="metric">
+              <span>Couverture</span>
+              <strong id="coverageValue">0%</strong>
+            </div>
+            <div class="metric">
+              <span>Zones OK</span>
+              <strong id="passedValue">0/0</strong>
+            </div>
+            <div class="metric">
+              <span>Risques</span>
+              <strong id="riskValue">0</strong>
+            </div>
+          </div>
+          <div class="status" id="statusStrip">Configurez une politique de garde-fous</div>
+        </section>
+      </section>
+
+      <section class="workbench">
+        <aside class="panel" aria-label="Contrôles du scénario">
+          <h2>Scénario</h2>
+          <div class="scenario-list" id="scenarioList"></div>
+
+          <div class="controls">
+            <button class="action" id="runVerifier" type="button">Vérifier</button>
+            <button class="action secondary" id="nextRisk" type="button">Risque suivant</button>
+            <button class="action secondary" id="fillSample" type="button">Exemple strict</button>
+            <button class="action warning" id="resetScenario" type="button">Réinitialiser</button>
+          </div>
+
+          <div class="risk-box" aria-live="polite">
+            <span class="label">Risque principal</span>
+            <p id="riskText"></p>
+          </div>
+        </aside>
+
+        <section aria-label="Zone de test des garde-fous">
+          <div class="policy-map" id="policyMap"></div>
+          <div class="guardrails" id="guardrails"></div>
+        </section>
+      </section>
+
+      <section class="lower">
+        <section class="verifier" aria-label="Sortie du vérificateur">
+          <div class="section-head">
+            <h2>Résultats du vérificateur</h2>
+            <button class="action secondary" id="copyReport" type="button">Copier le rapport</button>
+          </div>
+          <ul class="verifier-list" id="verifierList"></ul>
+        </section>
+
+        <section class="contract" aria-label="Contrat d'exécution">
+          <h2>Contrat d'exécution</h2>
+          <ul class="contract-list" id="contractList"></ul>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const scenarios = [
+        {
+          id: "contract",
+          title: "Rédaction d'un contrat client",
+          summary: "Limiter les fichiers modifiables, les précédents consultés et les actions irréversibles.",
+          risk: "L'agent peut modifier trop largement le dossier ou utiliser une source non approuvée.",
+          defaultBudget: "45 min / 8 EUR",
+        },
+        {
+          id: "research",
+          title: "Recherche juridique web",
+          summary: "Autoriser la recherche, mais forcer les sources fiables, citations et limites de collecte.",
+          risk: "L'agent peut citer une source faible, ancienne ou hors juridiction.",
+          defaultBudget: "30 min / 5 EUR",
+        },
+        {
+          id: "indexing",
+          title: "Indexation de documents",
+          summary: "Contrôler lecture, OCR, embeddings, stockage et exposition des documents sensibles.",
+          risk: "L'agent peut exposer des données confidentielles ou indexer le mauvais périmètre.",
+          defaultBudget: "60 min / 12 EUR",
+        },
+      ];
+
+      const areas = [
+        {
+          id: "files",
+          title: "Fichiers",
+          badge: "Périmètre",
+          goal: "Définir ce que l'agent peut lire, écrire et modifier.",
+          scopeLabel: "Dossiers autorisés",
+          scopePlaceholder: "ex. /contrats/client-a, /modeles/approuves",
+          modes: [
+            { value: "open", label: "Ouvert" },
+            { value: "read-only", label: "Lecture seule" },
+            { value: "restricted-write", label: "Écriture restreinte" },
+            { value: "locked", label: "Verrouillé" },
+          ],
+          requiredMode: "restricted-write",
+          checks: ["allowlist", "denylist", "write-limit", "snapshot"],
+        },
+        {
+          id: "sources",
+          title: "Sources",
+          badge: "Fiabilité",
+          goal: "Limiter les recherches aux sources acceptables et traçables.",
+          scopeLabel: "Sources autorisées",
+          scopePlaceholder: "ex. BO, jurisprudence officielle, précédents cabinet",
+          modes: [
+            { value: "open", label: "Web ouvert" },
+            { value: "approved", label: "Sources approuvées" },
+            { value: "official-only", label: "Sources officielles" },
+            { value: "internal-only", label: "Interne uniquement" },
+          ],
+          requiredMode: "approved",
+          checks: ["allowlist", "citations", "recency", "jurisdiction"],
+        },
+        {
+          id: "tools",
+          title: "Outils",
+          badge: "Capacités",
+          goal: "Définir quels outils sont utilisables et quand une approbation est requise.",
+          scopeLabel: "Outils autorisés",
+          scopePlaceholder: "ex. recherche, OCR, extraction, comparaison",
+          modes: [
+            { value: "all", label: "Tous outils" },
+            { value: "approved", label: "Outils approuvés" },
+            { value: "approval", label: "Approbation requise" },
+            { value: "offline", label: "Hors ligne" },
+          ],
+          requiredMode: "approved",
+          checks: ["tool-list", "danger-approval", "budget", "secrets"],
+        },
+        {
+          id: "actions",
+          title: "Actions",
+          badge: "Effets",
+          goal: "Contrôler les actions externes, les effets de bord et les décisions réversibles.",
+          scopeLabel: "Actions autorisées",
+          scopePlaceholder: "ex. rédiger brouillon, annoter, préparer export",
+          modes: [
+            { value: "autonomous", label: "Autonome" },
+            { value: "draft-only", label: "Brouillon seul" },
+            { value: "approval", label: "Approbation requise" },
+            { value: "blocked", label: "Bloqué" },
+          ],
+          requiredMode: "approval",
+          checks: ["approval-threshold", "rollback", "decision-log", "external-send"],
+        },
+      ];
+
+      const checkLabels = {
+        allowlist: ["Liste blanche", "Ce qui est autorisé est explicite"],
+        denylist: ["Liste noire", "Ce qui est interdit est explicite"],
+        "write-limit": ["Écriture limitée", "Pas de modification hors périmètre"],
+        snapshot: ["Sauvegarde", "État initial récupérable"],
+        citations: ["Citations", "Chaque affirmation pointe vers une source"],
+        recency: ["Fraîcheur", "Date et version vérifiées"],
+        jurisdiction: ["Juridiction", "Pays, tribunal ou autorité vérifiés"],
+        "tool-list": ["Liste outils", "Capacités explicitement autorisées"],
+        "danger-approval": ["Approbation danger", "Outils risqués soumis à accord"],
+        budget: ["Budget", "Temps, coût ou appels plafonnés"],
+        secrets: ["Secrets", "Aucun secret lu ou exposé"],
+        "approval-threshold": ["Seuil accord", "Quand demander l'humain est clair"],
+        rollback: ["Retour arrière", "Action réversible ou restaurable"],
+        "decision-log": ["Journal", "Décisions et raisons consignées"],
+        "external-send": ["Envoi externe", "Aucun envoi sans approbation"],
+      };
+
+      const phases = [
+        ["files", "Fichiers", "Lecture et écriture bornées"],
+        ["sources", "Sources", "Recherche fiable et citée"],
+        ["tools", "Outils", "Capacités connues et plafonnées"],
+        ["actions", "Actions", "Effets de bord sous contrôle"],
+      ];
+
+      const state = {
+        scenarioId: "contract",
+        focusedAreaId: null,
+        hasRun: false,
+        areas: {},
+      };
+
+      const scenarioList = document.querySelector("#scenarioList");
+      const riskText = document.querySelector("#riskText");
+      const policyMap = document.querySelector("#policyMap");
+      const guardrails = document.querySelector("#guardrails");
+      const coverageValue = document.querySelector("#coverageValue");
+      const passedValue = document.querySelector("#passedValue");
+      const riskValue = document.querySelector("#riskValue");
+      const statusStrip = document.querySelector("#statusStrip");
+      const verifierList = document.querySelector("#verifierList");
+      const contractList = document.querySelector("#contractList");
+
+      function activeScenario() {
+        return scenarios.find((scenario) => scenario.id === state.scenarioId);
+      }
+
+      function defaultArea(area) {
+        const toggles = {};
+        area.checks.forEach((check) => {
+          toggles[check] = false;
+        });
+        return {
+          mode: area.modes[0].value,
+          scope: "",
+          note: "",
+          toggles,
+        };
+      }
+
+      function ensureState() {
+        areas.forEach((area) => {
+          if (!state.areas[area.id]) {
+            state.areas[area.id] = defaultArea(area);
+          }
+        });
+      }
+
+      function resetScenario() {
+        areas.forEach((area) => {
+          state.areas[area.id] = defaultArea(area);
+        });
+        state.focusedAreaId = null;
+        state.hasRun = false;
+        render();
+      }
+
+      function fillStrictSample() {
+        areas.forEach((area) => {
+          const item = state.areas[area.id] || defaultArea(area);
+          item.mode = area.requiredMode;
+          item.scope = sampleScope(area.id);
+          item.note = sampleNote(area.id);
+          area.checks.forEach((check) => {
+            item.toggles[check] = true;
+          });
+          state.areas[area.id] = item;
+        });
+        state.focusedAreaId = null;
+        state.hasRun = true;
+        render();
+      }
+
+      function sampleScope(areaId) {
+        const samples = {
+          files: "/dossiers/client-a, /modeles/approuves, sortie: /revue/brouillons",
+          sources: "Bulletin officiel, jurisprudence officielle, base interne validée",
+          tools: "Recherche, OCR, comparaison, extraction; export externe interdit",
+          actions: "Créer brouillon, annoter, journaliser; envoi externe sur approbation",
+        };
+        return samples[areaId];
+      }
+
+      function sampleNote(areaId) {
+        const notes = {
+          files: "Toute écriture hors dossier de sortie nécessite une approbation humaine.",
+          sources: "Les sources non officielles servent seulement à orienter, jamais à justifier.",
+          tools: "Tout outil destructif, coûteux ou externe déclenche une approbation préalable.",
+          actions: "Les actions irréversibles restent bloquées tant que le réviseur n'approuve pas.",
+        };
+        return notes[areaId];
+      }
+
+      function areaFailures(area) {
+        const item = state.areas[area.id] || defaultArea(area);
+        const failures = [];
+
+        if (item.mode === "open" || item.mode === "all" || item.mode === "autonomous") {
+          failures.push("Le mode est trop permissif pour un travail agentique complexe.");
+        }
+
+        if (item.mode !== area.requiredMode) {
+          failures.push(`Mode attendu : ${labelForMode(area, area.requiredMode)}.`);
+        }
+
+        if (item.scope.trim().length < 12) {
+          failures.push("Le périmètre autorisé doit être décrit précisément.");
+        }
+
+        area.checks.forEach((check) => {
+          if (!item.toggles[check]) {
+            failures.push(`${checkLabels[check][0]} manquant.`);
+          }
+        });
+
+        if (item.note.trim().length < 12) {
+          failures.push("Une règle opérationnelle courte est requise.");
+        }
+
+        if (area.id === "actions" && !item.toggles["external-send"]) {
+          failures.push("Les envois ou effets externes doivent être explicitement encadrés.");
+        }
+
+        if (area.id === "tools" && !item.toggles.secrets) {
+          failures.push("La politique de secrets doit être explicite.");
+        }
+
+        return failures;
+      }
+
+      function processFailures() {
+        const failures = [];
+        const files = state.areas.files || defaultArea(areas[0]);
+        const tools = state.areas.tools || defaultArea(areas[2]);
+        const actions = state.areas.actions || defaultArea(areas[3]);
+
+        if (!files.toggles.snapshot && actions.mode !== "blocked") {
+          failures.push("Une action autorisée exige une sauvegarde ou stratégie de retour arrière.");
+        }
+
+        if (tools.mode === "approved" && !tools.toggles.budget) {
+          failures.push("Les outils approuvés doivent avoir un budget temps/coût.");
+        }
+
+        if (actions.mode === "approval" && !actions.toggles["decision-log"]) {
+          failures.push("Les actions soumises à approbation doivent alimenter le journal de décisions.");
+        }
+
+        return failures;
+      }
+
+      function stats() {
+        const areaResults = areas.map((area) => ({
+          area,
+          failures: areaFailures(area),
+        }));
+        const globalFailures = processFailures();
+        const riskCount =
+          globalFailures.length + areaResults.reduce((sum, result) => sum + result.failures.length, 0);
+        const passed = areaResults.filter((result) => result.failures.length === 0).length;
+        const required = areas.reduce((sum, area) => sum + area.checks.length + 3, 0);
+        const done = areas.reduce((sum, area) => {
+          const item = state.areas[area.id] || defaultArea(area);
+          const checked = area.checks.filter((check) => item.toggles[check]).length;
+          const mode = item.mode === area.requiredMode ? 1 : 0;
+          const scope = item.scope.trim().length >= 12 ? 1 : 0;
+          const note = item.note.trim().length >= 12 ? 1 : 0;
+          return sum + checked + mode + scope + note;
+        }, 0);
+        return {
+          areaResults,
+          globalFailures,
+          riskCount,
+          passed,
+          total: areas.length,
+          coverage: Math.round((done / required) * 100),
+        };
+      }
+
+      function labelForMode(area, value) {
+        return area.modes.find((mode) => mode.value === value)?.label || value;
+      }
+
+      function setScenario(id) {
+        state.scenarioId = id;
+        state.focusedAreaId = null;
+        state.hasRun = false;
+        render();
+      }
+
+      function renderAuxiliary() {
+        const current = stats();
+        renderPolicyMap(current);
+        renderVerifier(current);
+        renderContract();
+        renderSummary(current);
+      }
+
+      function updateArea(areaId, patch, shouldRender = true) {
+        state.areas[areaId] = {
+          ...state.areas[areaId],
+          ...patch,
+        };
+        state.hasRun = false;
+        if (shouldRender) {
+          render();
+        } else {
+          renderAuxiliary();
+        }
+      }
+
+      function toggleCheck(areaId, check) {
+        const item = state.areas[areaId];
+        item.toggles[check] = !item.toggles[check];
+        state.hasRun = false;
+        render();
+      }
+
+      function runVerifier() {
+        state.hasRun = true;
+        const current = stats();
+        const firstFailure = current.areaResults.find((result) => result.failures.length > 0);
+        state.focusedAreaId = firstFailure ? firstFailure.area.id : null;
+        render();
+      }
+
+      function focusNextRisk() {
+        const failing = stats()
+          .areaResults.filter((result) => result.failures.length > 0)
+          .map((result) => result.area.id);
+
+        if (failing.length === 0) {
+          state.focusedAreaId = null;
+          render();
+          return;
+        }
+
+        const currentIndex = failing.indexOf(state.focusedAreaId);
+        const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % failing.length;
+        state.focusedAreaId = failing[nextIndex];
+        render();
+
+        const card = document.querySelector(`[data-area-id="${state.focusedAreaId}"]`);
+        if (card) {
+          card.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+
+      function copyReport() {
+        const current = stats();
+        const lines = [
+          `Scénario : ${activeScenario().title}`,
+          `Couverture : ${current.coverage}%`,
+          `Zones OK : ${current.passed}/${current.total}`,
+          `Risques : ${current.riskCount}`,
+          "",
+          "Résultats par zone :",
+        ];
+
+        current.areaResults.forEach((result) => {
+          lines.push(`- ${result.area.title}: ${result.failures.length === 0 ? "OK" : "ÉCHEC"}`);
+          result.failures.forEach((failure) => lines.push(`  - ${failure}`));
+        });
+
+        if (current.globalFailures.length > 0) {
+          lines.push("", "Risques transverses :");
+          current.globalFailures.forEach((failure) => lines.push(`- ${failure}`));
+        }
+
+        const text = lines.join("\n");
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            statusStrip.textContent = "Rapport copié";
+          });
+        } else {
+          statusStrip.textContent = text;
+        }
+      }
+
+      function renderScenarios() {
+        scenarioList.innerHTML = "";
+        scenarios.forEach((scenario) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `scenario${scenario.id === state.scenarioId ? " active" : ""}`;
+          button.innerHTML = `<strong>${scenario.title}</strong><span>${scenario.summary}</span>`;
+          button.addEventListener("click", () => setScenario(scenario.id));
+          scenarioList.append(button);
+        });
+      }
+
+      function renderPolicyMap(current) {
+        policyMap.innerHTML = "";
+        phases.forEach(([id, title, body]) => {
+          const result = current.areaResults.find((entry) => entry.area.id === id);
+          const done = result && result.failures.length === 0;
+          const item = document.createElement("article");
+          item.className = `policy-step ${done ? "done" : state.hasRun ? "blocked" : ""}`;
+          item.innerHTML = `<strong>${title}</strong><span>${body}</span>`;
+          policyMap.append(item);
+        });
+      }
+
+      function renderGuardrails() {
+        guardrails.innerHTML = "";
+        areas.forEach((area) => {
+          const item = state.areas[area.id] || defaultArea(area);
+          const failures = areaFailures(area);
+          const passed = failures.length === 0;
+          const modeOptions = area.modes
+            .map((mode) => {
+              return `<option value="${mode.value}" ${item.mode === mode.value ? "selected" : ""}>${mode.label}</option>`;
+            })
+            .join("");
+          const checkButtons = area.checks
+            .map((check) => {
+              const [title, body] = checkLabels[check];
+              const active = item.toggles[check];
+              return `<button class="toggle ${active ? "active" : ""}" type="button" data-area="${area.id}" data-check="${check}" aria-pressed="${active}">
+                <strong>${title}</strong>
+                <span>${body}</span>
+              </button>`;
+            })
+            .join("");
+          const resultClass = state.hasRun ? (passed ? "pass" : "fail") : "";
+          const resultText = state.hasRun
+            ? passed
+              ? "OK : garde-fou précis, testable et prêt pour l'exécution."
+              : `ÉCHEC : ${failures.join(" ")}`
+            : area.goal;
+
+          const card = document.createElement("article");
+          card.className = [
+            "guardrail",
+            state.hasRun ? (passed ? "pass" : "fail") : "",
+            state.focusedAreaId === area.id ? "focused" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          card.dataset.areaId = area.id;
+          card.innerHTML = `
+            <header>
+              <h3>${area.title}</h3>
+              <span class="badge ${item.mode === "open" || item.mode === "all" || item.mode === "autonomous" ? "red" : ""}">${area.badge}</span>
+            </header>
+            <div class="mode-row">
+              <label class="field">
+                <span class="label">Mode</span>
+                <select data-mode="${area.id}">${modeOptions}</select>
+              </label>
+              <label class="field">
+                <span class="label">Mode attendu</span>
+                <input disabled value="${labelForMode(area, area.requiredMode)}" />
+              </label>
+            </div>
+            <label class="field">
+              <span class="label">${area.scopeLabel}</span>
+              <textarea data-scope="${area.id}" placeholder="${area.scopePlaceholder}">${item.scope}</textarea>
+            </label>
+            <div class="toggle-grid">${checkButtons}</div>
+            <div class="field">
+              <span class="label">Règle opérationnelle</span>
+              <textarea data-note="${area.id}" placeholder="Écrivez la règle que l'agent doit suivre pendant l'exécution.">${item.note}</textarea>
+            </div>
+            <div class="result ${resultClass}" aria-live="polite">${resultText}</div>
+          `;
+          guardrails.append(card);
+        });
+
+        guardrails.querySelectorAll("[data-mode]").forEach((select) => {
+          select.addEventListener("change", () => updateArea(select.dataset.mode, { mode: select.value }));
+        });
+        guardrails.querySelectorAll("[data-scope]").forEach((textarea) => {
+          textarea.addEventListener("input", () =>
+            updateArea(textarea.dataset.scope, { scope: textarea.value }, false),
+          );
+        });
+        guardrails.querySelectorAll("[data-note]").forEach((textarea) => {
+          textarea.addEventListener("input", () =>
+            updateArea(textarea.dataset.note, { note: textarea.value }, false),
+          );
+        });
+        guardrails.querySelectorAll("[data-check]").forEach((button) => {
+          button.addEventListener("click", () => toggleCheck(button.dataset.area, button.dataset.check));
+        });
+      }
+
+      function renderVerifier(current) {
+        verifierList.innerHTML = "";
+        const rows = [];
+
+        current.areaResults.forEach((result) => {
+          if (result.failures.length === 0) {
+            rows.push({ state: "pass", text: `${result.area.title} est correctement borné.` });
+          } else {
+            result.failures.forEach((failure) => {
+              rows.push({ state: "fail", text: `${result.area.title} : ${failure}` });
+            });
+          }
+        });
+
+        current.globalFailures.forEach((failure) => {
+          rows.push({ state: "fail", text: failure });
+        });
+
+        rows.forEach((row) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<span class="${row.state}">${row.state === "pass" ? "OK" : "Échec"}</span><span>${row.text}</span>`;
+          verifierList.append(li);
+        });
+      }
+
+      function renderContract() {
+        contractList.innerHTML = "";
+        const entries = areas
+          .map((area) => {
+            const item = state.areas[area.id] || defaultArea(area);
+            return {
+              area,
+              item,
+              hasContent: item.scope.trim().length > 0 || item.note.trim().length > 0,
+            };
+          })
+          .filter((entry) => entry.hasContent);
+
+        if (entries.length === 0) {
+          contractList.innerHTML = `<li class="empty">Aucune règle formalisée pour l'instant.</li>`;
+          return;
+        }
+
+        entries.forEach(({ area, item }) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<strong>${area.title} : ${labelForMode(area, item.mode)}</strong>${item.scope || "Périmètre non renseigné"}<br />${item.note || "Règle opérationnelle non renseignée"}`;
+          contractList.append(li);
+        });
+      }
+
+      function renderSummary(current) {
+        coverageValue.textContent = `${Math.min(current.coverage, 100)}%`;
+        passedValue.textContent = `${current.passed}/${current.total}`;
+        riskValue.textContent = String(current.riskCount);
+
+        if (current.riskCount === 0) {
+          statusStrip.textContent = "Politique vérifiée";
+        } else if (state.hasRun) {
+          statusStrip.textContent = `${current.riskCount} risque${current.riskCount === 1 ? "" : "s"} restant${current.riskCount === 1 ? "" : "s"}`;
+        } else {
+          statusStrip.textContent = "Politique pas encore vérifiée";
+        }
+      }
+
+      function render() {
+        ensureState();
+        const current = stats();
+        riskText.textContent = `${activeScenario().risk} Budget recommandé : ${activeScenario().defaultBudget}.`;
+        renderScenarios();
+        renderPolicyMap(current);
+        renderGuardrails();
+        renderVerifier(current);
+        renderContract();
+        renderSummary(current);
+      }
+
+      document.querySelector("#runVerifier").addEventListener("click", runVerifier);
+      document.querySelector("#nextRisk").addEventListener("click", focusNextRisk);
+      document.querySelector("#fillSample").addEventListener("click", fillStrictSample);
+      document.querySelector("#resetScenario").addEventListener("click", resetScenario);
+      document.querySelector("#copyReport").addEventListener("click", copyReport);
+
+      render();
+    </script>
+  </body>
+</html>

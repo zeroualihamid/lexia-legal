@@ -1,0 +1,102 @@
+{
+  "source_collections": [
+    "judgments_social",
+    "judgments_commercial",
+    "judgments_civil",
+    "judgments_criminal",
+    "judgments_family",
+    "judgments_constitutional",
+    "judgments_real_estate",
+    "judgments_admin",
+    "lexia_user_docs"
+  ],
+  "selected_documents": [
+    {
+      "collection": "lexia_user_docs",
+      "document_id": "19361a94-52bf-4745-bbe8-a4ed9335b1d3",
+      "title": "CamScanner 02-12-2025 22.11.pdf",
+      "qdrant_chunks": 3,
+      "minio_path": "s3://user-uploads/19361a94-52bf-4745-bbe8-a4ed9335b1d3/CamScanner 02-12-2025 22.11.pdf",
+      "minio_size": 2019216
+    },
+    {
+      "collection": "lexia_user_docs",
+      "document_id": "ace93760-946b-4535-a469-f9563d9399d2",
+      "title": "CamScanner 02-12-2025 22.11.pdf",
+      "qdrant_chunks": 3,
+      "minio_path": "s3://user-uploads/ace93760-946b-4535-a469-f9563d9399d2/CamScanner 02-12-2025 22.11.pdf",
+      "minio_size": 2019216
+    },
+    {
+      "collection": "lexia_user_docs",
+      "document_id": "cce0adcd-c7e7-44b1-a89e-1f7791a44a7e",
+      "title": "CamScanner 02-12-2025 22.11.pdf",
+      "qdrant_chunks": 3,
+      "minio_path": "s3://user-uploads/cce0adcd-c7e7-44b1-a89e-1f7791a44a7e/CamScanner 02-12-2025 22.11.pdf",
+      "minio_size": 2019216
+    },
+    {
+      "collection": "lexia_user_docs",
+      "document_id": "aca7cf32-e58b-4b7e-86da-7548ce7d228a",
+      "title": "CamScanner 03-01-2026 22.36.pdf",
+      "qdrant_chunks": 4,
+      "minio_path": "s3://user-uploads/aca7cf32-e58b-4b7e-86da-7548ce7d228a/CamScanner 03-01-2026 22.36.pdf",
+      "minio_size": 2065938
+    },
+    {
+      "collection": "lexia_user_docs",
+      "document_id": "49bb32c7-19e3-4ab1-96bc-fad9904dfc57",
+      "title": "CamScanner 03-11-2025 22.57.pdf",
+      "qdrant_chunks": 2,
+      "minio_path": "s3://user-uploads/49bb32c7-19e3-4ab1-96bc-fad9904dfc57/CamScanner 03-11-2025 22.57.pdf",
+      "minio_size": 1137360
+    },
+    {
+      "collection": "lexia_user_docs",
+      "document_id": "92ae1107-706d-4656-b715-7f870e7f9451",
+      "title": "CamScanner 24-01-2025 17.03.pdf",
+      "qdrant_chunks": 7,
+      "minio_path": "s3://user-uploads/92ae1107-706d-4656-b715-7f870e7f9451/CamScanner 24-01-2025 17.03.pdf",
+      "minio_size": 3754542
+    }
+  ],
+  "excluded_documents": [
+    {
+      "collection": "lexia_user_docs",
+      "document_id": "aadd7c98-54b5-4e92-9d72-3bc7a43f3403",
+      "title": "NS_FACTORY_CANTOR_Contrat.pdf",
+      "document_type": "contract",
+      "chunks": 8
+    }
+  ],
+  "document_count": 6,
+  "chunk_count": 22,
+  "graph_nodes": 22,
+  "graph_edges": 294,
+  "edge_counts": {
+    "same_document": 74,
+    "same_judgment": 74,
+    "same_source_pdf": 74,
+    "next_paragraph": 16,
+    "same_section": 18,
+    "similar_to": 22,
+    "previous_paragraph": 16
+  },
+  "layer_counts": {
+    "discovery": 294
+  },
+  "reasoning_edge_count": 0,
+  "invalid_reasoning_edges": [],
+  "contracts_in_graph": [],
+  "start_node": "d6d6ab3e-88b5-5ac3-806f-10436643bca8",
+  "goal_node": "6dfe85d3-4a79-5158-a56f-eb4d0c5fe9d9",
+  "graph_search_status": "no_reasoning_path",
+  "graph_search_method": "no_reasoning_path",
+  "graph_search_message": "No legal reasoning path exists yet. Discovery links exist, but they are not valid reasoning edges.",
+  "reasoning_path": [],
+  "reasoning_png": "/Users/mac/Documents/repos/lexia-legal/lexia-agent/data/legal_graph_judgments_layered_test/judgments_only_reasoning_view.png",
+  "discovery_png": "/Users/mac/Documents/repos/lexia-legal/lexia-agent/data/legal_graph_judgments_layered_test/judgments_only_discovery_view.png",
+  "combined_png": "/Users/mac/Documents/repos/lexia-legal/lexia-agent/data/legal_graph_judgments_layered_test/judgments_only_combined_view.png",
+  "pkl_path": "/Users/mac/Documents/repos/lexia-legal/lexia-agent/data/legal_graph_judgments_layered_test/judgments_only_layered_graph.pkl",
+  "graphml_path": "/Users/mac/Documents/repos/lexia-legal/lexia-agent/data/legal_graph_judgments_layered_test/judgments_only_layered_graph.graphml"
+}

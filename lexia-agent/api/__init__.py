@@ -33,6 +33,7 @@ from .routes.skills       import router as skills_router
 from .routes.playground   import router as playground_router
 from .routes.reporting    import reporting_router
 from .routes.cte_graph    import router as cte_graph_router
+from .routes.legal_graph  import router as legal_graph_router
 from .routes.admin_claude import router as admin_claude_router
 from .routes.admin_conversations import router as admin_conversations_router
 from .routes.user_documents import router as user_documents_router
@@ -56,6 +57,7 @@ def register_all_routers(app: FastAPI) -> None:
     app.include_router(playground_router,   prefix="/playground",   tags=["Playground"])
     app.include_router(reporting_router)
     app.include_router(cte_graph_router,    prefix="/cte-graph",    tags=["CTE Graph"])
+    app.include_router(legal_graph_router,  prefix="/legal-graphs", tags=["Legal Graphs"])
     app.include_router(admin_claude_router, prefix="/admin/claude", tags=["Admin Claude"])
     app.include_router(admin_conversations_router, prefix="/admin/conversations", tags=["Admin Conversations"])
     app.include_router(user_documents_router, prefix="/documents", tags=["User Documents"])
@@ -75,5 +77,6 @@ __all__ = [
     "skills_router",
     "reporting_router",
     "cte_graph_router",
+    "legal_graph_router",
     "register_all_routers",
 ]

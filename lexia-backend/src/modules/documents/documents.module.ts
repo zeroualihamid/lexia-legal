@@ -7,7 +7,10 @@ import { AgentDocsModule } from '../agent-docs/agent-docs.module';
 
 @Module({
   imports: [
-    BullModule.registerQueue({ name: 'document-processing' }),
+    BullModule.registerQueue(
+      { name: 'document-processing' },
+      { name: 'judgment-analysis' },
+    ),
     AgentDocsModule,
   ],
   controllers: [DocumentsController],

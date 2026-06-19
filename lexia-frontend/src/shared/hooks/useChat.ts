@@ -27,10 +27,47 @@ export interface ToolCall {
 }
 
 export interface Source {
+  id?: string
   title: string
   url?: string
+  fileName?: string
+  filePath?: string
+  docType?: string
+  hasSummary?: boolean
   collection: string
   snippet?: string
+}
+
+export interface SourceCatalogEntry {
+  id: string
+  title: string
+  url?: string
+  fileName?: string
+  filePath?: string
+  docType?: string
+  hasSummary?: boolean
+  collection: string
+}
+
+export function buildSourceCatalog(
+  sources: Source[] | undefined,
+): Record<string, SourceCatalogEntry> {
+  const map: Record<string, SourceCatalogEntry> = {}
+  if (!sources) return map
+  for (const s of sources) {
+    if (!s.id) continue
+    map[s.id] = {
+      id: s.id,
+      title: s.title,
+      url: s.url,
+      fileName: s.fileName,
+      filePath: s.filePath,
+      docType: s.docType,
+      hasSummary: s.hasSummary,
+      collection: s.collection,
+    }
+  }
+  return map
 }
 
 export function useChat() {
@@ -54,7 +91,7 @@ export function useChat() {
   }, [cleanup])
 
   const sendMessage = useCallback(
-    (conversationId: string, question: string, token: string | null) => {
+    (conversationId: string, question: string, token: string | null, caseId?: string) => {
       cleanup()
 
       const userMessage: ChatMessage = {
@@ -76,6 +113,7 @@ export function useChat() {
       const params = new URLSearchParams({
         q: question,
         ...(token ? { token } : {}),
+        ...(caseId ? { caseId } : {}),
       })
 
       const url = `/api/chat/stream/${conversationId}?${params.toString()}`
@@ -116,7 +154,13 @@ export function useChat() {
           }
           case 'sources': {
             collectedSources = (data.sources || []).map((s: any) => ({
-              title: s.titleAr || s.titleFr || s.title || s.articleRef || '',
+              id: s.id,
+              title: s.titleAr || s.titleFr || s.title || s.articleRef || s.fileName || '',
+              url: s.url,
+              fileName: s.fileName,
+              filePath: s.filePath,
+              docType: s.docType,
+              hasSummary: s.hasSummary,
               collection: s.collection || 'user_documents',
               snippet: s.snippet,
             }))

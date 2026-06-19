@@ -32,35 +32,56 @@ import {
   AnalysisStatus,
 } from '../../../shared/hooks/useJudgmentAnalysis'
 import { AnalysisViewer } from './AnalysisViewer'
+import { useAdminUi } from '../locale/useAdminI18n'
 
 const { Dragger } = Upload
 
-const STATUS_CONFIG: Record<AnalysisStatus, { color: string; label: string }> = {
-  pending: { color: '#8c8c8c', label: 'في الانتظار' },
-  running: { color: '#1677ff', label: 'قيد التحليل' },
-  completed: { color: '#52c41a', label: 'مكتمل' },
-  failed: { color: '#f5222d', label: 'فشل' },
+const STATUS_COLORS: Record<AnalysisStatus, string> = {
+  pending: '#8c8c8c',
+  running: '#1677ff',
+  completed: '#52c41a',
+  failed: '#f5222d',
 }
 
-function StatusTag({ status }: { status: AnalysisStatus }) {
-  const cfg = STATUS_CONFIG[status]
+function StatusTag({
+  status,
+  label,
+  font,
+}: {
+  status: AnalysisStatus
+  label: string
+  font: string
+}) {
+  const color = STATUS_COLORS[status]
   return (
     <Tag
       style={{
-        background: `${cfg.color}20`,
-        border: `1px solid ${cfg.color}40`,
-        color: cfg.color,
+        background: `${color}20`,
+        border: `1px solid ${color}40`,
+        color,
         borderRadius: 12,
-        fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
+        fontFamily: font,
         fontSize: 12,
       }}
     >
-      {cfg.label}
+      {label}
     </Tag>
   )
 }
 
-function PdfPreview({ analysisId }: { analysisId: string | null }) {
+function PdfPreview({
+  analysisId,
+  noPdfLabel,
+  viewPdfLabel,
+  openLabel,
+  font,
+}: {
+  analysisId: string | null
+  noPdfLabel: string
+  viewPdfLabel: string
+  openLabel: string
+  font: string
+}) {
   const token = useAuthStore((s) => s.token)
   const pdfUrl = useMemo(() => {
     if (!analysisId) return null
@@ -72,8 +93,8 @@ function PdfPreview({ analysisId }: { analysisId: string | null }) {
 
   if (!pdfUrl) {
     return (
-      <div style={{ color: 'var(--color-text-tertiary)', fontFamily: "'Cairo', sans-serif" }}>
-        لا يوجد ملف PDF محدد
+      <div style={{ color: 'var(--color-text-tertiary)', fontFamily: font }}>
+        {noPdfLabel}
       </div>
     )
   }
@@ -106,12 +127,12 @@ function PdfPreview({ analysisId }: { analysisId: string | null }) {
             alignItems: 'center',
             gap: 8,
             color: GOLD,
-            fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
+            fontFamily: font,
             fontWeight: 700,
           }}
         >
           <FilePdfOutlined />
-          الملف الأصلي
+          {viewPdfLabel}
         </span>
         <Button
           size="small"
@@ -119,9 +140,9 @@ function PdfPreview({ analysisId }: { analysisId: string | null }) {
           href={pdfUrl}
           target="_blank"
           rel="noreferrer"
-          style={{ color: GOLD, fontFamily: "'Cairo', sans-serif" }}
+          style={{ color: GOLD, fontFamily: font }}
         >
-          فتح في نافذة جديدة
+          {openLabel}
         </Button>
       </div>
       <iframe
@@ -142,6 +163,19 @@ function PdfPreview({ analysisId }: { analysisId: string | null }) {
 
 export function JudgmentAnalysisPage() {
   const { message } = App.useApp()
+  const {
+    t,
+    font,
+    pageStyle,
+    h1Style,
+    titleStyle,
+    labelStyle,
+    cellStyle,
+    mutedStyle,
+    tableStyle,
+  } = useAdminUi()
+  const j = t.judgment
+
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [drawerId, setDrawerId] = useState<string | null>(null)
@@ -154,18 +188,20 @@ export function JudgmentAnalysisPage() {
   const stream = useJudgmentAnalysisStream(activeId)
   const drawerOne = useJudgmentAnalysisOne(drawerId)
 
+  const statusLabel = (status: AnalysisStatus) => j.status[status]
+
   const handleAnalyze = async () => {
     if (!pendingFile) {
-      message.warning('اختر ملف PDF أولاً')
+      message.warning(j.noPdf)
       return
     }
     try {
       const { analysisId } = await create.mutateAsync(pendingFile)
       setActiveId(analysisId)
-      message.success('بدأ التحليل')
+      message.success(j.status.running)
       setPendingFile(null)
     } catch (err: any) {
-      message.error(err?.response?.data?.message || err?.message || 'فشل الإرسال')
+      message.error(err?.response?.data?.message || err?.message || t.common.error)
     }
   }
 
@@ -173,47 +209,49 @@ export function JudgmentAnalysisPage() {
     try {
       const { analysisId } = await rerun.mutateAsync(id)
       setActiveId(analysisId)
-      message.success('تم إعادة التشغيل')
+      message.success(j.rerun)
     } catch (err: any) {
-      message.error(err?.message || 'فشل')
+      message.error(err?.message || t.common.error)
     }
   }
 
   const columns = useMemo(
     () => [
       {
-        title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الملف</span>,
+        title: <span style={labelStyle}>{j.columns.filename}</span>,
         dataIndex: 'filename',
         key: 'filename',
         render: (v: string) => (
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <FileSearchOutlined style={{ color: GOLD }} />
-            <span style={{ fontFamily: "'Cairo', sans-serif", fontSize: 13 }}>{v}</span>
+            <span style={{ ...cellStyle, fontSize: 13 }}>{v}</span>
           </span>
         ),
       },
       {
-        title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الحالة</span>,
+        title: <span style={labelStyle}>{j.columns.status}</span>,
         dataIndex: 'status',
         key: 'status',
-        render: (v: AnalysisStatus) => <StatusTag status={v} />,
+        render: (v: AnalysisStatus) => (
+          <StatusTag status={v} label={statusLabel(v)} font={font} />
+        ),
       },
       {
-        title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>التاريخ</span>,
+        title: <span style={labelStyle}>{j.columns.createdAt}</span>,
         dataIndex: 'created_at',
         key: 'created_at',
         render: (v: string) => (
-          <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-tertiary)', fontSize: 12 }}>
+          <span style={{ ...mutedStyle, fontSize: 12 }}>
             {dayjs(v).format('DD/MM/YYYY HH:mm')}
           </span>
         ),
       },
       {
-        title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الإجراءات</span>,
+        title: <span style={labelStyle}>{j.columns.actions}</span>,
         key: 'actions',
         render: (_: any, record: any) => (
           <Space>
-            <Tooltip title="عرض">
+            <Tooltip title={t.common.view}>
               <Button
                 type="text"
                 size="small"
@@ -225,7 +263,7 @@ export function JudgmentAnalysisPage() {
                 }}
               />
             </Tooltip>
-            <Tooltip title="عرض ملف PDF الأصلي">
+            <Tooltip title={j.viewPdf}>
               <Button
                 type="text"
                 size="small"
@@ -237,7 +275,7 @@ export function JudgmentAnalysisPage() {
                 }}
               />
             </Tooltip>
-            <Tooltip title="متابعة مباشرة">
+            <Tooltip title={t.common.live}>
               <Button
                 type="text"
                 size="small"
@@ -247,7 +285,7 @@ export function JudgmentAnalysisPage() {
                 disabled={record.status === 'failed'}
               />
             </Tooltip>
-            <Tooltip title="إعادة التشغيل">
+            <Tooltip title={j.rerun}>
               <Button
                 type="text"
                 size="small"
@@ -261,13 +299,13 @@ export function JudgmentAnalysisPage() {
         ),
       },
     ],
-    [rerun.isPending],
+    [j, t.common, font, labelStyle, cellStyle, mutedStyle, rerun.isPending],
   )
 
   const isStreaming = stream.status === 'pending' || stream.status === 'running'
 
   return (
-    <div style={{ direction: 'rtl' }}>
+    <div style={pageStyle}>
       <div
         style={{
           display: 'flex',
@@ -276,29 +314,10 @@ export function JudgmentAnalysisPage() {
           marginBottom: 20,
         }}
       >
-        <h1
-          style={{
-            fontSize: 22,
-            fontWeight: 700,
-            color: 'var(--color-text-primary)',
-            fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
-            margin: 0,
-          }}
-        >
-          تحليل الأحكام
-        </h1>
-        <span
-          style={{
-            color: 'var(--color-text-tertiary)',
-            fontFamily: "'Cairo', sans-serif",
-            fontSize: 12,
-          }}
-        >
-          Analyse de jugement — Claude Code CLI
-        </span>
+        <h1 style={h1Style}>{j.title}</h1>
+        <span style={{ ...mutedStyle, fontSize: 12 }}>{j.subtitle}</span>
       </div>
 
-      {/* Upload + CTA */}
       <Card
         style={{
           background: 'var(--color-bg-card)',
@@ -342,21 +361,21 @@ export function JudgmentAnalysisPage() {
           <p
             className="ant-upload-text"
             style={{
-              fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
+              fontFamily: font,
               color: 'var(--color-text-secondary)',
             }}
           >
-            اسحب ملف الحكم (PDF) هنا أو انقر للاختيار
+            {j.dragHint}
           </p>
           <p
             className="ant-upload-hint"
             style={{
-              fontFamily: "'Cairo', sans-serif",
+              fontFamily: font,
               color: 'var(--color-text-quaternary)',
               fontSize: 12,
             }}
           >
-            Le fichier sera analysé par Claude Code CLI selon le plan en 8 sections (français).
+            {j.dragSubhint}
           </p>
         </Dragger>
 
@@ -372,30 +391,26 @@ export function JudgmentAnalysisPage() {
               background: GOLD,
               borderColor: GOLD,
               color: '#000',
-              fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
+              fontFamily: font,
               fontWeight: 700,
             }}
           >
-            تحليل الحكم بالذكاء الاصطناعي
+            {j.analyze}
           </Button>
         </div>
       </Card>
 
-      {/* Live result */}
       {activeId && (
         <Card
           title={
             <Space>
-              <span
-                style={{
-                  fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
-                  color: 'var(--color-text-primary)',
-                }}
-              >
-                النتيجة المباشرة
-              </span>
+              <span style={titleStyle}>{j.liveResult}</span>
               {stream.status !== 'idle' && (
-                <StatusTag status={stream.status as AnalysisStatus} />
+                <StatusTag
+                  status={stream.status as AnalysisStatus}
+                  label={statusLabel(stream.status as AnalysisStatus)}
+                  font={font}
+                />
               )}
               {isStreaming && <Spin size="small" />}
             </Space>
@@ -407,7 +422,7 @@ export function JudgmentAnalysisPage() {
               onClick={() => setActiveId(null)}
               style={{ color: 'var(--color-text-tertiary)' }}
             >
-              إغلاق
+              {t.common.close}
             </Button>
           }
           style={{
@@ -422,7 +437,7 @@ export function JudgmentAnalysisPage() {
               style={{
                 color: '#f5222d',
                 marginBottom: 12,
-                fontFamily: "'Cairo', sans-serif",
+                fontFamily: font,
                 fontSize: 13,
               }}
             >
@@ -433,18 +448,8 @@ export function JudgmentAnalysisPage() {
         </Card>
       )}
 
-      {/* History */}
       <Card
-        title={
-          <span
-            style={{
-              fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
-              color: 'var(--color-text-primary)',
-            }}
-          >
-            التحليلات السابقة
-          </span>
-        }
+        title={<span style={titleStyle}>{j.pastAnalyses}</span>}
         style={{
           background: 'var(--color-bg-card)',
           border: `1px solid ${BORDER_COLOR}`,
@@ -457,18 +462,13 @@ export function JudgmentAnalysisPage() {
           columns={columns as any}
           loading={list.isLoading}
           pagination={{ pageSize: 10 }}
-          style={{ direction: 'rtl' }}
+          style={tableStyle}
           locale={{
-            emptyText: (
-              <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
-                لا توجد تحليلات بعد
-              </span>
-            ),
+            emptyText: <span style={{ fontFamily: font }}>{j.empty}</span>,
           }}
         />
       </Card>
 
-      {/* Past analysis viewer */}
       <Drawer
         open={!!drawerId}
         onClose={() => {
@@ -479,15 +479,16 @@ export function JudgmentAnalysisPage() {
         title={
           <Space>
             <FileSearchOutlined style={{ color: GOLD }} />
-            <span
-              style={{
-                fontFamily: "'Cairo', sans-serif",
-                color: 'var(--color-text-primary)',
-              }}
-            >
-              {drawerOne.data?.filename || 'Analyse'}
+            <span style={{ ...cellStyle, color: 'var(--color-text-primary)' }}>
+              {drawerOne.data?.filename || j.filename}
             </span>
-            {drawerOne.data && <StatusTag status={drawerOne.data.status} />}
+            {drawerOne.data && (
+              <StatusTag
+                status={drawerOne.data.status}
+                label={statusLabel(drawerOne.data.status)}
+                font={font}
+              />
+            )}
           </Space>
         }
         extra={
@@ -496,9 +497,9 @@ export function JudgmentAnalysisPage() {
             value={drawerView}
             onChange={(value) => setDrawerView(value as 'analysis' | 'pdf' | 'split')}
             options={[
-              { label: 'التحليل', value: 'analysis' },
-              { label: 'PDF', value: 'pdf' },
-              { label: 'مزدوج', value: 'split' },
+              { label: j.viewAnalysis, value: 'analysis' },
+              { label: j.viewPdf, value: 'pdf' },
+              { label: j.viewSplit, value: 'split' },
             ]}
           />
         }
@@ -513,11 +514,17 @@ export function JudgmentAnalysisPage() {
         {drawerOne.isLoading ? (
           <Spin />
         ) : drawerOne.data?.error_message ? (
-          <div style={{ color: '#f5222d', fontFamily: "'Cairo', sans-serif" }}>
+          <div style={{ color: '#f5222d', fontFamily: font }}>
             {drawerOne.data.error_message}
           </div>
         ) : drawerView === 'pdf' ? (
-          <PdfPreview analysisId={drawerId} />
+          <PdfPreview
+            analysisId={drawerId}
+            noPdfLabel={j.noPdf}
+            viewPdfLabel={j.viewPdf}
+            openLabel={j.open}
+            font={font}
+          />
         ) : drawerView === 'analysis' ? (
           <AnalysisViewer markdown={drawerOne.data?.markdown_result || ''} />
         ) : (
@@ -529,7 +536,13 @@ export function JudgmentAnalysisPage() {
               alignItems: 'start',
             }}
           >
-            <PdfPreview analysisId={drawerId} />
+            <PdfPreview
+              analysisId={drawerId}
+              noPdfLabel={j.noPdf}
+              viewPdfLabel={j.viewPdf}
+              openLabel={j.open}
+              font={font}
+            />
             <AnalysisViewer markdown={drawerOne.data?.markdown_result || ''} />
           </div>
         )}

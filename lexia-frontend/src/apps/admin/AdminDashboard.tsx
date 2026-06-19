@@ -1,16 +1,16 @@
 import React from 'react'
-import { Card, Row, Col, Statistic, Spin } from 'antd'
+import { Card, Row, Col, Spin } from 'antd'
 import {
   TeamOutlined,
   FileTextOutlined,
   DollarOutlined,
   CrownOutlined,
-  ThunderboltOutlined,
   MessageOutlined,
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import apiClient from '../../shared/api/client'
-import { GOLD, DARK_CARD, BORDER_COLOR, COLLECTION_COLORS, COLLECTION_LABELS } from '../../shared/constants'
+import { GOLD, DARK_CARD, BORDER_COLOR, COLLECTION_COLORS } from '../../shared/constants'
+import { useAdminUi } from './locale/useAdminI18n'
 
 function StatCard({
   title,
@@ -19,6 +19,8 @@ function StatCard({
   icon,
   color,
   loading,
+  font,
+  numberLocale,
 }: {
   title: string
   value: number | string
@@ -26,36 +28,26 @@ function StatCard({
   icon: React.ReactNode
   color: string
   loading?: boolean
+  font: string
+  numberLocale: string
 }) {
   return (
     <Card
-      style={{
-        background: DARK_CARD,
-        border: `1px solid ${BORDER_COLOR}`,
-        borderRadius: 16,
-        overflow: 'hidden',
-      }}
-      bodyStyle={{ padding: 20 }}
+      style={{ background: DARK_CARD, border: `1px solid ${BORDER_COLOR}`, borderRadius: 16, overflow: 'hidden' }}
+      styles={{ body: { padding: 20 } }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <div
-            style={{
-              fontSize: 13,
-              color: 'var(--color-text-secondary)',
-              fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
-              marginBottom: 8,
-            }}
-          >
+          <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontFamily: font, marginBottom: 8 }}>
             {title}
           </div>
           {loading ? (
             <Spin size="small" />
           ) : (
-            <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: "'Cairo', sans-serif" }}>
-              {typeof value === 'number' ? value.toLocaleString('ar-MA') : value}
+            <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: font }}>
+              {typeof value === 'number' ? value.toLocaleString(numberLocale) : value}
               {suffix && (
-                <span style={{ fontSize: 14, color: 'var(--color-text-tertiary)', marginRight: 4 }}>{suffix}</span>
+                <span style={{ fontSize: 14, color: 'var(--color-text-tertiary)', marginInlineStart: 4 }}>{suffix}</span>
               )}
             </div>
           )}
@@ -70,7 +62,7 @@ function StatCard({
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: 22,
-            color: color,
+            color,
           }}
         >
           {icon}
@@ -80,7 +72,19 @@ function StatCard({
   )
 }
 
-function CollectionPieChart({ data }: { data: Array<{ collection: string; count: number }> }) {
+function CollectionPieChart({
+  data,
+  font,
+  numberLocale,
+  totalLabel,
+  collectionLabel,
+}: {
+  data: Array<{ collection: string; count: number }>
+  font: string
+  numberLocale: string
+  totalLabel: string
+  collectionLabel: (key: string) => string
+}) {
   const total = data.reduce((sum, d) => sum + d.count, 0)
   if (total === 0) return null
 
@@ -124,11 +128,11 @@ function CollectionPieChart({ data }: { data: Array<{ collection: string; count:
             strokeWidth={2}
           />
         ))}
-        <text x={cx} y={cy - 6} textAnchor="middle" fill="var(--color-text-secondary)" fontSize={12} fontFamily="Cairo">
-          إجمالي
+        <text x={cx} y={cy - 6} textAnchor="middle" fill="var(--color-text-secondary)" fontSize={12} fontFamily={font}>
+          {totalLabel}
         </text>
-        <text x={cx} y={cy + 12} textAnchor="middle" fill="var(--color-text-primary)" fontSize={16} fontWeight="700" fontFamily="Cairo">
-          {total.toLocaleString()}
+        <text x={cx} y={cy + 12} textAnchor="middle" fill="var(--color-text-primary)" fontSize={16} fontWeight="700" fontFamily={font}>
+          {total.toLocaleString(numberLocale)}
         </text>
       </svg>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
@@ -144,12 +148,12 @@ function CollectionPieChart({ data }: { data: Array<{ collection: string; count:
                   flexShrink: 0,
                 }}
               />
-              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
-                {COLLECTION_LABELS[seg.collection] || seg.collection}
+              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: font }}>
+                {collectionLabel(seg.collection)}
               </span>
             </div>
-            <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: "'Cairo', sans-serif" }}>
-              {seg.count.toLocaleString()} ({seg.pct.toFixed(1)}%)
+            <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: font }}>
+              {seg.count.toLocaleString(numberLocale)} ({seg.pct.toFixed(1)}%)
             </span>
           </div>
         ))}
@@ -175,18 +179,20 @@ const MOCK_STATS = {
     { collection: 'judgments_real_estate', count: 1870 },
   ],
   monthly_usage: [
-    { month: 'يناير', messages: 4521, searches: 1823 },
-    { month: 'فبراير', messages: 5234, searches: 2156 },
-    { month: 'مارس', messages: 6012, searches: 2489 },
-    { month: 'أبريل', messages: 7845, searches: 3124 },
-    { month: 'مايو', messages: 8901, searches: 3567 },
-    { month: 'يونيو', messages: 9432, searches: 3892 },
+    { month: 'Jan', messages: 4521, searches: 1823 },
+    { month: 'Fév', messages: 5234, searches: 2156 },
+    { month: 'Mar', messages: 6012, searches: 2489 },
+    { month: 'Avr', messages: 7845, searches: 3124 },
+    { month: 'Mai', messages: 8901, searches: 3567 },
+    { month: 'Juin', messages: 9432, searches: 3892 },
   ],
 }
 
 export function AdminDashboard() {
+  const { t, font, numberLocale, pageStyle, h1Style, collectionLabel, locale } = useAdminUi()
+
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['admin-stats'],
+    queryKey: ['admin-stats', locale],
     queryFn: async () => {
       try {
         const res = await apiClient.get('/admin/stats')
@@ -199,72 +205,55 @@ export function AdminDashboard() {
   })
 
   const s = stats || MOCK_STATS
-  const maxMsg = Math.max(...s.monthly_usage.map((h: any) => h.messages))
+  const maxMsg = Math.max(...s.monthly_usage.map((h: { messages: number }) => h.messages))
+  const monthLabels = t.months.slice(0, 6)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, direction: 'rtl' }}>
-      <h1
-        style={{
-          fontSize: 22,
-          fontWeight: 700,
-          color: 'var(--color-text-primary)',
-          fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
-          margin: 0,
-        }}
-      >
-        لوحة التحكم
-      </h1>
+    <div style={{ ...pageStyle, display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <h1 style={h1Style}>{t.dashboard.title}</h1>
 
-      {/* Overview cards */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard title="إجمالي المستخدمين" value={s.total_users} icon={<TeamOutlined />} color="#1677ff" loading={isLoading} />
+          <StatCard title={t.dashboard.totalUsers} value={s.total_users} icon={<TeamOutlined />} color="#1677ff" loading={isLoading} font={font} numberLocale={numberLocale} />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard title="إجمالي الوثائق" value={s.total_documents} icon={<FileTextOutlined />} color={GOLD} loading={isLoading} />
+          <StatCard title={t.dashboard.totalDocuments} value={s.total_documents} icon={<FileTextOutlined />} color={GOLD} loading={isLoading} font={font} numberLocale={numberLocale} />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard title="إجمالي الإيرادات" value={s.total_revenue} suffix="درهم" icon={<DollarOutlined />} color="#52c41a" loading={isLoading} />
+          <StatCard title={t.dashboard.totalRevenue} value={s.total_revenue} suffix={t.common.currency} icon={<DollarOutlined />} color="#52c41a" loading={isLoading} font={font} numberLocale={numberLocale} />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard title="الاشتراكات النشطة" value={s.active_subscriptions} icon={<CrownOutlined />} color="#eb2f96" loading={isLoading} />
+          <StatCard title={t.dashboard.activeSubscriptions} value={s.active_subscriptions} icon={<CrownOutlined />} color="#eb2f96" loading={isLoading} font={font} numberLocale={numberLocale} />
         </Col>
       </Row>
 
-      {/* Real-time stats */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12}>
-          <Card
-            style={{ background: DARK_CARD, border: `1px solid rgba(22,119,255,0.3)`, borderRadius: 16 }}
-            bodyStyle={{ padding: 20 }}
-          >
+          <Card style={{ background: DARK_CARD, border: '1px solid rgba(22,119,255,0.3)', borderRadius: 16 }} styles={{ body: { padding: 20 } }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginBottom: 4 }}>
-                  المستخدمون النشطون (ساعة)
+                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: font, marginBottom: 4 }}>
+                  {t.dashboard.activeUsersHour}
                 </div>
-                <div style={{ fontSize: 32, fontWeight: 700, color: '#1677ff', fontFamily: "'Cairo', sans-serif" }}>
+                <div style={{ fontSize: 32, fontWeight: 700, color: '#1677ff', fontFamily: font }}>
                   {s.active_users_hour}
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#52c41a', animation: 'pulse 2s infinite' }} />
-                <span style={{ fontSize: 11, color: '#52c41a', fontFamily: "'Cairo', sans-serif" }}>مباشر</span>
+                <span style={{ fontSize: 11, color: '#52c41a', fontFamily: font }}>{t.common.live}</span>
               </div>
             </div>
           </Card>
         </Col>
         <Col xs={24} sm={12}>
-          <Card
-            style={{ background: DARK_CARD, border: `1px solid rgba(201,168,76,0.3)`, borderRadius: 16 }}
-            bodyStyle={{ padding: 20 }}
-          >
+          <Card style={{ background: DARK_CARD, border: `1px solid rgba(201,168,76,0.3)`, borderRadius: 16 }} styles={{ body: { padding: 20 } }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", marginBottom: 4 }}>
-                  الرسائل (ساعة أخيرة)
+                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: font, marginBottom: 4 }}>
+                  {t.dashboard.messagesHour}
                 </div>
-                <div style={{ fontSize: 32, fontWeight: 700, color: GOLD, fontFamily: "'Cairo', sans-serif" }}>
+                <div style={{ fontSize: 32, fontWeight: 700, color: GOLD, fontFamily: font }}>
                   {s.messages_hour}
                 </div>
               </div>
@@ -274,20 +263,15 @@ export function AdminDashboard() {
         </Col>
       </Row>
 
-      {/* Charts */}
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={14}>
           <Card
-            title={
-              <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 15 }}>
-                الاستخدام الشهري
-              </span>
-            }
+            title={<span style={{ fontFamily: font, color: 'var(--color-text-primary)', fontSize: 15 }}>{t.dashboard.monthlyUsage}</span>}
             style={{ background: DARK_CARD, border: `1px solid ${BORDER_COLOR}`, borderRadius: 16 }}
-            headStyle={{ borderBottom: `1px solid ${BORDER_COLOR}` }}
+            styles={{ header: { borderBottom: `1px solid ${BORDER_COLOR}` } }}
           >
             <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 160 }}>
-              {s.monthly_usage.map((item: any, i: number) => (
+              {s.monthly_usage.map((item: { month: string; messages: number; searches: number }, i: number) => (
                 <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                   <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 130 }}>
                     <div
@@ -297,7 +281,6 @@ export function AdminDashboard() {
                         background: GOLD,
                         borderRadius: '3px 3px 0 0',
                         opacity: 0.85,
-                        transition: 'height 0.5s ease',
                       }}
                     />
                     <div
@@ -307,12 +290,11 @@ export function AdminDashboard() {
                         background: '#1677ff',
                         borderRadius: '3px 3px 0 0',
                         opacity: 0.7,
-                        transition: 'height 0.5s ease',
                       }}
                     />
                   </div>
-                  <span style={{ fontSize: 10, color: 'var(--color-text-quaternary)', fontFamily: "'Cairo', sans-serif" }}>
-                    {item.month}
+                  <span style={{ fontSize: 10, color: 'var(--color-text-quaternary)', fontFamily: font }}>
+                    {monthLabels[i] || item.month}
                   </span>
                 </div>
               ))}
@@ -320,11 +302,11 @@ export function AdminDashboard() {
             <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 12, height: 12, background: GOLD, borderRadius: 2 }} />
-                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>رسائل</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: font }}>{t.common.messages}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 12, height: 12, background: '#1677ff', borderRadius: 2 }} />
-                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>بحث</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: font }}>{t.common.searches}</span>
               </div>
             </div>
           </Card>
@@ -332,15 +314,17 @@ export function AdminDashboard() {
 
         <Col xs={24} lg={10}>
           <Card
-            title={
-              <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 15 }}>
-                توزيع الوثائق
-              </span>
-            }
+            title={<span style={{ fontFamily: font, color: 'var(--color-text-primary)', fontSize: 15 }}>{t.dashboard.documentDistribution}</span>}
             style={{ background: DARK_CARD, border: `1px solid ${BORDER_COLOR}`, borderRadius: 16 }}
-            headStyle={{ borderBottom: `1px solid ${BORDER_COLOR}` }}
+            styles={{ header: { borderBottom: `1px solid ${BORDER_COLOR}` } }}
           >
-            <CollectionPieChart data={s.collections} />
+            <CollectionPieChart
+              data={s.collections}
+              font={font}
+              numberLocale={numberLocale}
+              totalLabel={t.common.total}
+              collectionLabel={collectionLabel}
+            />
           </Card>
         </Col>
       </Row>

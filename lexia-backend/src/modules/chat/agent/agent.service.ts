@@ -7,8 +7,11 @@ import { RagService } from './rag.service';
 import { ToolExecutorService } from './tool-executor.service';
 import { PostgresService } from '../../../database/postgres.service';
 import { AgentDocsClient } from '../../agent-docs/agent-docs.client';
+import { MinioService } from '../../storage/minio.service';
+import type { AgentSearchHit } from '../../agent-docs/agent-docs.client';
 import { AuthUser } from '../../../common/guards/keycloak.guard';
 import type { CaseReferenceCapture } from '../../cases/cases.service';
+import { CHAT_UPLOAD_INBOX_CASE } from '../../chat-uploads/chat-uploads.constants';
 
 interface UserDocsContext {
   context: string;
@@ -71,6 +74,7 @@ export class AgentService {
     private toolExecutorService: ToolExecutorService,
     private postgresService: PostgresService,
     private agentDocsClient: AgentDocsClient,
+    private minioService: MinioService,
   ) {
     const baseURL = this.configService.get<string>('llm.baseURL');
     this.openai = new OpenAI({
@@ -80,20 +84,24 @@ export class AgentService {
     this.chatModel = this.configService.get<string>('llm.chatModel') || 'gpt-4o';
   }
 
-  /** General chat (entire knowledge base = all the user's docs + global corpus). */
+  /** General chat (all user docs, or one case when `caseId` is set + global corpus). */
   async streamChat(
     conversationId: string,
     question: string,
     user: AuthUser,
     res: Response,
+    opts?: { caseId?: string },
   ): Promise<void> {
     await this.executeChat({
       question,
       user,
       res,
       conversationId,
-      // Authenticated users also get their full document base merged in.
-      userDocScope: user.userId ? {} : null,
+      userDocScope: user.userId
+        ? opts?.caseId
+          ? { caseId: opts.caseId }
+          : {}
+        : null,
       saveHistory: true,
     });
   }
@@ -147,23 +155,33 @@ export class AgentService {
         ? await this.loadHistory(conversationId, user)
         : [];
 
-      // Global legal corpus retrieval (laws + judgments).
-      const collectionRoutes = await this.ragService.routeCollections(
-        question,
-        this.openai,
-        this.chatModel,
-      );
-      const collections = collectionRoutes.map((r) => r.collection);
-      this.sendSSE(res, 'collections', { collections: collectionRoutes });
+      const judgmentLibraryMode =
+        !opts.userDocScope?.caseId && this.isJudgmentLibraryQuery(question);
 
-      const searchResults = await this.ragService.search(
-        question,
-        collections,
-        user.accessLevel,
-        user.userId,
-        this.openai,
-      );
-      const corpusContext = this.ragService.buildContext(searchResults);
+      // Global legal corpus retrieval (laws + judgments) — skipped when the
+      // user is searching their own uploaded judgments to avoid hallucination.
+      let collectionRoutes: Array<{ collection: string; score: number }> = [];
+      let searchResults: Awaited<ReturnType<RagService['search']>> = [];
+      if (!judgmentLibraryMode) {
+        collectionRoutes = await this.ragService.routeCollections(
+          question,
+          this.openai,
+          this.chatModel,
+        );
+        const collections = collectionRoutes.map((r) => r.collection);
+        this.sendSSE(res, 'collections', { collections: collectionRoutes });
+
+        searchResults = await this.ragService.search(
+          question,
+          collections,
+          user.accessLevel,
+          user.userId,
+          this.openai,
+        );
+      }
+      const corpusContext = judgmentLibraryMode
+        ? ''
+        : this.ragService.buildContext(searchResults);
 
       // User-document retrieval (case-scoped or all-my-docs), merged in.
       let userDocs: UserDocsContext = { context: '', sources: [] };
@@ -191,19 +209,37 @@ export class AgentService {
         .join('\n\n');
 
       const casesNote = this.buildCasesNote(matchedCases);
+      const caseScopeNote = await this.buildCaseScopeNote(
+        opts.userDocScope?.caseId,
+        user.userId,
+      );
 
       const contextSections: string[] = [];
       if (refNote) contextSections.push(refNote);
+      if (caseScopeNote) contextSections.push(caseScopeNote);
       if (casesNote) contextSections.push(casesNote);
       if (userDocs.context) contextSections.push(userDocs.context);
       if (corpusContext) contextSections.push(corpusContext);
       const mergedContext =
         contextSections.join('\n\n---\n\n') || 'لا توجد مصادر ذات صلة.';
 
+      const judgmentIsolationRules = judgmentLibraryMode
+        ? `
+قواعد صارمة — بحث في مستندات المستخدم المرفوعة:
+- أجب حصرياً من نصوص مستندات المستخدم في السياق أدناه (أحكام/قرارات مرفوعة)
+- إذا وُجد حكم مطابق، اذكر اسمه الكامل ورقم الملف/المرجع كما في المستند ولا تختلق مبادئ من خارج النص
+- إذا كان السياق فارغاً أو لا يحتوي الحكم المطلوب، قُل صراحةً أنه لا يوجد حكم مطابق في مكتبتك — لا تستخدم معرفتك العامة ولا تختلق أحكاماً
+- إلزامي: بعد إجابتك مباشرةً، أدرج كتلة <SRC> (نسخاً حرفياً من سجل المصادر) لكل مستند استشهدت به — بدونها لن تظهر أزرار PDF والملخص`
+        : '';
+
       const systemPrompt = `أنت مساعد قانوني ذكي ومدير ملفات متخصص في القانون المغربي، تساعد المحامي على إدارة قضاياه والتحاور حول الأحكام والاستراتيجية. تقدم معلومات قانونية دقيقة ومفصلة باللغة العربية.
+${judgmentIsolationRules}
 
 قواعد:
-- استند إلى مستندات المستخدم (إن وُجدت) وإلى النصوص القانونية والأحكام القضائية المغربية
+- استند إلى مستندات المستخدم (إن وُجدت) وإلى النصوص القانونية والأحكام القضائية المغربية المنشورة
+- إذا حُدّدت قضية معيّنة في السياق، فاستخدم فقط مستندات تلك القضية من قسم «مستندات هذه القضية» ولا تستشهد بمستندات قضايا أخرى (عقود، مراسلات، ملفات…) حتى لو بدت ذات صلة
+- إذا وُجدت مستندات القضية في السياق (خاصة عقود)، فأجب مباشرة من نصها: استخرج موضوع العقد أو البند المطلوب واقتبسه. لا تطلب من المستخدم تحديد العقد إذا كان العقد موجوداً في مستندات القضية
+- أجب بلغة سؤال المستخدم (عربية أو فرنسية) ما لم يطلب غير ذلك
 - ميّز بوضوح بين ما يأتي من مستندات المستخدم وما يأتي من القانون العام أو الأحكام القضائية
 - اذكر المصادر بوضوح (رقم المادة، اسم القانون، رقم الحكم، أو اسم المستند)
 - إذا كان طلب المستخدم يخص قضية من قضاياه المسجّلة، فحدّد القضية المطابقة من قسم «القضايا المسجّلة لدى المحامي»، وأكّد للمستخدم وجودها صراحةً باسمها ومرجعها. لا تقل أبداً إن القضية غير موجودة إذا ظهرت في تلك القائمة، حتى لو لم تتضمن مستنداتها ما يكفي من التفاصيل
@@ -219,8 +255,48 @@ ${mergedContext}`;
 
       const tools = await this.buildToolsList(agentConfig);
 
+      const corpusSources =
+        user.accessLevel !== 'PUBLIC' && !judgmentLibraryMode
+          ? searchResults.map((r) => ({
+              id: r.id,
+              collection: r.collection,
+              titleAr: r.titleAr,
+              titleFr: r.titleFr,
+              articleRef: r.articleRef,
+              score: r.score,
+            }))
+          : [];
+      const docSourcesRaw = userDocs.sources.map((s) => ({
+        id: s.documentId,
+        collection: 'user_documents',
+        titleAr: s.titleAr,
+        docType: s.docType,
+        score: s.score,
+      }));
+      const enrichedDocSources =
+        await this.enrichDocumentSourcesWithUrls(docSourcesRaw);
+      const { docSources: citeDocSources, corpusSources: citeCorpusSources } =
+        this.selectCitationSources(
+          enrichedDocSources,
+          corpusSources,
+          judgmentLibraryMode,
+        );
+      const sourceCitationRules = this.buildSourceCitationInstructions(
+        citeDocSources,
+        citeCorpusSources,
+      );
+      if (citeCorpusSources.length > 0 || citeDocSources.length > 0) {
+        this.sendSSE(res, 'sources', {
+          sources: [...citeDocSources, ...citeCorpusSources],
+        });
+      }
+
+      const systemPromptWithSources = sourceCitationRules
+        ? `${systemPrompt}\n${sourceCitationRules}`
+        : systemPrompt;
+
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: systemPromptWithSources },
         ...history,
         { role: 'user', content: question },
       ];
@@ -314,27 +390,30 @@ ${mergedContext}`;
         break;
       }
 
-      // Sources: user documents (always for authenticated) + corpus (non-PUBLIC).
-      const corpusSources =
-        user.accessLevel !== 'PUBLIC'
-          ? searchResults.map((r) => ({
-              id: r.id,
-              collection: r.collection,
-              titleAr: r.titleAr,
-              titleFr: r.titleFr,
-              articleRef: r.articleRef,
-              score: r.score,
-            }))
-          : [];
-      const docSources = userDocs.sources.map((s) => ({
-        id: s.documentId,
-        collection: 'user_documents',
-        titleAr: s.titleAr,
-        docType: s.docType,
-        score: s.score,
-      }));
-      if (corpusSources.length > 0 || docSources.length > 0) {
-        this.sendSSE(res, 'sources', { sources: [...docSources, ...corpusSources] });
+      // DeepSeek and similar models often skip <SRC> blocks despite instructions —
+      // inject any missing blocks so the UI can render PDF/summary cards.
+      const allowedSrcIds = new Set(
+        [...citeDocSources, ...citeCorpusSources].map((s) => s.id),
+      );
+      const maxSrcBlocks = citeDocSources.length + citeCorpusSources.length;
+      fullResponse = this.trimSrcBlocksToAllowed(
+        fullResponse,
+        allowedSrcIds,
+        maxSrcBlocks,
+      );
+
+      const { text: responseWithSrc, injected: srcInjection } =
+        this.injectMissingSrcBlocks(
+          fullResponse,
+          citeDocSources,
+          citeCorpusSources,
+        );
+      if (srcInjection) {
+        fullResponse = responseWithSrc;
+        this.sendSSE(res, 'chunk', { content: srcInjection });
+        this.logger.debug(
+          `Injected ${srcInjection.length} chars of <SRC> blocks (model omitted them)`,
+        );
       }
 
       if (opts.saveHistory && user.userId && conversationId) {
@@ -369,49 +448,845 @@ ${mergedContext}`;
     caseId?: string,
   ): Promise<UserDocsContext> {
     try {
-      const hits = await this.agentDocsClient.search({
-        ownerId: userId,
-        caseId,
-        query: question,
-        limit: 8,
-      });
+      let hits: AgentSearchHit[] = [];
+
+      if (caseId) {
+        hits = await this.retrieveCaseScopedDocs(userId, caseId, question);
+      } else {
+        hits = await this.retrieveGeneralUserDocs(userId, question);
+      }
+
       if (!hits.length) return { context: '', sources: [] };
 
       const ids = [...new Set(hits.map((h) => h.documentId).filter(Boolean))];
-      const titleMap = new Map<string, { title_ar: string; document_type: string }>();
+      const titleMap = new Map<
+        string,
+        { title_ar: string; document_type: string; case_id: string | null }
+      >();
       if (ids.length > 0) {
         const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
         const docs = await this.postgresService.query<{
           id: string;
           title_ar: string;
           document_type: string;
+          case_id: string | null;
         }>(
-          `SELECT id, title_ar, document_type FROM documents WHERE id IN (${placeholders})`,
+          `SELECT id, title_ar, document_type, case_id FROM documents WHERE id IN (${placeholders})`,
           ids,
         );
         docs.forEach((d) => titleMap.set(d.id, d));
       }
 
+      const scopedHits = caseId
+        ? hits.filter((h) => {
+            const meta = titleMap.get(h.documentId);
+            // Trust case-scoped retrieval; only exclude when we know it's another case.
+            return !meta || meta.case_id === caseId;
+          })
+        : hits;
+
+      if (!scopedHits.length) return { context: '', sources: [] };
+
       let context = caseId
         ? 'مستندات هذه القضية:\n\n'
         : 'مستنداتك الخاصة:\n\n';
-      const sources = hits.map((h, i) => {
+      const sourceByDoc = new Map<
+        string,
+        {
+          documentId: string;
+          titleAr: string | null;
+          docType: string | null;
+          score: number;
+        }
+      >();
+      scopedHits.forEach((h, i) => {
         const meta = titleMap.get(h.documentId);
         const title = meta?.title_ar || `مستند ${i + 1}`;
         context += `[م${i + 1}] ${title}\n${h.content}\n\n`;
-        return {
-          documentId: h.documentId,
-          titleAr: meta?.title_ar || null,
-          docType: meta?.document_type || h.docType || null,
-          score: h.score,
-        };
+        const prev = sourceByDoc.get(h.documentId);
+        if (!prev || h.score > prev.score) {
+          sourceByDoc.set(h.documentId, {
+            documentId: h.documentId,
+            titleAr: meta?.title_ar || null,
+            docType: meta?.document_type || h.docType || null,
+            score: h.score,
+          });
+        }
       });
 
-      return { context, sources };
+      return { context, sources: [...sourceByDoc.values()] };
     } catch (err) {
       this.logger.warn(`User-doc retrieval failed: ${err.message}`);
       return { context: '', sources: [] };
     }
+  }
+
+  /**
+   * Case chat needs stronger retrieval than a single semantic query: lawyers often
+   * ask in French ("objet du contrat") while OCR is mixed FR/AR, and the first
+   * chunk may not rank highly. We merge multi-query search, per-document search,
+   * and OCR excerpts as a last resort.
+   */
+  private async retrieveCaseScopedDocs(
+    userId: string,
+    caseId: string,
+    question: string,
+  ): Promise<AgentSearchHit[]> {
+    const caseDocs = await this.postgresService.query<{
+      id: string;
+      title_ar: string;
+      document_type: string | null;
+      ocr_text: string | null;
+      status: string;
+    }>(
+      `SELECT id, title_ar, document_type, ocr_text, status
+       FROM documents
+       WHERE case_id = $1 AND owner_id = $2 AND status = 'ready'
+       ORDER BY
+         CASE WHEN document_type = 'contract' THEN 0 ELSE 1 END,
+         created_at ASC`,
+      [caseId, userId],
+    );
+
+    const hitMap = new Map<string, AgentSearchHit>();
+    const absorb = (batch: AgentSearchHit[]) => {
+      for (const h of batch) {
+        if (!h.documentId || !h.content?.trim()) continue;
+        const key = `${h.documentId}-${h.chunkIndex ?? 0}`;
+        const prev = hitMap.get(key);
+        if (!prev || h.score > prev.score) hitMap.set(key, h);
+      }
+    };
+
+    // Always seed context from OCR when a case is selected — vector search alone
+    // often misses short FR queries like "objet du contrat" (or typos: "ojet").
+    if (caseDocs.length > 0) {
+      const ocrHits = await this.buildCaseOcrFallbackHits(caseDocs, question);
+      absorb(ocrHits);
+    }
+
+    const queries = this.buildCaseSearchQueries(question, caseDocs);
+    await Promise.all(
+      queries.map((q) =>
+        this.agentDocsClient
+          .search({ ownerId: userId, caseId, query: q, limit: 10 })
+          .then(absorb)
+          .catch(() => undefined),
+      ),
+    );
+
+    // Per-document search so a single contract in the dossier is always considered.
+    await Promise.all(
+      caseDocs.slice(0, 6).map(async (doc) => {
+        const docQueries = [
+          question,
+          `${doc.title_ar || ''} ${queries.slice(1).join(' ')}`.trim(),
+        ];
+        await Promise.all(
+          [...new Set(docQueries.filter(Boolean))].map((q) =>
+            this.agentDocsClient
+              .search({
+                ownerId: userId,
+                caseId,
+                documentId: doc.id,
+                query: q,
+                limit: 4,
+              })
+              .then(absorb)
+              .catch(() => undefined),
+          ),
+        );
+      }),
+    );
+
+    let merged = [...hitMap.values()].sort((a, b) => b.score - a.score);
+
+    if (merged.length === 0 && caseDocs.length > 0) {
+      const ocrHits = await this.buildCaseOcrFallbackHits(caseDocs, question);
+      absorb(ocrHits);
+      merged = [...hitMap.values()].sort((a, b) => b.score - a.score);
+    }
+
+    return merged.slice(0, 12);
+  }
+
+  /**
+   * General chat: retrieve from the user's library (search uploads, chat
+   * uploads, inbox-indexed docs). Uses multi-query search + OCR/title fallback
+   * because FR queries often miss Arabic judgment OCR in a single vector pass.
+   */
+  private async retrieveGeneralUserDocs(
+    userId: string,
+    question: string,
+  ): Promise<AgentSearchHit[]> {
+    const userDocs = await this.postgresService.query<{
+      id: string;
+      title_ar: string;
+      document_type: string | null;
+      ocr_text: string | null;
+      status: string;
+    }>(
+      `SELECT id, title_ar, document_type, ocr_text, status
+       FROM documents
+       WHERE owner_id = $1 AND status IN ('ready', 'published')
+       ORDER BY
+         CASE WHEN document_type = 'judgment' THEN 0 ELSE 1 END,
+         created_at DESC
+       LIMIT 24`,
+      [userId],
+    );
+
+    const hitMap = new Map<string, AgentSearchHit>();
+    const absorb = (batch: AgentSearchHit[]) => {
+      for (const h of batch) {
+        if (!h.documentId || !h.content?.trim()) continue;
+        const key = `${h.documentId}-${h.chunkIndex ?? 0}`;
+        const prev = hitMap.get(key);
+        if (!prev || h.score > prev.score) hitMap.set(key, h);
+      }
+    };
+
+    absorb(await this.buildTitleMatchHits(userDocs, question));
+
+    if (this.isJudgmentLibraryQuery(question) && userDocs.length > 0) {
+      absorb(await this.buildJudgmentOcrFallbackHits(userDocs, question));
+    }
+
+    const queries = this.buildJudgmentSearchQueries(question);
+    const searchJobs: Promise<void>[] = [];
+
+    for (const q of queries) {
+      searchJobs.push(
+        this.agentDocsClient
+          .search({ ownerId: userId, query: q, limit: 10 })
+          .then(absorb)
+          .catch(() => undefined),
+      );
+      searchJobs.push(
+        this.agentDocsClient
+          .search({
+            ownerId: userId,
+            caseId: CHAT_UPLOAD_INBOX_CASE,
+            query: q,
+            limit: 10,
+          })
+          .then(absorb)
+          .catch(() => undefined),
+      );
+    }
+    await Promise.all(searchJobs);
+
+    const judgmentDocs = userDocs
+      .filter((d) => d.document_type === 'judgment')
+      .slice(0, 8);
+    await Promise.all(
+      judgmentDocs.map(async (doc) => {
+        const docQueries = [
+          question,
+          `${doc.title_ar || ''} ${queries.slice(1, 3).join(' ')}`.trim(),
+        ];
+        await Promise.all(
+          [...new Set(docQueries.filter(Boolean))].map((q) =>
+            this.agentDocsClient
+              .search({
+                ownerId: userId,
+                documentId: doc.id,
+                query: q,
+                limit: 4,
+              })
+              .then(absorb)
+              .catch(() => undefined),
+          ),
+        );
+      }),
+    );
+
+    let merged = [...hitMap.values()].sort((a, b) => b.score - a.score);
+
+    if (merged.length === 0 && userDocs.length > 0) {
+      absorb(await this.buildJudgmentOcrFallbackHits(userDocs, question));
+      merged = [...hitMap.values()].sort((a, b) => b.score - a.score);
+    }
+
+    return merged.slice(0, 12);
+  }
+
+  /** True when the user is looking for a judgment in their uploaded library. */
+  private isJudgmentLibraryQuery(question: string): boolean {
+    const q = (question || '').toLowerCase();
+    return (
+      /jugement|arrêt|arret|cassation|decision|sentence|verdict|jurisprudence/.test(
+        q,
+      ) ||
+      /حكم|قرار|نقض|محكمة\s*النقض|الاستئناف|قضاء/.test(q) ||
+      /judgment|decision|ruling|precedent/.test(q) ||
+      (/cherche|recherche|trouve|find|looking|search|أبحث|ابحث|أريد|je\s+veux/.test(
+        q,
+      ) &&
+        /courtage|commission|immobilier|brokerage|real\s*estate/.test(q))
+    );
+  }
+
+  private buildJudgmentSearchQueries(question: string): string[] {
+    const q = (question || '').trim();
+    const lower = q.toLowerCase();
+    const queries = new Set<string>([q]);
+
+    if (/cassation|arrêt|arret|jugement/.test(lower)) {
+      queries.add(
+        'jugement cassation cour de cassation arrêt محكمة النقض قرار نقض',
+      );
+    }
+    if (/courtage|commission|immobilier|brokerage|agent\s+immobilier/.test(
+      lower,
+    )) {
+      queries.add(
+        'commission courtage immobilier agency broker وساطة عقارية عمولة',
+      );
+    }
+    if (/paiement|payment|payable|دفع|أداء/.test(lower)) {
+      queries.add('paiement commission courtage payment obligation');
+    }
+    if (/cherche|recherche|trouve|find|looking/.test(lower)) {
+      queries.add('jugement cassation courtage immobilier commission');
+    }
+
+    return [...queries].filter(Boolean);
+  }
+
+  /** Score user documents by title/token overlap (helps FR query → AR title). */
+  private async buildTitleMatchHits(
+    docs: Array<{
+      id: string;
+      title_ar: string;
+      document_type: string | null;
+      ocr_text: string | null;
+    }>,
+    question: string,
+  ): Promise<AgentSearchHit[]> {
+    const qTokens = this.tokenize(question);
+    if (!qTokens.length) return [];
+
+    const topicTerms = [
+      'cassation',
+      'courtage',
+      'commission',
+      'immobilier',
+      'نقض',
+      'وساطة',
+      'عقاري',
+      'رافعي',
+    ];
+    const hits: AgentSearchHit[] = [];
+    const lowerQ = question.toLowerCase();
+
+    for (const doc of docs) {
+      const title = (doc.title_ar || '').toLowerCase();
+      const titleTokens = this.tokenize(title);
+      let score = 0;
+      for (const t of qTokens) {
+        if (title.includes(t)) score += 2;
+        if (titleTokens.includes(t)) score += 1;
+      }
+      for (const term of topicTerms) {
+        if (
+          (lowerQ.includes(term) || qTokens.includes(term)) &&
+          title.includes(term)
+        ) {
+          score += 2;
+        }
+      }
+      if (doc.document_type === 'judgment') score += 1;
+      if (score < 2) continue;
+
+      const text = await this.loadDocumentTextForRetrieval(doc);
+      const excerpt = text
+        ? this.extractRelevantExcerpt(text, question, 5000, true)
+        : doc.title_ar;
+      hits.push({
+        documentId: doc.id,
+        caseId: null,
+        docType: doc.document_type,
+        chunkIndex: 0,
+        content: `[${doc.title_ar}]\n${excerpt}`,
+        score: score + 8,
+      });
+    }
+    return hits.sort((a, b) => b.score - a.score).slice(0, 4);
+  }
+
+  private async buildJudgmentOcrFallbackHits(
+    docs: Array<{
+      id: string;
+      title_ar: string;
+      document_type: string | null;
+      ocr_text: string | null;
+    }>,
+    question: string,
+  ): Promise<AgentSearchHit[]> {
+    const hits: AgentSearchHit[] = [];
+    const prioritized = [...docs].sort((a, b) => {
+      const aJ = a.document_type === 'judgment' ? 0 : 1;
+      const bJ = b.document_type === 'judgment' ? 0 : 1;
+      return aJ - bJ;
+    });
+
+    for (const doc of prioritized.slice(0, 6)) {
+      const text = await this.loadDocumentTextForRetrieval(doc);
+      if (!text) continue;
+      const excerpt = this.extractRelevantExcerpt(text, question, 6000, true);
+      if (!excerpt) continue;
+      hits.push({
+        documentId: doc.id,
+        caseId: null,
+        docType: doc.document_type,
+        chunkIndex: 0,
+        content: `[${doc.title_ar}]\n${excerpt}`,
+        score: doc.document_type === 'judgment' ? 2 : 1,
+      });
+    }
+    return hits;
+  }
+
+  private async enrichDocumentSourcesWithUrls(
+    sources: Array<{
+      id: string;
+      collection: string;
+      titleAr: string | null;
+      docType?: string | null;
+      score?: number;
+    }>,
+  ): Promise<
+    Array<{
+      id: string;
+      collection: string;
+      titleAr: string | null;
+      docType?: string | null;
+      score?: number;
+      url?: string;
+      fileName?: string;
+      filePath?: string;
+      hasSummary?: boolean;
+    }>
+  > {
+    const ids = [...new Set(sources.map((s) => s.id).filter(Boolean))];
+    if (!ids.length) return sources;
+
+    const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
+    const rows = await this.postgresService.query<{
+      id: string;
+      minio_bucket: string;
+      minio_key: string;
+      title_ar: string;
+      document_type: string | null;
+      analysis_status: string | null;
+    }>(
+      `SELECT d.id, d.minio_bucket, d.minio_key, d.title_ar, d.document_type,
+              ja.status AS analysis_status
+       FROM documents d
+       LEFT JOIN LATERAL (
+         SELECT j.status
+         FROM judgment_analyses j
+         WHERE (
+           (d.metadata->>'analysisId' IS NOT NULL AND j.id = (d.metadata->>'analysisId')::uuid)
+           OR (j.pdf_bucket = d.minio_bucket AND j.pdf_key = d.minio_key)
+         )
+           AND j.status IN ('pending', 'running', 'completed')
+         ORDER BY
+           CASE j.status
+             WHEN 'completed' THEN 0
+             WHEN 'running' THEN 1
+             WHEN 'pending' THEN 2
+             ELSE 3
+           END,
+           j.completed_at DESC NULLS LAST,
+           j.created_at DESC
+         LIMIT 1
+       ) ja ON true
+       WHERE d.id IN (${placeholders})`,
+      ids,
+    );
+    const rowMap = new Map(rows.map((r) => [r.id, r]));
+
+    return Promise.all(
+      sources.map(async (s) => {
+        const row = rowMap.get(s.id);
+        if (!row?.minio_bucket || !row?.minio_key) return s;
+        try {
+          const url = await this.minioService.getPresignedUrl(
+            row.minio_bucket,
+            row.minio_key,
+            3600,
+          );
+          return {
+            ...s,
+            titleAr: s.titleAr || row.title_ar,
+            url,
+            fileName: row.minio_key.split('/').pop() || undefined,
+            filePath: `${row.minio_bucket}/${row.minio_key}`,
+            docType: s.docType || row.document_type,
+            hasSummary:
+              row.document_type === 'judgment' &&
+              row.analysis_status === 'completed',
+          };
+        } catch {
+          return {
+            ...s,
+            titleAr: s.titleAr || row.title_ar,
+            fileName: row.minio_key.split('/').pop(),
+            filePath: `${row.minio_bucket}/${row.minio_key}`,
+            docType: s.docType || row.document_type,
+            hasSummary:
+              row.document_type === 'judgment' &&
+              row.analysis_status === 'completed',
+          };
+        }
+      }),
+    );
+  }
+
+  /** Keep only the highest-scoring sources for citation cards (avoids flooding the UI). */
+  private selectCitationSources<
+    D extends { id: string; score?: number },
+    C extends { id: string; score?: number },
+  >(
+    docSources: D[],
+    corpusSources: C[],
+    judgmentLibraryMode: boolean,
+  ): { docSources: D[]; corpusSources: C[] } {
+    const maxDocs = judgmentLibraryMode ? 1 : 2;
+    const maxCorpus = judgmentLibraryMode ? 0 : 2;
+
+    const rankedDocs = [...docSources].sort(
+      (a, b) => (b.score ?? 0) - (a.score ?? 0),
+    );
+    let docSourcesOut = rankedDocs.slice(0, maxDocs);
+
+    // Drop a weak second doc when it clearly trails the best match.
+    if (docSourcesOut.length >= 2) {
+      const [best, runnerUp] = docSourcesOut;
+      const bestScore = best.score ?? 0;
+      const runnerScore = runnerUp.score ?? 0;
+      if (runnerScore < bestScore * 0.65 && bestScore - runnerScore > 2) {
+        docSourcesOut = [best];
+      }
+    }
+
+    const corpusSourcesOut = [...corpusSources]
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, maxCorpus);
+
+    return { docSources: docSourcesOut, corpusSources: corpusSourcesOut };
+  }
+
+  /** Remove <SRC> blocks outside the allowed catalog or above the cap. */
+  private trimSrcBlocksToAllowed(
+    response: string,
+    allowedIds: Set<string>,
+    maxBlocks: number,
+  ): string {
+    if (maxBlocks <= 0) {
+      return response.replace(/<SRC>[\s\S]*?<\/SRC>/gi, '');
+    }
+
+    let kept = 0;
+    return response.replace(/<SRC>([\s\S]*?)<\/SRC>/gi, (full, body) => {
+      if (!/^\s*id\s*:/im.test(full)) return '';
+      const idMatch = body.match(/^\s*id\s*:\s*(.+)\s*$/im);
+      if (!idMatch) return '';
+      const id = idMatch[1].trim();
+      if (!allowedIds.has(id)) return '';
+      if (kept >= maxBlocks) return '';
+      kept += 1;
+      return full;
+    });
+  }
+
+  /** Instruct the model to cite sources using inline <SRC> XML blocks. */
+  private formatSrcBlock(
+    id: string,
+    title: string,
+    path: string,
+    type: string,
+  ): string {
+    return `<SRC>
+id:${id}
+title:${title.replace(/\n/g, ' ')}
+path:${path}
+type:${type}
+</SRC>`;
+  }
+
+  /** Build concatenated <SRC> blocks for retrieved sources (server-side fallback). */
+  private buildSrcBlocksFromSources(
+    docSources: Array<{
+      id: string;
+      titleAr: string | null;
+      filePath?: string;
+      fileName?: string;
+      docType?: string | null;
+      score?: number;
+    }>,
+    corpusSources: Array<{
+      id: string;
+      titleAr?: string;
+      titleFr?: string;
+      articleRef?: string;
+      collection?: string;
+    }>,
+  ): string {
+    const blocks: string[] = [];
+
+    for (const s of docSources) {
+      const title = (s.titleAr || s.fileName || 'مستند').replace(/\n/g, ' ');
+      const path = s.filePath || s.fileName || '—';
+      const type = s.docType || 'other';
+      blocks.push(this.formatSrcBlock(s.id, title, path, type));
+    }
+
+    for (const s of corpusSources.slice(0, 6)) {
+      const title = (s.titleAr || s.titleFr || s.articleRef || 'مصدر').replace(
+        /\n/g,
+        ' ',
+      );
+      blocks.push(
+        this.formatSrcBlock(s.id, title, s.collection || 'corpus', 'corpus'),
+      );
+    }
+
+    return blocks.join('\n\n');
+  }
+
+  /** Append <SRC> blocks the model failed to emit. */
+  private injectMissingSrcBlocks(
+    response: string,
+    docSources: Array<{
+      id: string;
+      titleAr: string | null;
+      filePath?: string;
+      fileName?: string;
+      docType?: string | null;
+      score?: number;
+    }>,
+    corpusSources: Array<{
+      id: string;
+      titleAr?: string;
+      titleFr?: string;
+      articleRef?: string;
+      collection?: string;
+    }>,
+  ): { text: string; injected: string } {
+    if (!docSources.length && !corpusSources.length) {
+      return { text: response, injected: '' };
+    }
+
+    // Remove malformed <SRC> blocks (model sometimes emits free text without id:/path:/type:).
+    const cleaned = response.replace(/<SRC>[\s\S]*?<\/SRC>/gi, (block) =>
+      /^\s*id\s*:/im.test(block) ? block : '',
+    );
+
+    const citedIds = new Set<string>();
+    const srcPattern = /<SRC>([\s\S]*?)<\/SRC>/gi;
+    let match: RegExpExecArray | null;
+    while ((match = srcPattern.exec(cleaned)) !== null) {
+      const idLine = match[1].match(/^\s*id\s*:\s*(.+)\s*$/im);
+      if (idLine) citedIds.add(idLine[1].trim());
+    }
+
+    const missingDocs = docSources
+      .filter((s) => !citedIds.has(s.id))
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    const missingCorpus = corpusSources.filter((s) => !citedIds.has(s.id));
+
+    if (!missingDocs.length && !missingCorpus.length) {
+      return { text: cleaned, injected: '' };
+    }
+
+    const injected =
+      '\n\n' + this.buildSrcBlocksFromSources(missingDocs, missingCorpus);
+    return { text: cleaned + injected, injected };
+  }
+
+  /** Instruct the model to cite sources using inline <SRC> XML blocks. */
+  private buildSourceCitationInstructions(
+    docSources: Array<{
+      id: string;
+      titleAr: string | null;
+      filePath?: string;
+      fileName?: string;
+      docType?: string | null;
+      collection?: string;
+    }>,
+    corpusSources: Array<{
+      id: string;
+      titleAr?: string;
+      titleFr?: string;
+      articleRef?: string;
+      collection?: string;
+    }>,
+  ): string {
+    const blocks: string[] = [];
+
+    for (const s of docSources) {
+      const title = (s.titleAr || s.fileName || 'مستند').replace(/\n/g, ' ');
+      const path = s.filePath || s.fileName || '—';
+      const type = s.docType || 'other';
+      blocks.push(this.formatSrcBlock(s.id, title, path, type));
+    }
+
+    for (const s of corpusSources.slice(0, 6)) {
+      const title = (s.titleAr || s.titleFr || s.articleRef || 'مصدر').replace(
+        /\n/g,
+        ' ',
+      );
+      blocks.push(
+        this.formatSrcBlock(s.id, title, s.collection || 'corpus', 'corpus'),
+      );
+    }
+
+    if (!blocks.length) return '';
+
+    return `
+⚠️ تنسيق الاستشهاد بالمصادر — إلزامي:
+- أدرج كتلة <SRC> واحدة فقط للمصدر الرئيسي الذي بنيت عليه إجابتك (لا تكرر ولا تُدرج مستندات لم تستخدمها).
+- انسخ الكتلة حرفياً من سجل المصادر أدناه وألصقها في نهاية إجابتك.
+- لا تختلق معرّفات أو مسارات — استخدم فقط الكتل المسجّلة أدناه.
+- لا تضع روابط URL أو Markdown داخل <SRC>؛ الواجهة تعرض أزرار «فتح PDF» و«عرض الملخص» تلقائياً.
+${blocks.length === 1 ? '- يوجد مصدر واحد فقط — أدرج كتلة <SRC> واحدة فقط.' : ''}
+- مثال: [نص الإجابة...] ثم مباشرة:
+
+${blocks[0]}
+
+سجل المصادر (انسخ الكتلة المناسبة فقط):
+${blocks.join('\n\n')}`;
+  }
+
+  /** Expand short / FR legal questions into retrieval-friendly variants. */
+  private buildCaseSearchQueries(
+    question: string,
+    caseDocs: Array<{ title_ar: string; document_type: string | null }>,
+  ): string[] {
+    const q = (question || '').trim();
+    const lower = q.toLowerCase();
+    const queries = new Set<string>([q]);
+
+    if (/objet|ojet|subject|موضوع|غرض|but/.test(lower)) {
+      queries.add(
+        'objet du contrat subject matter of the contract موضوع العقد غرض العقد',
+      );
+    }
+    if (/contrat|contract|عقد|اتفاق|convention/.test(lower)) {
+      queries.add('contrat agreement parties obligations clauses عقد اتفاق');
+    }
+    // Short FR requests like "donne moi l'objet du contrat"
+    if (/donne|donner|give|أعط|اذكر|what is|quel est/.test(lower)) {
+      queries.add('objet du contrat parties obligations prestations');
+    }
+
+    const contract = caseDocs.find((d) => d.document_type === 'contract');
+    if (contract?.title_ar) {
+      queries.add(`${contract.title_ar} objet contrat`);
+    }
+
+    return [...queries].filter(Boolean);
+  }
+
+  /** Inject OCR text when vector search misses (common for short FR queries). */
+  private async buildCaseOcrFallbackHits(
+    caseDocs: Array<{
+      id: string;
+      title_ar: string;
+      document_type: string | null;
+      ocr_text: string | null;
+    }>,
+    question: string,
+  ): Promise<AgentSearchHit[]> {
+    const hits: AgentSearchHit[] = [];
+    const prioritized = [...caseDocs].sort((a, b) => {
+      const aContract = a.document_type === 'contract' ? 0 : 1;
+      const bContract = b.document_type === 'contract' ? 0 : 1;
+      return aContract - bContract;
+    });
+
+    for (const doc of prioritized.slice(0, 3)) {
+      const text = await this.loadDocumentTextForRetrieval(doc);
+      if (!text) continue;
+      hits.push({
+        documentId: doc.id,
+        caseId: null,
+        docType: doc.document_type,
+        chunkIndex: 0,
+        content: this.extractRelevantExcerpt(text, question, 5000),
+        score: 1,
+      });
+    }
+    return hits;
+  }
+
+  private async loadDocumentTextForRetrieval(doc: {
+    id: string;
+    ocr_text: string | null;
+  }): Promise<string> {
+    if (doc.ocr_text?.trim()) return doc.ocr_text.trim();
+    try {
+      const buffer = await this.minioService.downloadFile(
+        'ocr-output',
+        `${doc.id}/ocr.md`,
+      );
+      return buffer.toString('utf-8').trim();
+    } catch {
+      return '';
+    }
+  }
+
+  private extractRelevantExcerpt(
+    text: string,
+    question: string,
+    maxLen: number,
+    judgmentMode = false,
+  ): string {
+    const lowerText = text.toLowerCase();
+    const markers = judgmentMode
+      ? [
+          'courtage',
+          'commission',
+          'immobilier',
+          'cassation',
+          'محكمة النقض',
+          'نقض',
+          'وساطة',
+          'عقاري',
+          'objet',
+          'subject matter',
+          'موضوع',
+          'الغرض',
+          'but du contrat',
+          'objet du contrat',
+        ]
+      : [
+          'objet',
+          'subject matter',
+          'موضوع',
+          'الغرض',
+          'but du contrat',
+          'objet du contrat',
+        ];
+    const lowerQ = (question || '').toLowerCase();
+    if (
+      judgmentMode ||
+      /objet|ojet|subject|موضوع|غرض|courtage|commission|cassation|jugement/.test(
+        lowerQ,
+      )
+    ) {
+      for (const marker of markers) {
+        const idx = lowerText.indexOf(marker.toLowerCase());
+        if (idx >= 0) {
+          const start = Math.max(0, idx - 500);
+          return text.slice(start, start + maxLen).trim();
+        }
+      }
+    }
+    return text.slice(0, maxLen).trim();
   }
 
   /**
@@ -482,6 +1357,57 @@ ${mergedContext}`;
           .filter((t) => t.length >= 2 && !CASE_STOPWORDS.has(t)),
       ),
     ];
+  }
+
+  /** When the user picked a case in chat, anchor the assistant to that dossier only. */
+  private async buildCaseScopeNote(
+    caseId: string | undefined,
+    userId: string | undefined,
+  ): Promise<string> {
+    if (!caseId || !userId) return '';
+    try {
+      const row = await this.postgresService.queryOne<{
+        title: string;
+        case_ref: string | null;
+        client_name: string | null;
+      }>(
+        `SELECT title, case_ref, client_name FROM cases WHERE id = $1 AND owner_id = $2`,
+        [caseId, userId],
+      );
+      if (!row) return '';
+      const docs = await this.postgresService.query<{
+        title_ar: string;
+        document_type: string | null;
+        status: string;
+      }>(
+        `SELECT title_ar, document_type, status
+         FROM documents
+         WHERE case_id = $1 AND owner_id = $2
+         ORDER BY created_at ASC`,
+        [caseId, userId],
+      );
+      const readyDocs = docs.filter((d) => d.status === 'ready');
+
+      const parts = [
+        'نطاق القضية المحدّدة للمحادثة:',
+        `القضية: ${row.title}`,
+      ];
+      if (row.client_name) parts.push(`الموكل: ${row.client_name}`);
+      if (row.case_ref) parts.push(`المرجع: ${row.case_ref}`);
+      if (readyDocs.length) {
+        parts.push(
+          `المستندات الجاهزة (${readyDocs.length}): ${readyDocs
+            .map((d) => d.title_ar || d.document_type || 'مستند')
+            .join('؛ ')}`,
+        );
+      }
+      parts.push(
+        'قيود مهمة: المحامي اختار هذه القضية في المحادثة — لا تطلب منه اسم القضية أو مرجعها. استخدم فقط مستندات هذه القضية من قسم «مستندات هذه القضية». لا تستشهد بمستندات قضايا أخرى. يمكنك الاستناد إلى القانون المغربي والأحكام المنشورة في المكتبة العامة.',
+      );
+      return parts.join('\n');
+    } catch {
+      return '';
+    }
   }
 
   /** Arabic context block listing the matched cases for the system prompt. */

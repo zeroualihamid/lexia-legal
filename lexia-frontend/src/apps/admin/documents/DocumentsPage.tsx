@@ -25,65 +25,82 @@ import {
   EyeOutlined,
   DeleteOutlined,
   FileTextOutlined,
+  FileSearchOutlined,
 } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import apiClient from '../../../shared/api/client'
 import { CollectionTag } from '../../../shared/components/CollectionTag'
-import { GOLD, DARK_CARD, BORDER_COLOR, NAVY } from '../../../shared/constants'
+import { JudgmentSummaryDrawer } from '../../../shared/components/JudgmentSummaryDrawer'
+import {
+  useSearchJudgmentSummary,
+  useSummarizeSearchJudgment,
+} from '../../../shared/hooks/useJudgmentSummary'
+import { GOLD, BORDER_COLOR } from '../../../shared/constants'
 import dayjs from 'dayjs'
 import { DocumentViewer } from './DocumentViewer'
+import { useAdminUi } from '../locale/useAdminI18n'
 
 const { Dragger } = Upload
 const { TextArea } = Input
 
-const COLLECTION_OPTIONS = [
-  { value: 'legal_laws', label: 'القوانين التشريعية' },
-  { value: 'judgments_commercial', label: 'الأحكام التجارية' },
-  { value: 'judgments_civil', label: 'الأحكام المدنية' },
-  { value: 'judgments_admin', label: 'الأحكام الإدارية' },
-  { value: 'judgments_criminal', label: 'الأحكام الجنائية' },
-  { value: 'judgments_family', label: 'أحكام الأسرة' },
-  { value: 'judgments_social', label: 'الأحكام الاجتماعية' },
-  { value: 'judgments_real_estate', label: 'الأحكام العقارية' },
-  { value: 'judgments_constitutional', label: 'الأحكام الدستورية' },
-  { value: 'user_documents', label: 'وثائق المستخدم' },
-]
+type AdminUi = ReturnType<typeof useAdminUi>
 
-const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
-  processing: { color: '#1677ff', label: 'قيد المعالجة' },
-  pending_review: { color: '#fa8c16', label: 'في انتظار المراجعة' },
-  published: { color: '#52c41a', label: 'منشور' },
-  rejected: { color: '#f5222d', label: 'مرفوض' },
-  archived: { color: '#8c8c8c', label: 'مؤرشف' },
+const STATUS_COLORS: Record<string, string> = {
+  processing: '#1677ff',
+  pending_review: '#fa8c16',
+  published: '#52c41a',
+  rejected: '#f5222d',
+  archived: '#8c8c8c',
 }
 
-const PROCESSING_STEPS = [
-  { title: 'رفع الملف', description: 'تحميل الوثيقة' },
-  { title: 'استخراج النص', description: 'قراءة محتوى PDF' },
-  { title: 'التصنيف', description: 'تحديد المجموعة' },
-  { title: 'التقطيع', description: 'تقسيم إلى أجزاء' },
-  { title: 'التضمين', description: 'إنشاء المتجهات' },
-  { title: 'الفهرسة', description: 'حفظ في قاعدة البيانات' },
-]
-
 const MOCK_DOCUMENTS = [
-  { id: '1', title_ar: 'القانون التجاري المغربي', collection: 'judgments_commercial', status: 'published', owner_type: 'system', created_at: '2024-01-15T10:00:00Z' },
-  { id: '2', title_ar: 'مدونة الشغل - المستجدات', collection: 'legal_laws', status: 'pending_review', owner_type: 'admin', created_at: '2024-02-10T09:00:00Z' },
-  { id: '3', title_ar: 'أحكام محكمة النقض 2023', collection: 'judgments_civil', status: 'processing', owner_type: 'system', created_at: '2024-03-01T14:00:00Z' },
-  { id: '4', title_ar: 'قانون العقوبات - الطبعة الجديدة', collection: 'judgments_criminal', status: 'published', owner_type: 'system', created_at: '2024-01-20T11:00:00Z' },
-  { id: '5', title_ar: 'مدونة الأسرة المحدثة', collection: 'judgments_family', status: 'rejected', owner_type: 'admin', created_at: '2024-02-05T16:00:00Z' },
+  { id: '1', title_ar: 'القانون التجاري المغربي', collection: 'judgments_commercial', status: 'published', owner_type: 'system', uploaded_by: null, summary_ready: true, analysis_status: 'completed', created_at: '2024-01-15T10:00:00Z' },
+  { id: '2', title_ar: 'مدونة الشغل - المستجدات', collection: 'legal_laws', status: 'pending_review', owner_type: 'user', uploaded_by: 'fatima.z', summary_ready: false, analysis_status: null, created_at: '2024-02-10T09:00:00Z' },
+  { id: '3', title_ar: 'أحكام محكمة النقض 2023', collection: 'judgments_civil', status: 'processing', owner_type: 'system', uploaded_by: null, summary_ready: false, analysis_status: 'running', created_at: '2024-03-01T14:00:00Z' },
+  { id: '4', title_ar: 'قانون العقوبات - الطبعة الجديدة', collection: 'judgments_criminal', status: 'published', owner_type: 'system', uploaded_by: null, summary_ready: false, analysis_status: null, created_at: '2024-01-20T11:00:00Z' },
+  { id: '5', title_ar: 'مدونة الأسرة المحدثة', collection: 'judgments_family', status: 'rejected', owner_type: 'user', uploaded_by: 'karim.h', summary_ready: false, analysis_status: 'failed', created_at: '2024-02-05T16:00:00Z' },
 ]
 
-function UploadModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+type AdminDocumentRow = {
+  id: string
+  title_ar: string
+  collection: string
+  status: string
+  owner_type?: string
+  uploaded_by?: string | null
+  summary_ready?: boolean
+  analysis_status?: string | null
+}
+
+function isJudgmentDocument(record: AdminDocumentRow) {
+  return record.collection?.startsWith('judgments_')
+}
+
+function UploadModal({ open, onClose, ui }: { open: boolean; onClose: () => void; ui: AdminUi }) {
+  const { t, font, dir, formStyle, labelStyle, titleStyle, collectionOptions } = ui
   const [form] = Form.useForm()
   const [currentStep, setCurrentStep] = useState(-1)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const qc = useQueryClient()
 
+  const processingSteps = [
+    t.documents.steps.upload,
+    t.documents.steps.extract,
+    t.documents.steps.classify,
+    t.documents.steps.chunk,
+    t.documents.steps.embed,
+    t.documents.steps.index,
+  ]
+
+  const visibilityOptions = (['private', 'pro_only', 'public'] as const).map((value) => ({
+    value,
+    label: t.visibility[value],
+  }))
+
   const handleUpload = async (values: any) => {
     if (!values.file) {
-      message.error('يرجى اختيار ملف PDF')
+      message.error(t.documents.selectPdf)
       return
     }
     setUploading(true)
@@ -96,9 +113,9 @@ function UploadModal({ open, onClose }: { open: boolean; onClose: () => void }) 
       formData.append('collection', values.collection)
       formData.append('visibility', values.visibility || 'public')
 
-      for (let i = 0; i < PROCESSING_STEPS.length; i++) {
+      for (let i = 0; i < processingSteps.length; i++) {
         setCurrentStep(i)
-        setProgress(((i + 1) / PROCESSING_STEPS.length) * 100)
+        setProgress(((i + 1) / processingSteps.length) * 100)
         await new Promise((r) => setTimeout(r, 600))
       }
 
@@ -106,7 +123,7 @@ function UploadModal({ open, onClose }: { open: boolean; onClose: () => void }) 
         headers: { 'Content-Type': 'multipart/form-data' },
       })
 
-      message.success('تم رفع الوثيقة بنجاح')
+      message.success(t.documents.uploadSuccess)
       qc.invalidateQueries({ queryKey: ['documents'] })
       form.resetFields()
       setCurrentStep(-1)
@@ -122,19 +139,15 @@ function UploadModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
   return (
     <Modal
-      title={
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)' }}>
-          رفع وثيقة جديدة
-        </span>
-      }
+      title={<span style={titleStyle}>{t.documents.uploadModalTitle}</span>}
       open={open}
       onCancel={onClose}
       footer={null}
       width={580}
       centered
-      styles={{ body: { direction: 'rtl', padding: '20px 0 0' } }}
+      styles={{ body: { direction: dir, padding: '20px 0 0' } }}
     >
-      <Form form={form} layout="vertical" onFinish={handleUpload} style={{ direction: 'rtl' }}>
+      <Form form={form} layout="vertical" onFinish={handleUpload} style={formStyle}>
         <Form.Item name="file">
           <Dragger
             name="file"
@@ -146,55 +159,40 @@ function UploadModal({ open, onClose }: { open: boolean; onClose: () => void }) 
             <p className="ant-upload-drag-icon">
               <InboxOutlined style={{ color: GOLD }} />
             </p>
-            <p
-              className="ant-upload-text"
-              style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}
-            >
-              اسحب ملف PDF هنا أو انقر للاختيار
+            <p className="ant-upload-text" style={{ fontFamily: font, color: 'var(--color-text-secondary)' }}>
+              {t.documents.dragHint}
             </p>
-            <p
-              className="ant-upload-hint"
-              style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-quaternary)' }}
-            >
-              الحد الأقصى: 200 ميغابايت
+            <p className="ant-upload-hint" style={{ fontFamily: font, color: 'var(--color-text-quaternary)' }}>
+              {t.documents.maxSize}
             </p>
           </Dragger>
         </Form.Item>
 
         <Form.Item
           name="title_ar"
-          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}>العنوان بالعربية (اختياري - يُصنَّف تلقائياً)</span>}
+          label={<span style={labelStyle}>{t.documents.titleArOptional}</span>}
         >
-          <Input
-            placeholder="سيتم التصنيف التلقائي إذا تُرك فارغاً"
-            style={{ direction: 'rtl', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}
-          />
+          <Input placeholder={t.documents.titlePlaceholder} style={{ direction: dir, fontFamily: font }} />
         </Form.Item>
 
         <Form.Item
           name="collection"
-          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}>المجموعة</span>}
-          rules={[{ required: true, message: 'يرجى اختيار المجموعة' }]}
+          label={<span style={labelStyle}>{t.common.collection}</span>}
+          rules={[{ required: true, message: t.documents.selectCollectionRequired }]}
         >
           <Select
-            options={COLLECTION_OPTIONS}
-            placeholder="اختر المجموعة"
-            style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}
+            options={collectionOptions}
+            placeholder={t.documents.selectCollection}
+            style={{ fontFamily: font }}
           />
         </Form.Item>
 
         <Form.Item
           name="visibility"
-          label={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-secondary)' }}>إمكانية الوصول</span>}
+          label={<span style={labelStyle}>{t.documents.visibility}</span>}
           initialValue="public"
         >
-          <Select
-            options={[
-              { value: 'private', label: 'خاص' },
-              { value: 'pro_only', label: 'للمشتركين فقط' },
-              { value: 'public', label: 'عام' },
-            ]}
-          />
+          <Select options={visibilityOptions} style={{ fontFamily: font }} />
         </Form.Item>
 
         {currentStep >= 0 && (
@@ -203,11 +201,11 @@ function UploadModal({ open, onClose }: { open: boolean; onClose: () => void }) 
               current={currentStep}
               size="small"
               direction="vertical"
-              items={PROCESSING_STEPS.map((s, i) => ({
-                title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 13 }}>{s.title}</span>,
+              items={processingSteps.map((s, i) => ({
+                title: <span style={{ fontFamily: font, fontSize: 13 }}>{s.title}</span>,
                 description: (
-                  <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-                    {s.description}
+                  <span style={{ fontFamily: font, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                    {s.desc}
                   </span>
                 ),
                 status: i < currentStep ? 'finish' : i === currentStep ? 'process' : 'wait',
@@ -219,16 +217,16 @@ function UploadModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
         <Form.Item style={{ marginBottom: 0, display: 'flex', justifyContent: 'flex-start', gap: 12 }}>
           <Space>
-            <Button onClick={onClose} style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
-              إلغاء
+            <Button onClick={onClose} style={{ fontFamily: font }}>
+              {t.common.cancel}
             </Button>
             <Button
               type="primary"
               htmlType="submit"
               loading={uploading}
-              style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}
+              style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: font }}
             >
-              رفع الوثيقة
+              {t.documents.upload}
             </Button>
           </Space>
         </Form.Item>
@@ -241,11 +239,14 @@ function RejectModal({
   open,
   docId,
   onClose,
+  ui,
 }: {
   open: boolean
   docId: string | null
   onClose: () => void
+  ui: AdminUi
 }) {
+  const { t, font, dir, titleStyle } = ui
   const [reason, setReason] = useState('')
   const qc = useQueryClient()
 
@@ -254,43 +255,124 @@ function RejectModal({
       await apiClient.post(`/admin/documents/${docId}/reject`, { reason })
     },
     onSuccess: () => {
-      message.success('تم رفض الوثيقة')
+      message.success(t.documents.rejectSuccess)
       qc.invalidateQueries({ queryKey: ['documents'] })
       onClose()
       setReason('')
     },
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   return (
     <Modal
-      title={
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>سبب الرفض</span>
-      }
+      title={<span style={titleStyle}>{t.documents.rejectTitle}</span>}
       open={open}
       onCancel={onClose}
       onOk={() => reject()}
-      okText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>تأكيد الرفض</span>}
-      cancelText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إلغاء</span>}
+      okText={<span style={{ fontFamily: font }}>{t.documents.confirmReject}</span>}
+      cancelText={<span style={{ fontFamily: font }}>{t.common.cancel}</span>}
       okButtonProps={{ danger: true, loading: isPending }}
       centered
     >
       <TextArea
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        placeholder="اكتب سبب الرفض هنا..."
+        placeholder={t.documents.rejectPlaceholder}
         rows={4}
-        style={{ direction: 'rtl', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}
+        style={{ direction: dir, fontFamily: font }}
       />
     </Modal>
   )
 }
 
 export function DocumentsPage() {
+  const ui = useAdminUi()
+  const { t, font, dir, pageStyle, tableStyle, h1Style, cellStyle, mutedStyle, collectionLabel } = ui
   const [uploadOpen, setUploadOpen] = useState(false)
   const [rejectDocId, setRejectDocId] = useState<string | null>(null)
   const [viewerDoc, setViewerDoc] = useState<{ id: string; filename: string } | null>(null)
+  const [summaryDocId, setSummaryDocId] = useState<string | null>(null)
+  const [summaryReload, setSummaryReload] = useState(0)
+  const [summarizingId, setSummarizingId] = useState<string | null>(null)
   const qc = useQueryClient()
+  const summaryStream = useSearchJudgmentSummary(summaryDocId, summaryReload)
+  const summarizeJudgment = useSummarizeSearchJudgment()
+
+  const statusLabel = (status: string) =>
+    t.documents.status[status as keyof typeof t.documents.status] || status
+
+  const summaryActionLabel = (record: AdminDocumentRow) => {
+    if (record.summary_ready || record.analysis_status === 'completed') return t.documents.viewSummary
+    if (record.analysis_status === 'pending' || record.analysis_status === 'running') {
+      return t.documents.followSummary
+    }
+    if (record.analysis_status === 'failed') return t.documents.regenerateSummary
+    return t.documents.generateSummary
+  }
+
+  const handleJudgmentSummary = async (record: AdminDocumentRow) => {
+    const hasAnalysis =
+      record.summary_ready ||
+      record.analysis_status === 'completed' ||
+      record.analysis_status === 'pending' ||
+      record.analysis_status === 'running'
+
+    if (hasAnalysis) {
+      setSummaryDocId(record.id)
+      setSummaryReload((n) => n + 1)
+      return
+    }
+
+    setSummarizingId(record.id)
+    try {
+      await summarizeJudgment.mutateAsync(record.id)
+      setSummaryDocId(record.id)
+      setSummaryReload((n) => n + 1)
+      qc.invalidateQueries({ queryKey: ['documents'] })
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || t.documents.summarizeError)
+    } finally {
+      setSummarizingId(null)
+    }
+  }
+
+  const renderDocActions = (record: AdminDocumentRow, extra?: React.ReactNode) => (
+    <Space>
+      <Tooltip title={t.common.view}>
+        <Button
+          type="text"
+          size="small"
+          icon={<EyeOutlined />}
+          style={{ color: GOLD }}
+          onClick={() =>
+            setViewerDoc({ id: record.id, filename: record.title_ar || record.id })
+          }
+        />
+      </Tooltip>
+      {isJudgmentDocument(record) && (
+        <Tooltip title={summaryActionLabel(record)}>
+          <Button
+            type="text"
+            size="small"
+            icon={<FileSearchOutlined />}
+            style={{ color: '#1677ff' }}
+            loading={summarizingId === record.id}
+            onClick={() => handleJudgmentSummary(record)}
+          />
+        </Tooltip>
+      )}
+      {extra}
+      <Popconfirm
+        title={<span style={{ fontFamily: font }}>{t.documents.deleteConfirm}</span>}
+        okText={<span style={{ fontFamily: font }}>{t.common.delete}</span>}
+        cancelText={<span style={{ fontFamily: font }}>{t.common.cancel}</span>}
+        okButtonProps={{ danger: true }}
+        onConfirm={() => message.info(t.documents.deleted)}
+      >
+        <Button type="text" size="small" icon={<DeleteOutlined />} danger />
+      </Popconfirm>
+    </Space>
+  )
 
   const { data: docs, isLoading } = useQuery({
     queryKey: ['documents'],
@@ -309,129 +391,108 @@ export function DocumentsPage() {
       await apiClient.post(`/admin/documents/${id}/approve`)
     },
     onSuccess: () => {
-      message.success('تم نشر الوثيقة بنجاح')
+      message.success(t.documents.approveSuccess)
       qc.invalidateQueries({ queryKey: ['documents'] })
     },
-    onError: () => message.error('حدث خطأ'),
+    onError: () => message.error(t.common.error),
   })
 
   const allColumns = [
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>العنوان</span>,
+      title: <span style={{ fontFamily: font }}>{t.common.title}</span>,
       dataIndex: 'title_ar',
       key: 'title_ar',
       render: (v: string) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <FileTextOutlined style={{ color: GOLD }} />
-          <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", color: 'var(--color-text-primary)', fontSize: 13 }}>
-            {v}
-          </span>
+          <span style={cellStyle}>{v}</span>
         </div>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المجموعة</span>,
+      title: <span style={{ fontFamily: font }}>{t.common.collection}</span>,
       dataIndex: 'collection',
       key: 'collection',
-      render: (v: string) => <CollectionTag collection={v} size="small" />,
+      render: (v: string) => (
+        <CollectionTag collection={v} size="small" label={collectionLabel(v)} fontFamily={font} />
+      ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الحالة</span>,
+      title: <span style={{ fontFamily: font }}>{t.common.status}</span>,
       dataIndex: 'status',
       key: 'status',
       render: (v: string) => {
-        const cfg = STATUS_CONFIG[v] || { color: '#8c8c8c', label: v }
+        const color = STATUS_COLORS[v] || '#8c8c8c'
         return (
           <Tag
             style={{
-              background: `${cfg.color}20`,
-              border: `1px solid ${cfg.color}40`,
-              color: cfg.color,
+              background: `${color}20`,
+              border: `1px solid ${color}40`,
+              color,
               borderRadius: 12,
-              fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif",
+              fontFamily: font,
               fontSize: 12,
             }}
           >
-            {cfg.label}
+            {statusLabel(v)}
           </Tag>
         )
       },
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>المصدر</span>,
-      dataIndex: 'owner_type',
-      key: 'owner_type',
-      render: (v: string) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-tertiary)', fontSize: 12 }}>{v}</span>
-      ),
-    },
-    {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>تاريخ الإضافة</span>,
-      dataIndex: 'created_at',
-      key: 'created_at',
-      render: (v: string) => (
-        <span style={{ fontFamily: "'Cairo', sans-serif", color: 'var(--color-text-tertiary)', fontSize: 12 }}>
-          {dayjs(v).format('DD/MM/YYYY')}
+      title: <span style={{ fontFamily: font }}>{t.documents.owner}</span>,
+      dataIndex: 'uploaded_by',
+      key: 'uploaded_by',
+      render: (v: string | null, record: { owner_type?: string }) => (
+        <span style={mutedStyle}>
+          {v || (record.owner_type === 'system' ? t.documents.ownerSystem : '—')}
         </span>
       ),
     },
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الإجراءات</span>,
-      key: 'actions',
-      render: (_: any, record: any) => (
-        <Space>
-          <Tooltip title="عرض">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              style={{ color: GOLD }}
-              onClick={() =>
-                setViewerDoc({ id: record.id, filename: record.title_ar || record.id })
-              }
-            />
-          </Tooltip>
-          <Popconfirm
-            title={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>هل تريد حذف هذه الوثيقة؟</span>}
-            okText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>حذف</span>}
-            cancelText={<span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>إلغاء</span>}
-            okButtonProps={{ danger: true }}
-            onConfirm={() => message.info('تم الحذف')}
-          >
-            <Button type="text" size="small" icon={<DeleteOutlined />} danger />
-          </Popconfirm>
-        </Space>
+      title: <span style={{ fontFamily: font }}>{t.documents.addedAt}</span>,
+      dataIndex: 'created_at',
+      key: 'created_at',
+      render: (v: string) => (
+        <span style={mutedStyle}>{dayjs(v).format('DD/MM/YYYY')}</span>
       ),
+    },
+    {
+      title: <span style={{ fontFamily: font }}>{t.common.actions}</span>,
+      key: 'actions',
+      render: (_: unknown, record: AdminDocumentRow) => renderDocActions(record),
     },
   ]
 
   const pendingColumns = [
     ...allColumns.slice(0, -1),
     {
-      title: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>الإجراءات</span>,
+      title: <span style={{ fontFamily: font }}>{t.common.actions}</span>,
       key: 'actions',
-      render: (_: any, record: any) => (
-        <Space>
-          <Button
-            size="small"
-            type="primary"
-            icon={<CheckCircleOutlined />}
-            onClick={() => approve(record.id)}
-            style={{ background: '#52c41a', borderColor: '#52c41a', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}
-          >
-            موافقة
-          </Button>
-          <Button
-            size="small"
-            danger
-            icon={<CloseCircleOutlined />}
-            onClick={() => setRejectDocId(record.id)}
-            style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}
-          >
-            رفض
-          </Button>
-        </Space>
-      ),
+      render: (_: unknown, record: AdminDocumentRow) =>
+        renderDocActions(
+          record,
+          <>
+            <Button
+              size="small"
+              type="primary"
+              icon={<CheckCircleOutlined />}
+              onClick={() => approve(record.id)}
+              style={{ background: '#52c41a', borderColor: '#52c41a', fontFamily: font }}
+            >
+              {t.documents.approve}
+            </Button>
+            <Button
+              size="small"
+              danger
+              icon={<CloseCircleOutlined />}
+              onClick={() => setRejectDocId(record.id)}
+              style={{ fontFamily: font }}
+            >
+              {t.documents.reject}
+            </Button>
+          </>,
+        ),
     },
   ]
 
@@ -442,9 +503,9 @@ export function DocumentsPage() {
     {
       key: 'all',
       label: (
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
-          جميع الوثائق
-          <Badge count={allDocs.length} style={{ marginRight: 8, background: 'var(--color-border-subtle)' }} />
+        <span style={{ fontFamily: font }}>
+          {t.documents.tabAll}
+          <Badge count={allDocs.length} style={{ marginInlineStart: 8, background: 'var(--color-border-subtle)' }} />
         </span>
       ),
       children: (
@@ -454,18 +515,18 @@ export function DocumentsPage() {
           rowKey="id"
           loading={isLoading}
           pagination={{ pageSize: 15 }}
-          style={{ direction: 'rtl' }}
-          locale={{ emptyText: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>لا توجد وثائق</span> }}
+          style={tableStyle}
+          locale={{ emptyText: <span style={{ fontFamily: font }}>{t.documents.emptyAll}</span> }}
         />
       ),
     },
     {
       key: 'pending',
       label: (
-        <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>
-          في انتظار المراجعة
+        <span style={{ fontFamily: font }}>
+          {t.documents.tabPending}
           {pendingDocs.length > 0 && (
-            <Badge count={pendingDocs.length} style={{ marginRight: 8, background: '#fa8c16' }} />
+            <Badge count={pendingDocs.length} style={{ marginInlineStart: 8, background: '#fa8c16' }} />
           )}
         </span>
       ),
@@ -476,37 +537,44 @@ export function DocumentsPage() {
           rowKey="id"
           loading={isLoading}
           pagination={{ pageSize: 15 }}
-          style={{ direction: 'rtl' }}
-          locale={{ emptyText: <span style={{ fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif" }}>لا توجد وثائق في انتظار المراجعة</span> }}
+          style={tableStyle}
+          locale={{ emptyText: <span style={{ fontFamily: font }}>{t.documents.emptyPending}</span> }}
         />
       ),
     },
   ]
 
   return (
-    <div style={{ direction: 'rtl' }}>
+    <div style={pageStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", margin: 0 }}>
-          إدارة الوثائق
-        </h1>
+        <h1 style={h1Style}>{t.documents.title}</h1>
         <Button
           type="primary"
           icon={<UploadOutlined />}
           onClick={() => setUploadOpen(true)}
-          style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: "'Noto Naskh Arabic', 'Cairo', sans-serif", fontWeight: 600 }}
+          style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: font, fontWeight: 600 }}
         >
-          رفع وثيقة
+          {t.documents.upload}
         </Button>
       </div>
 
-      <Tabs items={tabItems} style={{ direction: 'rtl' }} />
+      <Tabs items={tabItems} style={{ direction: dir }} />
 
-      <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
-      <RejectModal open={!!rejectDocId} docId={rejectDocId} onClose={() => setRejectDocId(null)} />
+      <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} ui={ui} />
+      <RejectModal open={!!rejectDocId} docId={rejectDocId} onClose={() => setRejectDocId(null)} ui={ui} />
       <DocumentViewer
         documentId={viewerDoc?.id || null}
         filename={viewerDoc?.filename}
         onClose={() => setViewerDoc(null)}
+      />
+      <JudgmentSummaryDrawer
+        documentId={summaryDocId}
+        onClose={() => setSummaryDocId(null)}
+        stream={summaryStream}
+        title={t.documents.summaryTitle}
+        loadingText={t.documents.summaryLoading}
+        failedPrefix={t.documents.summaryFailed}
+        font={font}
       />
     </div>
   )

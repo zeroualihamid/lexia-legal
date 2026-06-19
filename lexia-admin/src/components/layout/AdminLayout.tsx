@@ -18,6 +18,8 @@ import {
   Warehouse,
   Wrench,
   Handshake,
+  Files,
+  GitBranch,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
@@ -29,9 +31,15 @@ import SkillsView from '@/components/features/SkillsView';
 import PromptsView from '@/components/features/PromptsView';
 import CTEGraphView from '@/components/features/CTEGraphView';
 import ConversationsView from '@/components/features/ConversationsView';
+import DocumentsView from '@/components/features/DocumentsView';
+import LegalGraphsView from '@/components/features/LegalGraphsView';
 import BuildingView, { type BuildingSectionId } from '@/components/features/BuildingView';
+import { isKeycloakAuthMode } from '@/lib/keycloak';
+import { useAuthStore } from '@/store/authStore';
 
 type Section =
+  | 'documents'
+  | 'legal_graphs'
   | 'data'
   | 'connectors'
   | 'skills'
@@ -55,24 +63,31 @@ const NAV_GROUPS: {
   items: { id: Section; label: string; icon: typeof FlaskConical }[];
 }[] = [
   {
+    label: 'Plateforme juridique',
+    items: [
+      { id: 'documents', label: 'Documents', icon: Files },
+      { id: 'legal_graphs', label: 'Graphes juridiques', icon: GitBranch },
+    ],
+  },
+  {
     label: 'Agent',
     items: [
       { id: 'data', label: 'Données', icon: Database },
       { id: 'connectors', label: 'Connecteurs', icon: Plug },
-      { id: 'skills', label: 'Skills', icon: FlaskConical },
-      { id: 'prompts', label: 'Prompts', icon: FileText },
-      { id: 'cte', label: 'CTE Graph', icon: Network },
+      { id: 'skills', label: 'Compétences', icon: FlaskConical },
+      { id: 'prompts', label: 'Invites', icon: FileText },
+      { id: 'cte', label: 'Graphe CTE', icon: Network },
       { id: 'conversations', label: 'Conversations', icon: MessagesSquare },
     ],
   },
   {
     label: 'Immeuble',
     items: [
-      { id: 'tenant_experience', label: 'Tenant experience', icon: Building2 },
+      { id: 'tenant_experience', label: 'Expérience locataire', icon: Building2 },
       { id: 'badges', label: 'Badges', icon: BadgeCheck },
       { id: 'parking', label: 'Parking visiteurs', icon: Car },
       { id: 'preneurs', label: 'Espace preneur', icon: DoorOpen },
-      { id: 'boh', label: 'Back of house', icon: Warehouse },
+      { id: 'boh', label: 'Back-office', icon: Warehouse },
       { id: 'maintenance', label: 'Maintenance & OT', icon: Wrench },
       { id: 'prestataires', label: 'Prestataires', icon: Handshake },
     ],
@@ -86,17 +101,23 @@ export default function AdminLayout({
   isDarkMode: boolean;
   toggleTheme: () => void;
 }) {
-  const [section, setSection] = useState<Section>('data');
+  const [section, setSection] = useState<Section>('documents');
   const [collapsed, setCollapsed] = useState(false);
+  const { keycloak, logout: clearAuth } = useAuthStore();
 
   const handleLogout = async () => {
+    if (isKeycloakAuthMode() && keycloak) {
+      clearAuth();
+      await keycloak.logout({ redirectUri: window.location.origin });
+      return;
+    }
     await signOut();
+    clearAuth();
     window.location.href = '/login';
   };
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-      {/* Left menu */}
       <aside
         className={cn(
           'flex flex-shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200',
@@ -104,11 +125,11 @@ export default function AdminLayout({
         )}
       >
         <div className={cn('flex items-center gap-2 border-b border-border px-3 py-3', collapsed && 'justify-center px-0')}>
-          <img src={asset('logo.png')} alt="Brikz" className="h-7 w-7 flex-shrink-0 rounded" />
+          <img src={asset('logo.png')} alt="Lexia Legal" className="h-7 w-7 flex-shrink-0 rounded" />
           {!collapsed && (
             <div className="min-w-0 leading-tight">
-              <div className="truncate text-sm font-semibold">Brikz · admin</div>
-              <div className="text-[10px] text-muted-foreground">Cross Tower · agent</div>
+              <div className="truncate text-sm font-semibold">Lexia Legal · admin</div>
+              <div className="text-[10px] text-muted-foreground">Plateforme juridique</div>
             </div>
           )}
         </div>
@@ -124,6 +145,7 @@ export default function AdminLayout({
               {group.items.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
+                  type="button"
                   onClick={() => setSection(id)}
                   title={collapsed ? label : undefined}
                   className={cn(
@@ -159,15 +181,16 @@ export default function AdminLayout({
           <Button variant="ghost" size="sm" onClick={toggleTheme} title="Thème">
             {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleLogout} title="Se déconnecter">
+          <Button variant="ghost" size="sm" onClick={() => void handleLogout()} title="Se déconnecter">
             <LogOut className="h-4 w-4" />
             {!collapsed && <span className="ml-1.5 text-xs">Quitter</span>}
           </Button>
         </div>
       </aside>
 
-      {/* Main content */}
       <main className="flex-1 overflow-hidden">
+        {section === 'documents' && <DocumentsView />}
+        {section === 'legal_graphs' && <LegalGraphsView />}
         {section === 'data' && <DataView />}
         {section === 'connectors' && <ConnectorsView />}
         {section === 'skills' && <SkillsView />}

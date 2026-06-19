@@ -6,6 +6,10 @@ interface ImportMetaEnv {
   readonly VITE_ANALYST_URL?: string;
   readonly VITE_BASE?: string;
   readonly VITE_AUTH_KEY?: string;
+  readonly VITE_BETTER_AUTH?: string;
+  readonly VITE_KEYCLOAK_URL?: string;
+  readonly VITE_KEYCLOAK_REALM?: string;
+  readonly VITE_KEYCLOAK_CLIENT_ID?: string;
   readonly VITE_CHAT_URL?: string;
   readonly VITE_DEFAULT_SESSION_ID?: string;
   readonly VITE_OPENCODE_URL?: string;
