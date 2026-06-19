@@ -28,6 +28,7 @@ import { AnalyticsService } from './analytics/analytics.service';
 // Agent Config
 import { AgentConfigController } from './agent-config/agent-config.controller';
 import { AgentConfigService } from './agent-config/agent-config.service';
+import { LegalGraphsController } from './legal-graphs/legal-graphs.controller';
 
 // Chat Module for ToolExecutorService
 import { ChatModule } from '../chat/chat.module';
@@ -57,6 +58,7 @@ import { AdminDocumentsModule } from './documents/admin-documents.module';
     UsersController,
     AnalyticsController,
     AgentConfigController,
+    LegalGraphsController,
   ],
   providers: [
     SkillsService,

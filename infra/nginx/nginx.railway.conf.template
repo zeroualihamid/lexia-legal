@@ -44,6 +44,12 @@ server {
         proxy_send_timeout  120s;
     }
 
+    location /legal-graphs {
+        proxy_pass          http://$backend;
+        proxy_read_timeout  120s;
+        proxy_send_timeout  120s;
+    }
+
     location /health {
         proxy_pass          http://$backend;
         access_log off;

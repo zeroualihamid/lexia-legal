@@ -20,4 +20,4 @@ if [ -d "$SEED" ]; then
   cp -rn "$SEED/." "$DATA/" 2>/dev/null || true
 fi
 
-exec uvicorn main:app --host :: --port 8000
+exec uvicorn main:app --host 0.0.0.0 --port 8000

@@ -11,6 +11,7 @@ const BACKEND_PROXY_PREFIXES = [
   "cards",
   "parquet",
   "cte-graph",
+  "legal-graphs",
   "workflow",
   "graph",
   "agents",
@@ -23,6 +24,7 @@ const BACKEND_PROXY_PREFIXES = [
   "health",
   "docs",
   "docs-json",
+  "bull-board",
 ];
 
 // https://vite.dev/config/

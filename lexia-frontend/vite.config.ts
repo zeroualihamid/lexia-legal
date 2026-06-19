@@ -18,6 +18,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/legal-graphs': {
+        target: proxyTarget,
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })

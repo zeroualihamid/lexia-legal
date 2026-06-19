@@ -10,6 +10,7 @@ export const AGENT_PROXY_PREFIXES = [
   "cards",
   "parquet",
   "cte-graph",
+  "legal-graphs",
   "workflow",
   "graph",
   "agents",
