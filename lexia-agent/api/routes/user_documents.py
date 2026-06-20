@@ -244,7 +244,91 @@ def search_documents(
                 "score": r.score,
             }
         )
+
+    # Reasoning-graph expansion: pull legally-connected chunks (court_reasoning →
+    # final_decision, etc.) from the pre-built legal graph. Defensive: any failure
+    # leaves plain semantic hits untouched.
+    if _graph_expansion_enabled() and hits:
+        try:
+            hits = _expand_hits_via_graph(hits, body.owner_id, client)
+        except Exception:
+            pass
+
     return {"hits": hits}
+
+
+def _graph_expansion_enabled() -> bool:
+    return os.getenv("LEXIA_GRAPH_EXPANSION", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _expand_hits_via_graph(hits: List[dict], owner_id: str, client) -> List[dict]:
+    """Append reasoning-connected chunks discovered via the legal graph.
+
+    Maps each semantic hit to its Qdrant point id, asks the graph for
+    reasoning-connected neighbours, and re-includes those chunks — but only after
+    verifying (via Qdrant payload) that each neighbour belongs to the requesting
+    owner, so expansion can never leak another tenant's documents.
+    """
+    from nodes.legal_graph.graph_retrieval import expand_point_ids
+
+    have_ids = set()
+    for hit in hits:
+        document_id = hit.get("document_id")
+        if document_id is None:
+            continue
+        chunk_index = hit.get("chunk_index", 0)
+        have_ids.add(str(uuid.uuid5(_NAMESPACE, f"{document_id}-{chunk_index}")))
+
+    if not have_ids:
+        return hits
+
+    expansions = expand_point_ids(
+        list(have_ids),
+        max_neighbors_per_node=3,
+        max_total=max(4, len(hits)),
+    )
+    candidate_ids = [e["point_id"] for e in expansions if e["point_id"] not in have_ids]
+    if not candidate_ids:
+        return hits
+
+    payloads = {}
+    try:
+        records = client.retrieve(
+            collection_name=_COLLECTION, ids=candidate_ids, with_payload=True
+        )
+        for record in records:
+            payloads[str(record.id)] = record.payload or {}
+    except Exception:
+        return hits
+
+    base_score = min((h.get("score") or 0.0) for h in hits)
+    added = set()
+    for expansion in expansions:
+        neighbor_id = expansion["point_id"]
+        if neighbor_id in have_ids or neighbor_id in added:
+            continue
+        payload = payloads.get(neighbor_id)
+        if not payload or payload.get("owner_id") != owner_id:
+            continue  # owner-safety: skip chunks not owned by the requester
+        added.add(neighbor_id)
+        hits.append(
+            {
+                "document_id": payload.get("document_id") or expansion.get("document_id"),
+                "case_id": payload.get("case_id"),
+                "doc_type": payload.get("doc_type"),
+                "chunk_index": payload.get("chunk_index", expansion.get("chunk_index") or 0),
+                "content": payload.get("content") or expansion.get("text") or "",
+                "score": round(max(0.0, base_score - 0.01), 4),
+                "via_reasoning": {
+                    "connected_to": expansion["source_point_id"],
+                    "relation_type": expansion["relation_type"],
+                    "confidence": expansion["confidence"],
+                    "explanation": expansion["explanation"],
+                    "direction": expansion["direction"],
+                },
+            }
+        )
+    return hits
 
 
 @router.delete("/{document_id}")

@@ -133,6 +133,14 @@ function graphUrl(path: string) {
   return `${graphApiBase()}${normalized}`
 }
 
+// <img>/<a> loads can't send an Authorization header, so the ADMIN-guarded image
+// and download routes reject them. The KeycloakGuard also accepts the JWT via a
+// `?token=` query param — append it here so browser-initiated GETs are authorized.
+function withAuth(url: string, token: string | null) {
+  if (!token) return url
+  return `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
+}
+
 function formatNumber(value?: number | null) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
   return new Intl.NumberFormat('fr-FR').format(value)
@@ -526,10 +534,10 @@ export function LegalGraphsPage() {
                           }}
                         >
                           <Image
-                            src={`${graphUrl(selectedImage.url)}?v=${encodeURIComponent(selectedImage.updated_at)}`}
+                            src={withAuth(`${graphUrl(selectedImage.url)}?v=${encodeURIComponent(selectedImage.updated_at)}`, token)}
                             alt={`${selectedGraph.name} - ${selectedImage.label}`}
                             style={{ maxWidth: '100%' }}
-                            preview={{ src: graphUrl(selectedImage.url) }}
+                            preview={{ src: withAuth(graphUrl(selectedImage.url), token) }}
                           />
                         </div>
                       ) : (
@@ -577,7 +585,7 @@ export function LegalGraphsPage() {
                                 <Button
                                   key="open"
                                   size="small"
-                                  href={graphUrl(file.url)}
+                                  href={withAuth(graphUrl(file.url), token)}
                                   target="_blank"
                                   icon={<DownloadOutlined />}
                                 >

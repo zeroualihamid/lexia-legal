@@ -295,34 +295,39 @@ class ConnectToExistingGraphNode(BaseNode):
         graph: nx.MultiDiGraph = prep_result["graph"]
         cfg: LegalGraphConfig = prep_result["config"]
         connected_edge_ids: List[str] = []
-        llm_candidates: List[Tuple[str, str]] = []
-        seen_llm_pairs: Set[Tuple[str, str]] = set()
 
+        # Discovery layer: structural + semantic links (same_document, same_section,
+        # next/previous_paragraph, shared citations, vector similarity).
+        judgment_ids: List[str] = []
+        seen_judgments: Set[str] = set()
         for node_id in prep_result["upserted_node_ids"]:
             if node_id not in graph:
                 continue
             metadata_candidates = self._metadata_edges(graph, node_id, cfg)
             connected_edge_ids.extend(metadata_candidates["edge_ids"])
-            for pair in metadata_candidates["candidate_pairs"]:
-                if pair not in seen_llm_pairs:
-                    seen_llm_pairs.add(pair)
-                    llm_candidates.append(pair)
-
             semantic = self._semantic_edges(graph, node_id, cfg, metadata_candidates["candidate_nodes"])
             connected_edge_ids.extend(semantic["edge_ids"])
-            for pair in semantic["candidate_pairs"]:
-                if pair not in seen_llm_pairs:
-                    seen_llm_pairs.add(pair)
-                    llm_candidates.append(pair)
 
-        connected_edge_ids.extend(
-            self._llm_edges(
-                graph,
-                llm_candidates[: cfg.llm_edge_limit],
-                prep_result["query"],
-                prep_result["claude"],
+            judgment_id = graph.nodes[node_id].get("judgment_id")
+            if judgment_id and judgment_id not in seen_judgments:
+                seen_judgments.add(judgment_id)
+                judgment_ids.append(str(judgment_id))
+
+        # Reasoning layer: infer legally-meaningful edges from type-pair candidates
+        # (facts→evidence, party_claim→court_reasoning, court_reasoning→final_decision, …)
+        # per judgment. This replaces the old approach that fed arbitrary co-located
+        # pairs through a single global `llm_edge_limit` cap, which starved the
+        # reasoning layer to ~0 edges. The budget is now applied PER judgment.
+        for judgment_id in judgment_ids:
+            connected_edge_ids.extend(
+                infer_reasoning_edges_for_judgment(
+                    graph,
+                    judgment_id,
+                    prep_result["claude"],
+                    query=prep_result["query"],
+                    limit=cfg.llm_edge_limit,
+                )
             )
-        )
         return {"graph": graph, "connected_edge_ids": connected_edge_ids}
 
     def post(self, shared: Dict[str, Any], prep_result: Dict[str, Any], exec_result: Dict[str, Any]) -> str:
