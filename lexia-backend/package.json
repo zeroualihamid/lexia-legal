@@ -12,6 +12,7 @@
     "lint": "eslint src --ext .ts",
     "migrate": "auth migrate --yes",
     "seed:admin": "node scripts/seed-admin.mjs",
+    "import:gdrive-judgments": "node scripts/import-gdrive-judgments.mjs",
     "seed:admin:docker": "docker compose -f deploy/docker-compose.yml exec -T lexia-backend node scripts/seed-admin.mjs",
     "dev:db": "docker compose -f deploy/docker-compose.yml up -d postgres redis qdrant minio keycloak postgres-keycloak",
     "dev:db:down": "docker compose -f deploy/docker-compose.yml stop postgres redis qdrant minio keycloak postgres-keycloak"
@@ -37,6 +38,7 @@
     "crypto-js": "^4.2.0",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
+    "google-auth-library": "^10.7.0",
     "http-proxy-middleware": "^3.0.3",
     "ioredis": "^5.3.0",
     "jsonwebtoken": "^9.0.0",
