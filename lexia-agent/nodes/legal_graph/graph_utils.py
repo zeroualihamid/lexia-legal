@@ -232,7 +232,11 @@ def node_attrs_from_chunk(chunk: RetrievedChunk, existing: Optional[Dict[str, An
         "paragraph_index": chunk.paragraph_index,
         "section_title": chunk.section_title,
         "section_type": chunk.section_type,
-        "document_type": chunk.metadata.get("document_type") or existing.get("document_type"),
+        "document_type": (
+            chunk.metadata.get("document_type")
+            or chunk.metadata.get("doc_type")
+            or existing.get("document_type")
+        ),
         "text_preview": chunk.text_preview or text_preview(chunk.text),
         "text": chunk.text,
         "vector": chunk.vector,

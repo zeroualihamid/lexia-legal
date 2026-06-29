@@ -520,6 +520,30 @@ CREATE TRIGGER trg_subscriptions_updated_at
     FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
 -- ────────────────────────────────────────────────────────────
+-- Seed Data: Scraping Sources
+-- ────────────────────────────────────────────────────────────
+
+INSERT INTO sources (name_ar, name_fr, url, scraper_type, collection, is_active, config) VALUES
+(
+  'الاجتهاد القضائي',
+  'Juriscassation CSPJ',
+  'https://juriscassation.cspj.ma/ar',
+  'juriscassation',
+  'judgments_civil',
+  TRUE,
+  '{"max_pages": 10, "max_downloads": 100, "locale": "ar"}'::jsonb
+),
+(
+  'محكمة النقض — corpus complet (51770)',
+  'Cour de cassation CSPJ — corpus (51770)',
+  'https://juriscassation.cspj.ma/ar',
+  'juriscassation',
+  'judgments_civil',
+  TRUE,
+  '{"corpus_target": 51770, "corpus_downloaded": 0, "batch_downloads": 100, "start_page": 1, "subject_index": 0, "search_subject": "ال", "search_subjects": ["ال", "قانون", "محكمة", "مدني", "تجاري", "جناية", "تأمين", "عقار", "أسرة", "إداري"], "locale": "ar", "corpus_mode": true, "skip_indexing": true}'::jsonb
+);
+
+-- ────────────────────────────────────────────────────────────
 -- Seed Data: Subscription Plans
 -- ────────────────────────────────────────────────────────────
 
@@ -674,3 +698,39 @@ CREATE TABLE judgment_analyses (
 CREATE INDEX idx_judgment_analyses_status     ON judgment_analyses (status);
 CREATE INDEX idx_judgment_analyses_created_by ON judgment_analyses (created_by);
 CREATE INDEX idx_judgment_analyses_created_at ON judgment_analyses (created_at DESC);
+
+-- ────────────────────────────────────────────────────────────
+-- Google Drive connectors (admin-managed, credentials encrypted)
+-- ────────────────────────────────────────────────────────────
+CREATE TABLE drive_connectors (
+    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name                TEXT NOT NULL,
+    folder_id           TEXT NOT NULL,
+    auth_type           TEXT NOT NULL DEFAULT 'public_link'
+                        CHECK (auth_type IN ('public_link', 'service_account', 'access_token')),
+    credentials_enc     TEXT NOT NULL,
+    last_test_at        TIMESTAMPTZ,
+    last_test_status    TEXT CHECK (last_test_status IN ('success', 'failed')),
+    last_test_message   TEXT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_drive_connectors_name ON drive_connectors (name);
+
+-- Per-file download tracking for Google Drive connectors
+CREATE TABLE drive_connector_file_downloads (
+    connector_id      UUID NOT NULL REFERENCES drive_connectors(id) ON DELETE CASCADE,
+    drive_file_id     TEXT NOT NULL,
+    file_name         TEXT NOT NULL,
+    mime_type         TEXT,
+    file_size_bytes   BIGINT,
+    minio_bucket      TEXT,
+    minio_key         TEXT,
+    downloaded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    downloaded_by     UUID,
+    PRIMARY KEY (connector_id, drive_file_id)
+);
+
+CREATE INDEX idx_drive_connector_downloads_connector ON drive_connector_file_downloads (connector_id);
+CREATE INDEX idx_drive_connector_downloads_at ON drive_connector_file_downloads (downloaded_at DESC);

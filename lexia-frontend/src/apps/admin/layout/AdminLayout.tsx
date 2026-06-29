@@ -10,6 +10,7 @@ import {
   TeamOutlined,
   BarChartOutlined,
   BranchesOutlined,
+  ApiOutlined,
   BellOutlined,
   LogoutOutlined,
   UserOutlined,
@@ -82,6 +83,7 @@ function AdminShell() {
     { key: '/admin/agent', icon: <RobotOutlined />, label: t.menu.agent },
     { key: '/admin/judgment-analysis', icon: <FileSearchOutlined />, label: t.menu.judgmentAnalysis },
     { key: '/admin/legal-graphs', icon: <BranchesOutlined />, label: t.menu.legalGraphs },
+    { key: '/admin/connectors', icon: <ApiOutlined />, label: t.menu.connectors },
     { key: '/admin/users', icon: <TeamOutlined />, label: t.menu.users },
     { key: '/admin/analytics', icon: <BarChartOutlined />, label: t.menu.analytics },
   ]

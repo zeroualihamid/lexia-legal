@@ -253,7 +253,12 @@ class UpsertChunkNodesNode(BaseNode):
                 continue
             node_id = chunk.qdrant_point_id
             existing = dict(graph.nodes[node_id]) if node_id in graph else {}
-            if not chunk.section_type:
+            if not chunk.section_type or str(chunk.section_type).lower() in {
+                "judgment",
+                "unknown",
+                "other",
+                "chunk",
+            }:
                 chunk.section_type = classify_node_type(chunk.model_dump(), document_type=document_type)
                 if chunk.section_type == "unknown" and index < classify_limit and claude.validate_available():
                     classified = claude.classify_node_type(text=chunk.text, metadata=chunk.metadata)
@@ -289,6 +294,8 @@ class ConnectToExistingGraphNode(BaseNode):
             "query": str(shared.get("query") or ""),
             "config": cfg,
             "claude": _claude(shared, cfg),
+            "cross_case": bool(shared.get("cross_case", cfg.cross_case)),
+            "enable_cross_judgment": bool(shared.get("enable_cross_judgment", cfg.cross_case)),
         }
 
     def exec(self, prep_result: Dict[str, Any]) -> Dict[str, Any]:
@@ -319,13 +326,28 @@ class ConnectToExistingGraphNode(BaseNode):
         # pairs through a single global `llm_edge_limit` cap, which starved the
         # reasoning layer to ~0 edges. The budget is now applied PER judgment.
         for judgment_id in judgment_ids:
+            llm_edges = infer_reasoning_edges_for_judgment(
+                graph,
+                judgment_id,
+                prep_result["claude"],
+                query=prep_result["query"],
+                limit=cfg.llm_edge_limit,
+            )
+            connected_edge_ids.extend(llm_edges)
+            if not llm_edges:
+                connected_edge_ids.extend(
+                    infer_heuristic_reasoning_edges_for_judgment(
+                        graph,
+                        judgment_id,
+                        limit=cfg.llm_edge_limit,
+                    )
+                )
+
+        if prep_result.get("enable_cross_judgment"):
             connected_edge_ids.extend(
-                infer_reasoning_edges_for_judgment(
+                infer_cross_judgment_reasoning_edges(
                     graph,
-                    judgment_id,
-                    prep_result["claude"],
-                    query=prep_result["query"],
-                    limit=cfg.llm_edge_limit,
+                    limit=max(200, cfg.llm_edge_limit * len(judgment_ids)),
                 )
             )
         return {"graph": graph, "connected_edge_ids": connected_edge_ids}
@@ -865,6 +887,20 @@ def _shares_citation(left: Dict[str, Any], right: Dict[str, Any]) -> bool:
 
 def classify_document_type(chunks: List[Dict[str, Any]]) -> str:
     """Classify a source document before adding it to a reasoning graph."""
+    for chunk in chunks:
+        meta = chunk.get("metadata") or {}
+        declared = str(
+            meta.get("document_type") or meta.get("doc_type") or chunk.get("document_type") or ""
+        ).lower()
+        if declared == "judgment":
+            return "judgment"
+        if declared in {"contract", "power_of_attorney"}:
+            return "contract"
+
+    collection = str(chunks[0].get("qdrant_collection") or "")
+    if collection.startswith("judgments_"):
+        return "judgment"
+
     raw = " ".join(
         str(value)
         for chunk in chunks
@@ -917,7 +953,9 @@ def classify_node_type(chunk: Dict[str, Any], *, document_type: Optional[str] = 
             return legacy_map[section_type]
         if section_type in JUDGMENT_NODE_TYPES or section_type in CONTRACT_NODE_TYPES:
             return section_type
-    document_type = document_type or str(metadata.get("document_type") or "unknown")
+    document_type = document_type or str(
+        metadata.get("document_type") or metadata.get("doc_type") or "unknown"
+    )
     raw = " ".join(
         str(value)
         for value in [
@@ -939,7 +977,7 @@ def classify_node_type(chunk: Dict[str, Any], *, document_type: Optional[str] = 
             return "liability_clause"
         if any(token in raw for token in ("paiement", "payment", "prix", "montant")):
             return "payment_clause"
-        if any(token in raw for token in ("livraison", "delivery", "réception")):
+        if any(token in raw for token in ("livraison", "delivery", "réception", "recette")):
             return "delivery_clause"
         if any(token in raw for token in ("litige", "dispute", "tribunal compétent", "arbitrage")):
             return "dispute_resolution"
@@ -953,8 +991,24 @@ def classify_node_type(chunk: Dict[str, Any], *, document_type: Optional[str] = 
             return "obligation"
         if any(token in raw for token in ("signature", "signé")):
             return "signature"
-        if any(token in raw for token in ("annexe", "annex")):
+        if any(
+            token in raw
+            for token in (
+                "annexe",
+                "annex",
+                "module",
+                "fonctionnalit",
+                "back-office",
+                "application web",
+                "api rest",
+                "périmètre fonctionnel",
+            )
+        ):
             return "annex"
+        return "unknown"
+
+    # Never apply judgment heuristics to contract chunks that were mis-tagged upstream.
+    if str(metadata.get("doc_type") or "").lower() == "contract":
         return "unknown"
 
     if any(token in raw for token in ("final", "decision", "ruling", "conclusion", "par ces motifs", "حكمت", "قررت", "وتطبيقا")):
@@ -1073,6 +1127,209 @@ def infer_reasoning_edges_for_judgment(
             reasoning_edge=True,
         )
         edge_ids.append(upsert_edge(graph, spec))
+    return edge_ids
+
+
+HEURISTIC_TYPE_PAIR_RELATIONS: List[Tuple[str, str, str]] = [
+    ("facts", "evidence", "supports"),
+    ("facts", "court_reasoning", "leads_to"),
+    ("party_claim", "court_reasoning", "explains"),
+    ("defendant_argument", "court_reasoning", "explains"),
+    ("plaintiff_argument", "court_reasoning", "explains"),
+    ("applicable_rule", "court_reasoning", "applies_rule"),
+    ("precedent", "court_reasoning", "cites_case"),
+    ("court_reasoning", "legal_analysis", "explains"),
+    ("legal_analysis", "final_decision", "leads_to"),
+    ("court_reasoning", "final_decision", "leads_to"),
+    ("damages", "final_decision", "grants"),
+    ("costs", "final_decision", "grants"),
+]
+
+
+def _paragraph_index(graph: nx.MultiDiGraph, node_id: str) -> int:
+    value = graph.nodes[node_id].get("paragraph_index")
+    try:
+        return int(value) if value is not None else 0
+    except Exception:
+        return 0
+
+
+def infer_heuristic_reasoning_edges_for_judgment(
+    graph: nx.MultiDiGraph,
+    judgment_id: str,
+    *,
+    limit: int = 40,
+) -> List[str]:
+    """Add deterministic reasoning edges within one judgment when LLM is unavailable."""
+    nodes = [
+        str(node_id)
+        for node_id, attrs in graph.nodes(data=True)
+        if attrs.get("judgment_id") == judgment_id
+    ]
+    if len(nodes) < 2:
+        return []
+
+    by_type: Dict[str, List[str]] = {}
+    for node_id in nodes:
+        node_type = str(graph.nodes[node_id].get("section_type") or "unknown")
+        by_type.setdefault(node_type, []).append(node_id)
+    for node_type in by_type:
+        by_type[node_type].sort(key=lambda nid: _paragraph_index(graph, nid))
+
+    edge_ids: List[str] = []
+    seen: Set[Tuple[str, str, str]] = set()
+    for source_type, target_type, relation_type in HEURISTIC_TYPE_PAIR_RELATIONS:
+        sources = by_type.get(source_type, [])
+        targets = by_type.get(target_type, [])
+        if not sources or not targets:
+            continue
+        for source in sources:
+            source_idx = _paragraph_index(graph, source)
+            valid_targets = [
+                target
+                for target in targets
+                if target != source and _paragraph_index(graph, target) >= source_idx
+            ]
+            if not valid_targets:
+                continue
+            target = valid_targets[0]
+            key = (source, target, relation_type)
+            if key in seen:
+                continue
+            seen.add(key)
+            edge_ids.append(
+                upsert_edge(
+                    graph,
+                    EdgeSpec(
+                        source=source,
+                        target=target,
+                        relation_type=relation_type,
+                        weight=relation_weight(relation_type),
+                        confidence=0.72,
+                        explanation=(
+                            f"Heuristic {relation_type}: {source_type} → {target_type} "
+                            f"(paragraph order within judgment {judgment_id[:8]})"
+                        ),
+                        evidence=[],
+                        extraction_method="llm_inference",
+                        edge_layer="reasoning",
+                        reasoning_edge=True,
+                    ),
+                )
+            )
+            if len(edge_ids) >= limit:
+                return edge_ids
+
+    # Promote sequential paragraph chains between reasoning-relevant types.
+    reasoning_types = {
+        "facts",
+        "party_claim",
+        "applicable_rule",
+        "court_reasoning",
+        "legal_analysis",
+        "final_decision",
+    }
+    ordered = sorted(nodes, key=lambda nid: _paragraph_index(graph, nid))
+    for index in range(len(ordered) - 1):
+        source, target = ordered[index], ordered[index + 1]
+        source_type = str(graph.nodes[source].get("section_type") or "")
+        target_type = str(graph.nodes[target].get("section_type") or "")
+        if source_type not in reasoning_types or target_type not in reasoning_types:
+            continue
+        key = (source, target, "leads_to")
+        if key in seen:
+            continue
+        seen.add(key)
+        edge_ids.append(
+            upsert_edge(
+                graph,
+                EdgeSpec(
+                    source=source,
+                    target=target,
+                    relation_type="leads_to",
+                    weight=relation_weight("leads_to"),
+                    confidence=0.68,
+                    explanation="Heuristic leads_to: consecutive reasoning paragraphs",
+                    evidence=[],
+                    extraction_method="metadata",
+                    edge_layer="reasoning",
+                    reasoning_edge=True,
+                ),
+            )
+        )
+        if len(edge_ids) >= limit:
+            break
+    return edge_ids
+
+
+def infer_cross_judgment_reasoning_edges(
+    graph: nx.MultiDiGraph,
+    *,
+    limit: int = 200,
+) -> List[str]:
+    """Promote cross-judgment discovery links into reasoning edges for GraphRAG memory."""
+    edge_ids: List[str] = []
+    seen: Set[Tuple[str, str, str]] = set()
+    cross_legal_types = {
+        "applicable_rule",
+        "precedent",
+        "court_reasoning",
+        "legal_analysis",
+        "legal_issue",
+        "cites_article",
+        "final_decision",
+    }
+
+    edge_snapshot = list(graph.edges(keys=True, data=True))
+    for source, target, _key, attrs in edge_snapshot:
+        if attrs.get("reasoning_edge") is True:
+            continue
+        source_attrs = graph.nodes.get(source, {})
+        target_attrs = graph.nodes.get(target, {})
+        source_j = source_attrs.get("judgment_id")
+        target_j = target_attrs.get("judgment_id")
+        if not source_j or not target_j or source_j == target_j:
+            continue
+
+        discovery_rel = str(attrs.get("relation_type") or _key or "")
+        if discovery_rel == "cites_article":
+            reasoning_rel = "applies_rule"
+        elif discovery_rel == "cites_case":
+            reasoning_rel = "cites_case"
+        elif discovery_rel == "similar_to":
+            source_type = str(source_attrs.get("section_type") or "")
+            target_type = str(target_attrs.get("section_type") or "")
+            if source_type not in cross_legal_types and target_type not in cross_legal_types:
+                continue
+            reasoning_rel = "follows_precedent"
+        else:
+            continue
+
+        dedupe = (str(source), str(target), reasoning_rel)
+        if dedupe in seen:
+            continue
+        seen.add(dedupe)
+        edge_ids.append(
+            upsert_edge(
+                graph,
+                EdgeSpec(
+                    source=str(source),
+                    target=str(target),
+                    relation_type=reasoning_rel,
+                    weight=relation_weight(reasoning_rel),
+                    confidence=0.7,
+                    explanation=(
+                        f"Cross-judgment {reasoning_rel} promoted from discovery {discovery_rel}"
+                    ),
+                    evidence=list(attrs.get("evidence") or []),
+                    extraction_method="llm_inference",
+                    edge_layer="reasoning",
+                    reasoning_edge=True,
+                ),
+            )
+        )
+        if len(edge_ids) >= limit:
+            break
     return edge_ids
 
 

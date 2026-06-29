@@ -349,6 +349,44 @@ export class DocumentsService {
     };
   }
 
+  async getOriginalPdf(
+    id: string,
+    userId?: string,
+  ): Promise<{ filename: string; buffer: Buffer; contentType: string }> {
+    const doc = userId
+      ? await this.getOwnedDocument(id, userId)
+      : await this.postgresService.queryOne<any>(
+          `SELECT id, title_ar, minio_bucket, minio_key, content_type
+           FROM documents WHERE id = $1`,
+          [id],
+        );
+
+    if (!doc) throw new NotFoundException('Document introuvable');
+    if (!doc.minio_bucket || !doc.minio_key) {
+      throw new NotFoundException('PDF introuvable');
+    }
+
+    let buffer: Buffer;
+    try {
+      buffer = await this.minioService.downloadFile(doc.minio_bucket, doc.minio_key);
+    } catch (err: any) {
+      this.logger.warn(
+        `Original PDF missing for document ${id}: ${err?.message || err}`,
+      );
+      throw new NotFoundException('Fichier PDF introuvable');
+    }
+
+    const safeTitle = (doc.title_ar || 'document')
+      .replace(/[/\\?%*:|"<>]/g, '_')
+      .slice(0, 120);
+
+    return {
+      filename: `${safeTitle}.pdf`,
+      buffer,
+      contentType: doc.content_type || 'application/pdf',
+    };
+  }
+
   async getPageUrl(
     id: string,
     pageNumber: number,

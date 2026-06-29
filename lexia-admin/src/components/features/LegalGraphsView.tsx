@@ -8,12 +8,14 @@ import {
   GitBranch,
   Image as ImageIcon,
   Layers,
+  Network,
   RefreshCw,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import LegalGraphExplorerPanel from '@/components/features/LegalGraphExplorerPanel';
 import {
   legalGraphAssetUrl,
   listLegalGraphs,
@@ -172,6 +174,7 @@ export default function LegalGraphsView() {
   const [graphs, setGraphs] = useState<LegalGraphArtifact[]>([]);
   const [selectedGraphId, setSelectedGraphId] = useState<string | null>(null);
   const [selectedImageByGraph, setSelectedImageByGraph] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<'visualisation' | 'explorer'>('visualisation');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -228,6 +231,10 @@ export default function LegalGraphsView() {
     selectedGraph && selectedImage
       ? `${legalGraphAssetUrl(selectedImage.url)}?v=${encodeURIComponent(selectedImage.updated_at)}`
       : '';
+
+  const selectedHasPickle = Boolean(
+    selectedGraph?.files.some((file) => file.kind === 'pickle' || file.filename.endsWith('.pkl')),
+  );
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
@@ -330,6 +337,32 @@ export default function LegalGraphsView() {
               <section className="min-w-0 space-y-5">
                 {selectedGraph && (
                   <>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant={activeTab === 'visualisation' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setActiveTab('visualisation')}
+                      >
+                        <ImageIcon className="h-4 w-4" />
+                        Visualisation
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={activeTab === 'explorer' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setActiveTab('explorer')}
+                        disabled={!selectedHasPickle}
+                      >
+                        <Network className="h-4 w-4" />
+                        Explorateur de raisonnement
+                      </Button>
+                    </div>
+
+                    {activeTab === 'explorer' ? (
+                      <LegalGraphExplorerPanel graphId={selectedGraph.id} hasPickle={selectedHasPickle} />
+                    ) : (
+                      <>
                     <Card className="shadow-sm">
                       <CardHeader className="gap-3 p-4 lg:flex-row lg:items-start lg:justify-between">
                         <div>
@@ -470,6 +503,8 @@ export default function LegalGraphsView() {
                         empty="Aucun document exclu n'est déclaré."
                       />
                     </div>
+                      </>
+                    )}
                   </>
                 )}
               </section>

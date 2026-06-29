@@ -3,9 +3,10 @@ import react from '@vitejs/plugin-react'
 
 const base = process.env.VITE_BASE || '/lexia/'
 
-// Target for the dev /api proxy. Defaults to the docker-compose backend
-// published on host port 6010; override with VITE_PROXY_TARGET if needed.
-const proxyTarget = process.env.VITE_PROXY_TARGET || 'http://localhost:6010'
+// Target for the dev /api proxy. Default: nginx on :80 (same path as production).
+// Avoid localhost:6010 — it often conflicts with Cursor port forwarding on macOS.
+// Override with VITE_PROXY_TARGET (e.g. http://localhost:6010) if needed.
+const proxyTarget = process.env.VITE_PROXY_TARGET || 'http://localhost'
 
 export default defineConfig({
   base,

@@ -1,4 +1,4 @@
-const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
 const API_KEY = import.meta.env.VITE_AUTH_KEY;
 const SESSION_STORAGE_KEY = "lumo_session_id";
 
@@ -106,19 +106,145 @@ export interface LegalGraphListResponse {
   data_root: string;
 }
 
+export interface LegalGraphExplorePreset {
+  id: string;
+  label: string;
+  question: string;
+  intent: string;
+  section_types: string[];
+}
+
+export interface LegalGraphExplorePresetsResponse {
+  presets: LegalGraphExplorePreset[];
+}
+
+export interface LegalGraphReactFlowNode {
+  id: string;
+  type: string;
+  position: { x: number; y: number };
+  data: {
+    label: string;
+    section_type: string;
+    section_title?: string;
+    paragraph_index?: number | null;
+    text_preview: string;
+    judgment_id?: string;
+    document_id?: string;
+    color: string;
+    isSeed?: boolean;
+    isOnPath?: boolean;
+  };
+}
+
+export interface LegalGraphReactFlowEdge {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+  data?: {
+    relation_type?: string;
+    isOnPath?: boolean;
+  };
+}
+
+export interface LegalGraphReactFlowGraph {
+  nodes: LegalGraphReactFlowNode[];
+  edges: LegalGraphReactFlowEdge[];
+}
+
+export interface LegalGraphExploreQueryResponse {
+  preset_id?: string | null;
+  query: string;
+  seeds: string[];
+  node_ids: string[];
+  edge_ids: string[];
+  graph: LegalGraphReactFlowGraph;
+  stats: Record<string, unknown>;
+  truncated: boolean;
+  message: string;
+}
+
+export interface LegalGraphPathStep {
+  node_id: string;
+  chunk_id?: string;
+  section_type?: string;
+  section_title?: string;
+  text_preview?: string;
+  relation_to_next?: string | null;
+  edge_explanation?: string | null;
+}
+
+export interface LegalGraphExplorePathResponse {
+  node_id: string;
+  goal_node_id?: string | null;
+  path_node_ids: string[];
+  path_steps: LegalGraphPathStep[];
+  highlighted_edge_ids: string[];
+  graph: LegalGraphReactFlowGraph;
+  search_method: string;
+  status: string;
+  summary: string;
+  key_steps: string[];
+  confidence_score: number;
+  message: string;
+  suggested_action: string;
+}
+
 export function legalGraphAssetUrl(path: string): string {
   if (/^https?:\/\//i.test(path)) return path;
   const normalized = path.startsWith("/") ? path : `/${path}`;
-  return `${API_URL}${normalized}`;
+  const adminPath = normalized.replace(/^\/legal-graphs\//, "/admin/legal-graphs/");
+  return `${API_URL}${adminPath}`;
 }
 
 export async function listLegalGraphs(): Promise<LegalGraphListResponse> {
-  const response = await fetch(`${API_URL}/legal-graphs`, {
+  const response = await fetch(`${API_URL}/admin/legal-graphs`, {
     method: "GET",
     headers: buildHeaders(),
   });
   if (!response.ok) {
     throw new Error(`Legal graph fetch failed (${response.status}): ${await parseError(response)}`);
+  }
+  return response.json();
+}
+
+export async function listLegalGraphPresets(): Promise<LegalGraphExplorePresetsResponse> {
+  const response = await fetch(`${API_URL}/admin/legal-graphs/explore/presets`, {
+    method: "GET",
+    headers: buildHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Legal graph presets failed (${response.status}): ${await parseError(response)}`);
+  }
+  return response.json();
+}
+
+export async function exploreLegalGraphQuery(
+  graphId: string,
+  body: { preset_id?: string; query?: string; depth?: number },
+): Promise<LegalGraphExploreQueryResponse> {
+  const response = await fetch(`${API_URL}/admin/legal-graphs/${encodeURIComponent(graphId)}/explore/query`, {
+    method: "POST",
+    headers: buildHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(`Legal graph query failed (${response.status}): ${await parseError(response)}`);
+  }
+  return response.json();
+}
+
+export async function exploreLegalGraphPath(
+  graphId: string,
+  body: { node_id: string; query?: string; goal_node_id?: string },
+): Promise<LegalGraphExplorePathResponse> {
+  const response = await fetch(`${API_URL}/admin/legal-graphs/${encodeURIComponent(graphId)}/explore/path`, {
+    method: "POST",
+    headers: buildHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(`Legal graph path failed (${response.status}): ${await parseError(response)}`);
   }
   return response.json();
 }

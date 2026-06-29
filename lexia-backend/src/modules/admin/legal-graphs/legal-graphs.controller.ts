@@ -3,13 +3,15 @@ import {
   Controller,
   Get,
   HttpException,
+  HttpStatus,
+  Logger,
   Param,
   Post,
   Res,
   StreamableFile,
   UseGuards,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Response as ExpressResponse } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { KeycloakGuard } from '../../../common/guards/keycloak.guard';
@@ -22,6 +24,8 @@ import { RequireAccessLevel } from '../../../common/decorators/access-level.deco
 @UseGuards(KeycloakGuard, AccessLevelGuard)
 @RequireAccessLevel('ADMIN')
 export class LegalGraphsController {
+  private readonly logger = new Logger(LegalGraphsController.name);
+
   constructor(private readonly configService: ConfigService) {}
 
   @Get()
@@ -60,12 +64,50 @@ export class LegalGraphsController {
     return this.rewriteArtifactUrls(data);
   }
 
+  @Get('explore/presets')
+  @ApiOperation({ summary: 'List preset legal graph exploration queries' })
+  async explorePresets() {
+    return this.agentJson('/legal-graphs/explore/presets');
+  }
+
+  @Post(':graphId/explore/query')
+  @ApiOperation({ summary: 'Explore a legal graph subgraph for a preset or query' })
+  async exploreQuery(
+    @Param('graphId') graphId: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return this.agentJson(
+      `/legal-graphs/${encodeURIComponent(graphId)}/explore/query`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {}),
+      },
+    );
+  }
+
+  @Post(':graphId/explore/path')
+  @ApiOperation({ summary: 'Find A* reasoning path from a node and summarize it' })
+  async explorePath(
+    @Param('graphId') graphId: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return this.agentJson(
+      `/legal-graphs/${encodeURIComponent(graphId)}/explore/path`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {}),
+      },
+    );
+  }
+
   @Get(':graphId/images/:filename')
   @ApiOperation({ summary: 'Proxy a legal graph PNG image' })
   async image(
     @Param('graphId') graphId: string,
     @Param('filename') filename: string,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: true }) res: ExpressResponse,
   ) {
     return this.agentFile(`/legal-graphs/${encodeURIComponent(graphId)}/images/${encodeURIComponent(filename)}`, res);
   }
@@ -75,7 +117,7 @@ export class LegalGraphsController {
   async file(
     @Param('graphId') graphId: string,
     @Param('filename') filename: string,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: true }) res: ExpressResponse,
   ) {
     return this.agentFile(`/legal-graphs/${encodeURIComponent(graphId)}/files/${encodeURIComponent(filename)}`, res);
   }
@@ -85,8 +127,23 @@ export class LegalGraphsController {
   }
 
   private async agentJson(path: string, init?: RequestInit) {
-    const response = await fetch(`${this.agentBaseUrl()}${path}`, init);
-    const text = await response.text();
+    const url = `${this.agentBaseUrl()}${path}`;
+    let agentResponse: globalThis.Response;
+    try {
+      agentResponse = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(120_000),
+      });
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Agent unreachable at ${url}: ${reason}`);
+      throw new HttpException(
+        'Le service agent (lexia-agent) est indisponible. Réessayez dans quelques secondes.',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    const text = await agentResponse.text();
     let data: unknown = {};
     try {
       data = text ? JSON.parse(text) : {};
@@ -94,29 +151,42 @@ export class LegalGraphsController {
       data = { detail: text };
     }
 
-    if (!response.ok) {
+    if (!agentResponse.ok) {
       const message =
         typeof data === 'object' && data !== null && 'detail' in data
           ? String((data as { detail?: unknown }).detail)
-          : `Agent request failed (${response.status})`;
-      throw new HttpException(message, response.status);
+          : `Agent request failed (${agentResponse.status})`;
+      throw new HttpException(message, agentResponse.status);
     }
     return data;
   }
 
-  private async agentFile(path: string, res: Response) {
-    const response = await fetch(`${this.agentBaseUrl()}${path}`);
-    if (!response.ok) {
-      res.status(response.status);
-      return { error: await response.text() };
+  private async agentFile(path: string, res: ExpressResponse) {
+    let agentResponse: globalThis.Response;
+    try {
+      agentResponse = await fetch(`${this.agentBaseUrl()}${path}`, {
+        signal: AbortSignal.timeout(120_000),
+      });
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Agent file proxy failed for ${path}: ${reason}`);
+      throw new HttpException(
+        'Le service agent (lexia-agent) est indisponible. Réessayez dans quelques secondes.',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     }
 
-    const contentType = response.headers.get('content-type');
-    const contentDisposition = response.headers.get('content-disposition');
+    if (!agentResponse.ok) {
+      res.status(agentResponse.status);
+      return { error: await agentResponse.text() };
+    }
+
+    const contentType = agentResponse.headers.get('content-type');
+    const contentDisposition = agentResponse.headers.get('content-disposition');
     if (contentType) res.setHeader('Content-Type', contentType);
     if (contentDisposition) res.setHeader('Content-Disposition', contentDisposition);
 
-    const buffer = Buffer.from(await response.arrayBuffer());
+    const buffer = Buffer.from(await agentResponse.arrayBuffer());
     return new StreamableFile(buffer);
   }
 

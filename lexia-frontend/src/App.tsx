@@ -21,6 +21,7 @@ import { AnalyticsPage } from './apps/admin/analytics/AnalyticsPage'
 import { UsersPage } from './apps/admin/users/UsersPage'
 import { JudgmentAnalysisPage } from './apps/admin/judgment-analysis/JudgmentAnalysisPage'
 import { LegalGraphsPage } from './apps/admin/legal-graphs/LegalGraphsPage'
+import { ConnectorsPage } from './apps/admin/connectors/ConnectorsPage'
 import { DARK, GOLD } from './shared/constants'
 import { APP_BASE, appPath } from './shared/basePath'
 import { AdminLoginPage } from './apps/admin/AdminLoginPage'
@@ -134,32 +135,40 @@ export default function App() {
         clearKeycloakCallbackHash()
 
         if (authenticated && kc.token) {
-          const parsed = kc.tokenParsed as any
-          const roles: string[] = parsed?.realm_access?.roles || []
-          let accessLevel: 'PUBLIC' | 'PRO' | 'ADMIN' | 'SUPERADMIN' = 'PUBLIC'
-          if (roles.includes('superadmin')) accessLevel = 'SUPERADMIN'
-          else if (roles.includes('admin')) accessLevel = 'ADMIN'
-          else if (roles.includes('pro')) accessLevel = 'PRO'
+          const storedAdmin = readAdminSession()
+          if (storedAdmin) {
+            applyAdminSession(storedAdmin, setAuth)
+            setAuth({ keycloak: kc })
+          } else {
+            const parsed = kc.tokenParsed as any
+            const roles: string[] = parsed?.realm_access?.roles || []
+            let accessLevel: 'PUBLIC' | 'PRO' | 'ADMIN' | 'SUPERADMIN' = 'PUBLIC'
+            if (roles.includes('superadmin')) accessLevel = 'SUPERADMIN'
+            else if (roles.includes('admin')) accessLevel = 'ADMIN'
+            else if (roles.includes('pro')) accessLevel = 'PRO'
 
-          setAuth({
-            token: kc.token,
-            userId: parsed?.sub || null,
-            email: parsed?.email || null,
-            accessLevel,
-            keycloak: kc,
-          })
+            setAuth({
+              token: kc.token,
+              userId: parsed?.sub || null,
+              email: parsed?.email || null,
+              accessLevel,
+              keycloak: kc,
+            })
+          }
         } else {
           setAuth({ keycloak: kc })
         }
 
         kc.onTokenExpired = () => {
           kc.updateToken(60).then((refreshed) => {
-            if (refreshed && kc.token) {
+            if (refreshed && kc.token && !readAdminSession()) {
               setAuth({ token: kc.token })
             }
           }).catch(() => {
-            setAuth({ token: null, userId: null, email: null, accessLevel: 'PUBLIC' })
-            kc.login({ redirectUri: cleanCurrentUrl() })
+            if (!readAdminSession()) {
+              setAuth({ token: null, userId: null, email: null, accessLevel: 'PUBLIC' })
+              kc.login({ redirectUri: cleanCurrentUrl() })
+            }
           })
         }
 
@@ -273,6 +282,7 @@ export default function App() {
               <Route path="agent" element={<AgentPage />} />
               <Route path="judgment-analysis" element={<JudgmentAnalysisPage />} />
               <Route path="legal-graphs" element={<LegalGraphsPage />} />
+              <Route path="connectors" element={<ConnectorsPage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="analytics" element={<AnalyticsPage />} />
             </Route>

@@ -25,10 +25,13 @@ import {
   FileTextOutlined,
   ReloadOutlined,
   ThunderboltOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons'
 import { useAdminUi } from '../locale/useAdminI18n'
 import { useAuthStore } from '../../../shared/store/authStore'
+import { resolveAdminApiToken } from '../../../shared/auth/adminSession'
 import { BORDER_COLOR, BORDER_SUBTLE, GOLD } from '../../../shared/constants'
+import { LegalGraphExplorerPanel } from './LegalGraphExplorerPanel'
 
 type LegalGraphDocument = {
   collection?: string
@@ -189,7 +192,9 @@ async function responseError(res: Response, routeMissingMessage: string) {
   let detail = text
   try {
     const data = text ? JSON.parse(text) : null
-    detail = typeof data?.detail === 'string' ? data.detail : data?.message || ''
+    if (typeof data?.detail === 'string') detail = data.detail
+    else if (typeof data?.message === 'string') detail = data.message
+    else if (Array.isArray(data?.message)) detail = data.message.join(', ')
   } catch {
     detail = text
   }
@@ -257,7 +262,8 @@ function buildProgressKind(status?: string) {
 export function LegalGraphsPage() {
   const { message } = AntApp.useApp()
   const { t, font, pageStyle, h1Style, mutedStyle, titleStyle, cellStyle, tableStyle } = useAdminUi()
-  const token = useAuthStore((s) => s.token)
+  const storeToken = useAuthStore((s) => s.token)
+  const token = resolveAdminApiToken(storeToken)
   const copy = t.legalGraphs
   const [graphs, setGraphs] = useState<LegalGraphArtifact[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -266,6 +272,7 @@ export function LegalGraphsPage() {
   const [building, setBuilding] = useState(false)
   const [buildStatus, setBuildStatus] = useState<LegalGraphBuildJobStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [detailTab, setDetailTab] = useState<'visualisation' | 'explorer'>('visualisation')
 
   const load = async () => {
     setLoading(true)
@@ -349,6 +356,10 @@ export function LegalGraphsPage() {
     label: img.label,
     value: img.filename,
   }))
+
+  const selectedHasPickle = Boolean(
+    selectedGraph?.files.some((file) => file.kind === 'pickle' || file.filename.endsWith('.pkl')),
+  )
 
   return (
     <div style={pageStyle}>
@@ -508,6 +519,32 @@ export function LegalGraphsPage() {
             <Col xs={24} xl={17}>
               {selectedGraph && (
                 <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                  <Segmented
+                    value={detailTab}
+                    onChange={(value) => setDetailTab(value as 'visualisation' | 'explorer')}
+                    options={[
+                      { label: copy.tabVisualization, value: 'visualisation', icon: <FileImageOutlined /> },
+                      {
+                        label: copy.tabExplorer,
+                        value: 'explorer',
+                        icon: <ApartmentOutlined />,
+                        disabled: !selectedHasPickle,
+                      },
+                    ]}
+                  />
+
+                  {detailTab === 'explorer' ? (
+                    <LegalGraphExplorerPanel
+                      graphId={selectedGraph.id}
+                      hasPickle={selectedHasPickle}
+                      token={token}
+                      graphUrl={graphUrl}
+                      routeMissingMessage={copy.routeMissing}
+                      copy={copy.explorer}
+                      styles={{ titleStyle, mutedStyle, cellStyle }}
+                    />
+                  ) : (
+                    <>
                   <Card
                     variant="outlined"
                     style={{ borderColor: BORDER_COLOR }}
@@ -636,6 +673,8 @@ export function LegalGraphsPage() {
                         ]}
                       />
                     </Card>
+                  )}
+                    </>
                   )}
                 </Space>
               )}

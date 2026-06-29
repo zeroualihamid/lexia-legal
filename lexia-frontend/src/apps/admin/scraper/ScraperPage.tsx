@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Tabs,
   Table,
@@ -15,6 +16,10 @@ import {
   message,
   Popconfirm,
   Badge,
+  Card,
+  Descriptions,
+  Alert,
+  Spin,
 } from 'antd'
 import {
   PlusOutlined,
@@ -40,17 +45,140 @@ const JOB_STATUS_COLORS: Record<string, string> = {
   pending: '#fa8c16',
 }
 
-const MOCK_SOURCES = [
-  { id: '1', name_ar: 'الجريدة الرسمية', url: 'https://www.sgg.gov.ma', collection: 'legal_laws', scraper_type: 'boa', is_active: true, last_scraped_at: '2024-03-10T08:00:00Z', docs_count: 15420 },
-  { id: '2', name_ar: 'محكمة النقض', url: 'https://www.coursuprème.ma', collection: 'judgments_civil', scraper_type: 'cour_cassation', is_active: true, last_scraped_at: '2024-03-09T14:00:00Z', docs_count: 8930 },
-  { id: '3', name_ar: 'المحكمة التجارية الدار البيضاء', url: 'https://example.ma/commercial', collection: 'judgments_commercial', scraper_type: 'tribunal', is_active: false, last_scraped_at: '2024-02-20T10:00:00Z', docs_count: 3240 },
-]
+function jobTypeLabel(type: string, t: ReturnType<typeof useAdminUi>['t']) {
+  return t.scraper.jobTypes[type as keyof typeof t.scraper.jobTypes] || type
+}
 
-const MOCK_JOBS = [
-  { id: '1', type: 'scrape', status: 'running', progress: 67, document: 'الجريدة الرسمية', created_at: new Date().toISOString(), source_name_ar: 'الجريدة الرسمية' },
-  { id: '2', type: 'embed', status: 'completed', progress: 100, document: 'محكمة النقض', created_at: new Date(Date.now() - 3600000).toISOString(), source_name_ar: 'محكمة النقض' },
-  { id: '3', type: 'scrape', status: 'failed', progress: 32, document: 'المحكمة التجارية', created_at: new Date(Date.now() - 7200000).toISOString(), source_name_ar: 'المحكمة التجارية الدار البيضاء' },
-]
+function CorpusMonitorPanel({
+  monitor,
+  loading,
+  ui,
+  onResume,
+  resumingId,
+}: {
+  monitor: any
+  loading: boolean
+  ui: ReturnType<typeof useAdminUi>
+  onResume?: (sourceId: string) => void
+  resumingId?: string | null
+}) {
+  const { t, font, labelStyle, numberLocale } = ui
+  if (loading && !monitor) {
+    return <Card loading style={{ marginBottom: 16, background: DARK_CARD, borderColor: BORDER_COLOR }} />
+  }
+  if (!monitor?.corpusSources?.length) return null
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <span style={{ ...labelStyle, fontSize: 15 }}>{t.scraper.monitorTitle}</span>
+        <Space size={8}>
+          <Tag color="processing" style={{ fontFamily: font, margin: 0 }}>
+            {t.scraper.monitorActiveJobs}: {monitor.queue?.active ?? 0}
+          </Tag>
+          <Tag color="warning" style={{ fontFamily: font, margin: 0 }}>
+            {t.scraper.monitorWaitingJobs}: {monitor.queue?.waiting ?? 0}
+          </Tag>
+          {(monitor.queue?.failed ?? 0) > 0 && (
+            <Tag color="error" style={{ fontFamily: font, margin: 0 }}>
+              {t.scraper.monitorFailedJobs}: {monitor.queue.failed}
+            </Tag>
+          )}
+        </Space>
+      </div>
+
+      <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        {monitor.corpusSources.map((src: any) => {
+          const isRunning = src.last_status === 'running'
+          const hasError = src.last_status === 'error'
+          const statusColor = hasError ? '#f5222d' : isRunning ? '#1677ff' : '#8c8c8c'
+          const statusText = hasError
+            ? t.scraper.monitorError
+            : isRunning
+              ? t.scraper.monitorRunning
+              : t.scraper.monitorIdle
+
+          return (
+            <Card
+              key={src.id}
+              size="small"
+              style={{ background: DARK_CARD, borderColor: BORDER_COLOR }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+                <Space direction="vertical" size={0}>
+                  <span style={{ fontFamily: font, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    {src.name_fr || src.name_ar}
+                  </span>
+                  <span style={{ fontFamily: font, fontSize: 12, color: 'var(--color-text-quaternary)' }}>
+                    {src.name_ar}
+                  </span>
+                </Space>
+                <Tag
+                  style={{
+                    background: `${statusColor}20`,
+                    border: `1px solid ${statusColor}40`,
+                    color: statusColor,
+                    borderRadius: 12,
+                    fontFamily: font,
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  {statusText}
+                  {isRunning && <Spin size="small" style={{ marginInlineStart: 6 }} />}
+                </Tag>
+              </div>
+
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontFamily: font, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                    {t.scraper.monitorCorpusProgress}
+                  </span>
+                  <span style={{ fontFamily: font, fontSize: 12, color: GOLD }}>
+                    {src.downloaded.toLocaleString(numberLocale)} / {src.target.toLocaleString(numberLocale)} PDF ({src.percent}%)
+                  </span>
+                </div>
+                <Progress percent={src.percent} strokeColor={GOLD} size="small" />
+              </div>
+
+              <Space wrap size={[16, 4]} style={{ fontFamily: font, fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                {src.last_batch != null && (
+                  <span>{t.scraper.monitorLastBatch}: +{src.last_batch.toLocaleString(numberLocale)}</span>
+                )}
+                {src.subject && <span>{t.scraper.monitorSubject}: {src.subject}</span>}
+                {src.start_page != null && <span>{t.scraper.monitorPage}: {src.start_page}</span>}
+                <span>{t.scraper.monitorDocsIndexed}: {src.docs_count.toLocaleString(numberLocale)}</span>
+              </Space>
+
+              {src.last_error && (
+                <Alert
+                  type="error"
+                  showIcon
+                  message={<span style={{ fontFamily: font, fontSize: 12 }}>{src.last_error}</span>}
+                  style={{ marginTop: 10 }}
+                />
+              )}
+
+              {src.downloaded < src.target && !isRunning && onResume && (
+                <div style={{ marginTop: 12 }}>
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<PlayCircleOutlined />}
+                    loading={resumingId === src.id}
+                    onClick={() => onResume(src.id)}
+                    style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: font }}
+                  >
+                    {t.scraper.resumeCorpus}
+                  </Button>
+                </div>
+              )}
+            </Card>
+          )
+        })}
+      </Space>
+    </div>
+  )
+}
 
 function SourceModal({
   open,
@@ -67,10 +195,25 @@ function SourceModal({
   const scraperTypeOptions = Object.entries(t.scraper.scraperTypes).map(([value, label]) => ({ value, label }))
   const [form] = Form.useForm()
   const qc = useQueryClient()
+  const scraperType = Form.useWatch('scraper_type', form)
+  const isJuriscassation = scraperType === 'juriscassation' || scraperType === 'cour_cassation'
 
   React.useEffect(() => {
     if (editSource) {
-      form.setFieldsValue(editSource)
+      const cfg = editSource.config || {}
+      form.setFieldsValue({
+        name_ar: editSource.name_ar,
+        name_fr: editSource.name_fr,
+        url: editSource.url,
+        scraper_type: editSource.scraper_type,
+        collection: editSource.collection,
+        max_pages: cfg.max_pages,
+        max_downloads: cfg.max_downloads,
+        corpus_target: cfg.corpus_target,
+        batch_downloads: cfg.batch_downloads,
+        search_subject: cfg.search_subject,
+        search_subjects_text: (cfg.search_subjects || []).join(', '),
+      })
     } else {
       form.resetFields()
     }
@@ -79,7 +222,7 @@ function SourceModal({
   const { mutate: save, isPending } = useMutation({
     mutationFn: async (values: any) => {
       if (editSource) {
-        await apiClient.put(`/admin/scraper/sources/${editSource.id}`, values)
+        await apiClient.patch(`/admin/scraper/sources/${editSource.id}`, values)
       } else {
         await apiClient.post('/admin/scraper/sources', values)
       }
@@ -140,6 +283,50 @@ function SourceModal({
         >
           <Select options={collectionOptions} style={{ fontFamily: font }} />
         </Form.Item>
+
+        {isJuriscassation && (
+          <>
+            <Form.Item
+              name="corpus_target"
+              label={<span style={labelStyle}>{t.scraper.corpusTarget}</span>}
+              tooltip="51770 pour l'intégralité des arrêts de la Cour de cassation (CSPJ)"
+            >
+              <Input type="number" min={1} style={{ fontFamily: font, direction: 'ltr' }} placeholder="51770" />
+            </Form.Item>
+
+            <Form.Item
+              name="batch_downloads"
+              label={<span style={labelStyle}>{t.scraper.batchDownloads}</span>}
+            >
+              <Input type="number" min={1} max={200} style={{ fontFamily: font, direction: 'ltr' }} placeholder="50" />
+            </Form.Item>
+
+            <Form.Item
+              name="search_subject"
+              label={<span style={labelStyle}>{t.scraper.searchSubject}</span>}
+            >
+              <Input style={{ fontFamily: font, direction: 'rtl' }} placeholder="ال" />
+            </Form.Item>
+
+            <Form.Item
+              name="search_subjects_text"
+              label={<span style={labelStyle}>{t.scraper.searchSubjects}</span>}
+            >
+              <Input.TextArea rows={2} style={{ fontFamily: font, direction: 'rtl' }} />
+            </Form.Item>
+          </>
+        )}
+
+        {!isJuriscassation && (
+          <>
+            <Form.Item name="max_pages" label={<span style={labelStyle}>max pages</span>}>
+              <Input type="number" min={1} style={{ fontFamily: font, direction: 'ltr' }} placeholder="10" />
+            </Form.Item>
+            <Form.Item name="max_downloads" label={<span style={labelStyle}>max downloads</span>}>
+              <Input type="number" min={1} style={{ fontFamily: font, direction: 'ltr' }} placeholder="100" />
+            </Form.Item>
+          </>
+        )}
       </Form>
     </Modal>
   )
@@ -148,36 +335,57 @@ function SourceModal({
 export function ScraperPage() {
   const ui = useAdminUi()
   const { t, font, pageStyle, tableStyle, h1Style, labelStyle, collectionLabel, numberLocale, isRtl } = ui
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = searchParams.get('tab') || 'by-ref'
   const [sourceModalOpen, setSourceModalOpen] = useState(false)
   const [editSource, setEditSource] = useState<any | null>(null)
+  const [refPreview, setRefPreview] = useState<any | null>(null)
+  const [refForm] = Form.useForm()
   const qc = useQueryClient()
 
   const jobStatusLabel = (status: string) =>
     t.scraper.jobStatus[status as keyof typeof t.scraper.jobStatus] || status
 
-  const { data: sources, isLoading: sourcesLoading } = useQuery({
+  const { data: sources, isLoading: sourcesLoading, isError: sourcesError, refetch: refetchSources } = useQuery({
     queryKey: ['scraper-sources'],
     queryFn: async () => {
-      try {
-        const res = await apiClient.get('/admin/scraper/sources')
-        return res.data
-      } catch {
-        return MOCK_SOURCES
-      }
+      const res = await apiClient.get('/admin/scraper/sources')
+      return res.data
     },
   })
 
   const { data: jobs, isLoading: jobsLoading } = useQuery({
     queryKey: ['scraper-jobs'],
     queryFn: async () => {
-      try {
-        const res = await apiClient.get('/admin/scraper/jobs')
-        return res.data
-      } catch {
-        return MOCK_JOBS
-      }
+      const res = await apiClient.get('/admin/scraper/jobs')
+      return res.data
     },
     refetchInterval: 5000,
+  })
+
+  const { data: monitor, isLoading: monitorLoading } = useQuery({
+    queryKey: ['scraper-monitor'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/scraper/monitor')
+      return res.data
+    },
+    refetchInterval: 5000,
+  })
+
+  const runningCorpusCount =
+    monitor?.corpusSources?.filter((s: any) => s.last_status === 'running').length ??
+    jobs?.filter((j: any) => j.status === 'running').length ??
+    0
+
+  const { mutate: deleteSource } = useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.delete(`/admin/scraper/sources/${id}`)
+    },
+    onSuccess: () => {
+      message.success(t.documents.deleted)
+      qc.invalidateQueries({ queryKey: ['scraper-sources'] })
+    },
+    onError: () => message.error(t.common.error),
   })
 
   const { mutate: toggleSource } = useMutation({
@@ -204,6 +412,71 @@ export function ScraperPage() {
       await apiClient.post(`/admin/scraper/jobs/${jobId}/cancel`)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['scraper-jobs'] }),
+    onError: () => message.error(t.common.error),
+  })
+
+  const { mutate: previewByRef, isPending: previewingRef } = useMutation({
+    mutationFn: async (values: any) => {
+      const res = await apiClient.post('/admin/scraper/scrape-by-reference/preview', values)
+      return res.data
+    },
+    onSuccess: (data) => {
+      setRefPreview(data)
+      message.success(data.found ? t.scraper.previewDone : t.scraper.notFound)
+    },
+    onError: () => message.error(t.common.error),
+  })
+
+  const { mutate: enqueueByRef, isPending: enqueuingRef } = useMutation({
+    mutationFn: async (values: any) => {
+      const res = await apiClient.post('/admin/scraper/scrape-by-reference', values)
+      return res.data
+    },
+    onSuccess: () => {
+      message.success(t.scraper.enqueueDone)
+      qc.invalidateQueries({ queryKey: ['scraper-jobs'] })
+    },
+    onError: () => message.error(t.common.error),
+  })
+
+  const [resumingId, setResumingId] = useState<string | null>(null)
+
+  const { mutate: resumeCorpus } = useMutation({
+    mutationFn: async (sourceId: string) => {
+      setResumingId(sourceId)
+      const res = await apiClient.post(`/admin/scraper/sources/${sourceId}/resume-corpus`)
+      return res.data
+    },
+    onSuccess: (data) => {
+      message.success(data.message || t.scraper.resumeCorpusDone)
+      qc.invalidateQueries({ queryKey: ['scraper-jobs'] })
+      qc.invalidateQueries({ queryKey: ['scraper-monitor'] })
+    },
+    onError: () => message.error(t.common.error),
+    onSettled: () => setResumingId(null),
+  })
+
+  const { mutate: drainDocQueue, isPending: drainingQueue } = useMutation({
+    mutationFn: async () => {
+      const res = await apiClient.post('/admin/scraper/drain-document-queue')
+      return res.data
+    },
+    onSuccess: (data) => {
+      message.success(
+        `${t.scraper.drainQueueDone}: ${data.waitingRemoved} ${t.scraper.drainQueueWaiting}, ${data.documentsUpdated} ${t.scraper.drainQueueDocs}`,
+      )
+    },
+    onError: () => message.error(t.common.error),
+  })
+
+  const { mutate: bulkReindex, isPending: bulkReindexing } = useMutation({
+    mutationFn: async (payload: { sourceId?: string; limit?: number }) => {
+      const res = await apiClient.post('/admin/scraper/bulk-reindex', payload)
+      return res.data
+    },
+    onSuccess: (data) => {
+      message.success(`${t.scraper.bulkReindexDone}: ${data.enqueued}`)
+    },
     onError: () => message.error(t.common.error),
   })
 
@@ -243,13 +516,28 @@ export function ScraperPage() {
     },
     {
       title: <span style={labelStyle}>{t.scraper.docs}</span>,
-      dataIndex: 'docs_count',
-      key: 'docs_count',
-      render: (v: number) => (
-        <span style={{ fontFamily: font, color: 'var(--color-text-secondary)' }}>
-          {v?.toLocaleString(numberLocale) || '0'}
-        </span>
-      ),
+      key: 'docs_progress',
+      render: (_: unknown, record: any) => {
+        const cfg = record.config || {}
+        const target = Number(cfg.corpus_target || 0)
+        const downloaded = Number(cfg.corpus_downloaded ?? record.docs_count ?? 0)
+        if (target > 0) {
+          const pct = Math.min(100, Math.round((downloaded / target) * 100))
+          return (
+            <Space direction="vertical" size={0} style={{ minWidth: 120 }}>
+              <span style={{ fontFamily: font, color: 'var(--color-text-secondary)', fontSize: 12 }}>
+                {downloaded.toLocaleString(numberLocale)} / {target.toLocaleString(numberLocale)}
+              </span>
+              <Progress percent={pct} size="small" strokeColor={GOLD} showInfo={false} />
+            </Space>
+          )
+        }
+        return (
+          <span style={{ fontFamily: font, color: 'var(--color-text-secondary)' }}>
+            {(record.docs_count ?? 0).toLocaleString(numberLocale)}
+          </span>
+        )
+      },
     },
     {
       title: <span style={labelStyle}>{t.scraper.lastScrape}</span>,
@@ -302,7 +590,7 @@ export function ScraperPage() {
             okText={<span style={{ fontFamily: font }}>{t.common.delete}</span>}
             cancelText={<span style={{ fontFamily: font }}>{t.common.cancel}</span>}
             okButtonProps={{ danger: true }}
-            onConfirm={() => message.info(t.documents.deleted)}
+            onConfirm={() => deleteSource(record.id)}
           >
             <Button type="text" size="small" icon={<DeleteOutlined />} danger />
           </Popconfirm>
@@ -317,15 +605,25 @@ export function ScraperPage() {
       dataIndex: 'type',
       key: 'type',
       render: (v: string) => (
-        <span style={{ fontFamily: font, color: 'var(--color-text-secondary)', fontSize: 12 }}>{v}</span>
+        <span style={{ fontFamily: font, color: 'var(--color-text-secondary)', fontSize: 12 }}>
+          {jobTypeLabel(v, t)}
+        </span>
       ),
     },
     {
       title: <span style={labelStyle}>{t.common.source}</span>,
-      dataIndex: 'source_name_ar',
-      key: 'source_name_ar',
-      render: (v: string) => (
-        <span style={{ fontFamily: font, color: 'var(--color-text-secondary)', fontSize: 13 }}>{v}</span>
+      key: 'source',
+      render: (_: unknown, record: any) => (
+        <Space direction="vertical" size={0}>
+          <span style={{ fontFamily: font, color: 'var(--color-text-secondary)', fontSize: 13 }}>
+            {record.source_name_fr || record.source_name_ar || record.data?.fileReference || '-'}
+          </span>
+          {record.source_name_ar && record.source_name_fr && (
+            <span style={{ fontFamily: font, color: 'var(--color-text-quaternary)', fontSize: 11 }}>
+              {record.source_name_ar}
+            </span>
+          )}
+        </Space>
       ),
     },
     {
@@ -351,17 +649,29 @@ export function ScraperPage() {
     },
     {
       title: <span style={labelStyle}>{t.scraper.progress}</span>,
-      dataIndex: 'progress',
       key: 'progress',
-      render: (v: number, r: any) => (
-        <Progress
-          percent={v}
-          size="small"
-          strokeColor={JOB_STATUS_COLORS[r.status] || GOLD}
-          trailColor="var(--color-border-subtle)"
-          style={{ minWidth: 100 }}
-        />
-      ),
+      render: (_: unknown, r: any) => {
+        const pct = r.corpus?.percent ?? r.progress ?? 0
+        const label = r.progressLabel || (r.corpus
+          ? `${r.corpus.downloaded?.toLocaleString(numberLocale)} / ${r.corpus.target?.toLocaleString(numberLocale)}`
+          : '')
+        return (
+          <Space direction="vertical" size={0} style={{ minWidth: 140 }}>
+            {label && (
+              <span style={{ fontFamily: font, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                {label}
+                {r.batchCount != null && r.status === 'completed' ? ` (+${r.batchCount})` : ''}
+              </span>
+            )}
+            <Progress
+              percent={pct}
+              size="small"
+              strokeColor={JOB_STATUS_COLORS[r.status] || GOLD}
+              trailColor="var(--color-border-subtle)"
+            />
+          </Space>
+        )
+      },
     },
     {
       title: <span style={labelStyle}>{t.scraper.startedAt}</span>,
@@ -369,9 +679,33 @@ export function ScraperPage() {
       key: 'created_at',
       render: (v: string) => (
         <span style={{ fontFamily: font, color: 'var(--color-text-quaternary)', fontSize: 12 }}>
-          {dayjs(v).format('HH:mm DD/MM')}
+          {v ? dayjs(v).format('HH:mm DD/MM') : '-'}
         </span>
       ),
+    },
+    {
+      title: <span style={labelStyle}>{t.scraper.jobDetails}</span>,
+      key: 'details',
+      render: (_: unknown, r: any) => {
+        if (r.status === 'failed' && r.failedReason) {
+          return (
+            <Tooltip title={r.failedReason}>
+              <span style={{ fontFamily: font, fontSize: 11, color: '#f5222d', maxWidth: 160, display: 'inline-block' }}>
+                {r.failedReason.slice(0, 60)}{r.failedReason.length > 60 ? '…' : ''}
+              </span>
+            </Tooltip>
+          )
+        }
+        if (r.corpus?.subject) {
+          return (
+            <span style={{ fontFamily: font, fontSize: 11, color: 'var(--color-text-quaternary)' }}>
+              {t.scraper.monitorSubject}: {r.corpus.subject}
+              {r.corpus.startPage != null ? ` · ${t.scraper.monitorPage} ${r.corpus.startPage}` : ''}
+            </span>
+          )
+        }
+        return <span style={{ color: 'var(--color-text-quaternary)' }}>-</span>
+      },
     },
     {
       title: <span style={labelStyle}>{t.common.actions}</span>,
@@ -396,6 +730,88 @@ export function ScraperPage() {
 
   const tabItems = [
     {
+      key: 'by-ref',
+      label: <span style={{ fontFamily: font }}>{t.scraper.byReference}</span>,
+      children: (
+        <Card style={{ background: DARK_CARD, borderColor: BORDER_COLOR, maxWidth: 720 }}>
+          <Form
+            form={refForm}
+            layout="vertical"
+            onFinish={(values) => previewByRef(values)}
+            initialValues={{ collection: 'judgments_civil' }}
+          >
+            <Form.Item
+              name="fileReference"
+              label={<span style={labelStyle}>{t.scraper.fileReference}</span>}
+              rules={[{ required: true, message: t.common.required }]}
+              extra={<span style={{ fontFamily: font, fontSize: 12 }}>{t.scraper.fileReferenceHint}</span>}
+            >
+              <Input placeholder="2018/8221/4933" style={{ direction: 'ltr', fontFamily: font }} />
+            </Form.Item>
+            <Form.Item name="courtName" label={<span style={labelStyle}>{t.scraper.courtName}</span>}>
+              <Input style={{ direction: 'rtl', fontFamily: font }} />
+            </Form.Item>
+            <Form.Item name="collection" label={<span style={labelStyle}>{t.common.collection}</span>}>
+              <Select options={ui.collectionOptions} style={{ fontFamily: font }} />
+            </Form.Item>
+            <Space>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={previewingRef}
+                style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: font }}
+              >
+                {t.scraper.preview}
+              </Button>
+              <Button
+                loading={enqueuingRef}
+                onClick={() => {
+                  refForm.validateFields().then((values) => enqueueByRef(values))
+                }}
+                style={{ fontFamily: font }}
+              >
+                {t.scraper.enqueue}
+              </Button>
+            </Space>
+          </Form>
+
+          {refPreview && (
+            <div style={{ marginTop: 24 }}>
+              <Alert
+                type={refPreview.found ? 'success' : 'warning'}
+                message={
+                  <span style={{ fontFamily: font }}>
+                    {refPreview.found
+                      ? `${refPreview.format === 'cassation' ? t.scraper.formatCassation : t.scraper.formatAppeal} — ${refPreview.source === 'mahakim' ? t.scraper.sourceMahakim : t.scraper.sourceCspj}`
+                      : refPreview.message || t.scraper.notFound}
+                  </span>
+                }
+                style={{ marginBottom: 16 }}
+              />
+              {refPreview.found && (
+                <Descriptions
+                  bordered
+                  size="small"
+                  column={1}
+                  style={{ fontFamily: font }}
+                  items={[
+                    { label: t.scraper.fileReference, children: refPreview.fileReference },
+                    { label: t.common.status, children: refPreview.title || '-' },
+                    ...(refPreview.metadata?.mahakim
+                      ? Object.entries(refPreview.metadata.mahakim).map(([k, v]) => ({
+                          label: k,
+                          children: String(v),
+                        }))
+                      : []),
+                  ]}
+                />
+              )}
+            </div>
+          )}
+        </Card>
+      ),
+    },
+    {
       key: 'sources',
       label: <span style={{ fontFamily: font }}>{t.scraper.sources}</span>,
       children: (
@@ -418,10 +834,11 @@ export function ScraperPage() {
             </Button>
           </div>
           <Table
-            dataSource={sources || MOCK_SOURCES}
+            dataSource={sources || []}
             columns={sourcesColumns}
             rowKey="id"
             loading={sourcesLoading}
+            locale={{ emptyText: sourcesError ? t.common.error : undefined }}
             pagination={{ pageSize: 15 }}
             style={tableStyle}
           />
@@ -433,9 +850,9 @@ export function ScraperPage() {
       label: (
         <span style={{ fontFamily: font }}>
           {t.scraper.jobs}
-          {jobs?.filter((j: any) => j.status === 'running').length > 0 && (
+          {runningCorpusCount > 0 && (
             <Badge
-              count={jobs.filter((j: any) => j.status === 'running').length}
+              count={runningCorpusCount}
               style={{ [isRtl ? 'marginRight' : 'marginLeft']: 8, background: '#1677ff' }}
             />
           )}
@@ -443,17 +860,58 @@ export function ScraperPage() {
       ),
       children: (
         <div>
+          <CorpusMonitorPanel
+            monitor={monitor}
+            loading={monitorLoading}
+            ui={ui}
+            onResume={(id) => resumeCorpus(id)}
+            resumingId={resumingId}
+          />
+
+          <Card
+            size="small"
+            title={<span style={{ fontFamily: font, fontSize: 13 }}>{t.scraper.maintenanceTitle}</span>}
+            style={{ marginBottom: 16, background: DARK_CARD, borderColor: BORDER_COLOR }}
+          >
+            <Space wrap>
+              <Popconfirm
+                title={t.scraper.drainQueueConfirm}
+                okText={t.common.confirm}
+                cancelText={t.common.cancel}
+                onConfirm={() => drainDocQueue()}
+              >
+                <Button loading={drainingQueue} style={{ fontFamily: font }}>
+                  {t.scraper.drainQueue}
+                </Button>
+              </Popconfirm>
+              <Popconfirm
+                title={t.scraper.bulkReindexConfirm}
+                okText={t.common.confirm}
+                cancelText={t.common.cancel}
+                onConfirm={() => bulkReindex({ limit: 50 })}
+              >
+                <Button loading={bulkReindexing} style={{ fontFamily: font }}>
+                  {t.scraper.bulkReindex}
+                </Button>
+              </Popconfirm>
+            </Space>
+          </Card>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
             <Button
               icon={<ReloadOutlined />}
-              onClick={() => qc.invalidateQueries({ queryKey: ['scraper-jobs'] })}
+              onClick={() => {
+                qc.invalidateQueries({ queryKey: ['scraper-jobs'] })
+                qc.invalidateQueries({ queryKey: ['scraper-monitor'] })
+                qc.invalidateQueries({ queryKey: ['scraper-sources'] })
+              }}
               style={{ fontFamily: font }}
             >
               {t.common.refresh}
             </Button>
           </div>
           <Table
-            dataSource={jobs || MOCK_JOBS}
+            dataSource={jobs || []}
             columns={jobsColumns}
             rowKey="id"
             loading={jobsLoading}
@@ -472,7 +930,12 @@ export function ScraperPage() {
         <h1 style={h1Style}>{t.scraper.title}</h1>
       </div>
 
-      <Tabs items={tabItems} style={{ direction: ui.dir }} />
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => setSearchParams({ tab: key }, { replace: true })}
+        items={tabItems}
+        style={{ direction: ui.dir }}
+      />
 
       <SourceModal
         open={sourceModalOpen}

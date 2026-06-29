@@ -10,7 +10,9 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -84,6 +86,27 @@ export class DocumentsController {
   @ApiOperation({ summary: 'Get processing job status' })
   async getJobStatus(@Param('jobId') jobId: string) {
     return this.documentsService.getJobStatus(jobId);
+  }
+
+  @Get(':id/pdf')
+  @UseGuards(AuthenticatedGuard)
+  @ApiOperation({ summary: 'View the original PDF for my document' })
+  async viewPdf(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+    @Res() res: Response,
+  ) {
+    const pdf = await this.documentsService.getOriginalPdf(id, user.userId);
+    const fallbackName = 'document.pdf';
+    const filename = encodeURIComponent(pdf.filename || fallbackName);
+
+    res.setHeader('Content-Type', pdf.contentType);
+    res.setHeader('Content-Length', pdf.buffer.length);
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${fallbackName}"; filename*=UTF-8''${filename}`,
+    );
+    res.send(pdf.buffer);
   }
 
   @Get(':id/pages')

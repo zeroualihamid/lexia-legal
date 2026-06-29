@@ -67,13 +67,13 @@ const NAV_GROUPS: {
     items: [
       { id: 'legal_graphs', label: 'Graphes juridiques', icon: GitBranch },
       { id: 'documents', label: 'Documents', icon: Files },
+      { id: 'connectors', label: 'Connecteurs', icon: Plug },
     ],
   },
   {
     label: 'Agent',
     items: [
       { id: 'data', label: 'Données', icon: Database },
-      { id: 'connectors', label: 'Connecteurs', icon: Plug },
       { id: 'skills', label: 'Compétences', icon: FlaskConical },
       { id: 'prompts', label: 'Invites', icon: FileText },
       { id: 'cte', label: 'Graphe CTE', icon: Network },

@@ -128,11 +128,19 @@ for role in admin superadmin pro user; do
 done
 
 # Allow redirect URIs for /lexia when realm was imported before this path existed.
+REDIRECT_URIS='["http://localhost/lexia/*","http://localhost/lexia","http://localhost/lexia/admin","http://localhost/lexia/admin/*","http://localhost/*","http://localhost:3000/*","http://localhost:3000/lexia","http://localhost:3000/lexia/*","http://localhost:3000/lexia/admin","http://localhost:3000/lexia/admin/*","http://127.0.0.1:3000/*","http://127.0.0.1:3000/lexia","http://127.0.0.1:3000/lexia/*","http://localhost:5175/*","http://127.0.0.1:5175/*"]'
+WEB_ORIGINS='["http://localhost","http://localhost:3000","http://127.0.0.1:3000","http://localhost:5175","http://127.0.0.1:5175"]'
+if [ -n "${LEXIA_PUBLIC_URL:-}" ]; then
+  BASE="${LEXIA_PUBLIC_URL%/}"
+  REDIRECT_URIS=$(printf '%s' "$REDIRECT_URIS" | sed "s/]$/,\"${BASE}/lexia/*\",\"${BASE}/lexia\",\"${BASE}/lexia/admin\",\"${BASE}/lexia/admin/*\",\"${BASE}/*\"]/")
+  WEB_ORIGINS=$(printf '%s' "$WEB_ORIGINS" | sed "s/]$/,\"${BASE}\"]/")
+  echo "[keycloak-seed] including public URL ${BASE} in frontend client redirects"
+fi
 $KC update clients -r "$REALM" -q clientId=legal-ai-frontend \
   -s 'rootUrl=http://localhost/lexia' \
   -s 'baseUrl=http://localhost/lexia' \
-  -s 'redirectUris=["http://localhost/lexia/*","http://localhost/lexia","http://localhost/lexia/admin","http://localhost/lexia/admin/*","http://localhost/*","http://localhost:3000/*","http://localhost:3000/lexia","http://localhost:3000/lexia/*","http://localhost:3000/lexia/admin","http://localhost:3000/lexia/admin/*","http://127.0.0.1:3000/*","http://127.0.0.1:3000/lexia","http://127.0.0.1:3000/lexia/*","http://localhost:5175/*","http://127.0.0.1:5175/*"]' \
-  -s 'webOrigins=["http://localhost","http://localhost:3000","http://127.0.0.1:3000","http://localhost:5175","http://127.0.0.1:5175"]' \
+  -s "redirectUris=${REDIRECT_URIS}" \
+  -s "webOrigins=${WEB_ORIGINS}" \
   2>/dev/null || echo "[keycloak-seed] warn: could not patch legal-ai-frontend client (may need manual update)"
 
 echo "[keycloak-seed] done — admin panel: http://localhost:3000/lexia/admin"

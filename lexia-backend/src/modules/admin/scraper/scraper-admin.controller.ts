@@ -53,6 +53,24 @@ export class ScraperAdminController {
     return this.scraperAdminService.enqueueScraping(id);
   }
 
+  @Post('scrape-by-reference/preview')
+  @ApiOperation({ summary: 'Preview scrape by court file reference (no ingest)' })
+  previewScrapeByReference(@Body() body: any) {
+    return this.scraperAdminService.previewScrapeByReference(body);
+  }
+
+  @Post('scrape-by-reference')
+  @ApiOperation({ summary: 'Enqueue scrape-by-reference job (mahakim → CSPJ routing)' })
+  enqueueScrapeByReference(@Body() body: any) {
+    return this.scraperAdminService.enqueueScrapeByReference(body);
+  }
+
+  @Get('monitor')
+  @ApiOperation({ summary: 'Live scraping monitor (corpus progress + queue stats)' })
+  getMonitor() {
+    return this.scraperAdminService.getMonitor();
+  }
+
   @Get('jobs')
   @ApiOperation({ summary: 'List scraping jobs' })
   getJobs() {
@@ -76,5 +94,23 @@ export class ScraperAdminController {
   @ApiOperation({ summary: 'Reindex a document' })
   reindexDocument(@Param('documentId') documentId: string) {
     return this.scraperAdminService.reindexDocument(documentId);
+  }
+
+  @Post('drain-document-queue')
+  @ApiOperation({ summary: 'Vider la file document-processing (legacy OCR) et marquer les PDF prêts' })
+  drainDocumentQueue() {
+    return this.scraperAdminService.drainDocumentProcessingQueue();
+  }
+
+  @Post('sources/:id/resume-corpus')
+  @ApiOperation({ summary: 'Reprendre le téléchargement corpus pour une source' })
+  resumeCorpus(@Param('id') id: string) {
+    return this.scraperAdminService.resumeCorpusSource(id);
+  }
+
+  @Post('bulk-reindex')
+  @ApiOperation({ summary: 'Indexer en lot les PDF différés (phase 2)' })
+  bulkReindex(@Body() body: { sourceId?: string; limit?: number }) {
+    return this.scraperAdminService.bulkReindexDeferred(body);
   }
 }

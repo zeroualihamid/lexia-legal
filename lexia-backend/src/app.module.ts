@@ -21,6 +21,7 @@ import { AgentChatController } from "./agent-chat/chat.controller";
 import { CrossTowerModule } from "./cross-tower/cross-tower.module";
 import { TasksModule } from "./modules/tasks/tasks.module";
 import { LegalAuthModule } from "./modules/auth/legal-auth.module";
+import { ClaudeCodeModule } from "./common/claude/claude-code.module";
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { LegalAuthModule } from "./modules/auth/legal-auth.module";
       inject: [ConfigService],
     }),
     DatabaseModule,
+    ClaudeCodeModule,
     StorageModule,
     OcrModule,
     ChatModule,

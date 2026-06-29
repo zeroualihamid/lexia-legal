@@ -24,6 +24,7 @@ REASONING_RELATION_TYPES = {
     "based_on",
     "proves",
     "contradicts",
+    "follows_precedent",
 }
 
 DISCOVERY_RELATION_TYPES = {
@@ -121,6 +122,7 @@ DEFAULT_RELATION_WEIGHTS = {
     "same_judgment": 10.0,
     "same_source_pdf": 10.0,
     "contradicts": 3.0,
+    "follows_precedent": 1.1,
     "defines_term": 1.4,
     "next_paragraph": 10.0,
     "previous_paragraph": 10.0,

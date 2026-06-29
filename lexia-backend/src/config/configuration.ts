@@ -74,6 +74,8 @@ export default () => ({
     oauthToken: process.env.CLAUDE_CODE_OAUTH_TOKEN || '',
     analysisTimeoutMs:
       parseInt(process.env.CLAUDE_ANALYSIS_TIMEOUT_MS, 10) || 10 * 60 * 1000,
+    classificationTimeoutMs:
+      parseInt(process.env.CLAUDE_CLASSIFICATION_TIMEOUT_MS, 10) || 90 * 1000,
     killGraceMs:
       parseInt(process.env.CLAUDE_KILL_GRACE_MS, 10) || 5 * 1000,
   },

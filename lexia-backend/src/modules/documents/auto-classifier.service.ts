@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import OpenAI from 'openai';
+import { ClaudeCodeService } from '../../common/claude/claude-code.service';
 
 interface ClassificationResult {
   collection: string;
@@ -29,45 +29,56 @@ const VALID_COLLECTIONS = [
 export class AutoClassifierService {
   private readonly logger = new Logger(AutoClassifierService.name);
 
-  async classify(
-    text: string,
-    openaiClient: OpenAI,
-  ): Promise<ClassificationResult> {
+  constructor(private readonly claudeCode: ClaudeCodeService) {}
+
+  async classify(text: string): Promise<ClassificationResult> {
     const sample = text.slice(0, 2000);
 
+    if (!this.claudeCode.isAvailable()) {
+      this.logger.warn('Claude Code unavailable — keyword fallback for classify');
+      return {
+        collection: this.fallbackClassify(text),
+        jurisdiction: {},
+        confidence: 0.3,
+      };
+    }
+
     try {
-      const response = await openaiClient.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a Moroccan legal document classifier. Analyze the document and respond with JSON:
+      const parsed = await this.claudeCode.invokeJson<{
+        collection?: string;
+        courtName?: string;
+        city?: string;
+        date?: string;
+        caseNumber?: string;
+        confidence?: number;
+      }>(
+        `You are a Moroccan legal document classifier. Analyze the document and respond with JSON only (no markdown):
 {
   "collection": "one of: legal_laws|judgments_commercial|judgments_civil|judgments_admin|judgments_criminal|judgments_family|judgments_social|judgments_real_estate|judgments_constitutional|user_documents",
   "courtName": "court name if judgment",
   "city": "city if available",
   "date": "document date if found",
   "caseNumber": "case number if judgment",
-  "confidence": 0.0-1.0
-}`,
-          },
-          {
-            role: 'user',
-            content: `Classify this Moroccan legal document:\n\n${sample}`,
-          },
-        ],
-        response_format: { type: 'json_object' },
-        max_tokens: 300,
-      });
+  "confidence": 0.0
+}
 
-      const parsed = JSON.parse(response.choices[0].message.content);
+Classify this Moroccan legal document:
+
+${sample}`,
+        { label: 'document-classify' },
+      );
+
+      if (!parsed) {
+        throw new Error('Claude returned no JSON');
+      }
+
       const collection = VALID_COLLECTIONS.includes(parsed.collection)
         ? parsed.collection
         : this.fallbackClassify(text);
 
       const confidence = parsed.confidence ?? 0.5;
 
-      const result: ClassificationResult = {
+      return {
         collection: confidence >= 0.7 ? collection : this.fallbackClassify(text),
         jurisdiction: {
           courtName: parsed.courtName,
@@ -77,10 +88,9 @@ export class AutoClassifierService {
         },
         confidence,
       };
-
-      return result;
     } catch (err) {
-      this.logger.error(`Classification failed: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Classification failed: ${message}`);
       return {
         collection: this.fallbackClassify(text),
         jurisdiction: {},
@@ -98,35 +108,43 @@ export class AutoClassifierService {
    */
   async classifyJudgment(
     text: string,
-    openaiClient: OpenAI,
   ): Promise<{ isJudgment: boolean; collection: string }> {
     const looksJudgment = this.looksLikeJudgment(text);
     const sample = text.slice(0, 3000);
 
+    if (!this.claudeCode.isAvailable()) {
+      if (looksJudgment) {
+        return {
+          isJudgment: true,
+          collection: this.judgmentSubcollection(text),
+        };
+      }
+      return { isJudgment: false, collection: 'user_documents' };
+    }
+
     try {
-      const response = await openaiClient.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: `You analyse Moroccan legal documents. Decide if the document is a COURT JUDGMENT or DECISION (حكم / قرار قضائي صادر عن محكمة), as opposed to a contract, pleading, expertise, correspondence, etc.
-Respond with JSON:
+      const parsed = await this.claudeCode.invokeJson<{
+        isJudgment?: boolean;
+        category?: string;
+      }>(
+        `You analyse Moroccan legal documents. Decide if the document is a COURT JUDGMENT or DECISION (حكم / قرار قضائي صادر عن محكمة), as opposed to a contract, pleading, expertise, correspondence, etc.
+Respond with JSON only (no markdown):
 {
-  "isJudgment": true|false,
+  "isJudgment": true,
   "category": "commercial|civil|admin|criminal|family|social|real_estate|constitutional"
 }
-"category" is the judgment's domain (only meaningful when isJudgment is true).`,
-          },
-          {
-            role: 'user',
-            content: `Document:\n\n${sample}`,
-          },
-        ],
-        response_format: { type: 'json_object' },
-        max_tokens: 120,
-      });
+"category" is the judgment's domain (only meaningful when isJudgment is true).
 
-      const parsed = JSON.parse(response.choices[0].message.content);
+Document:
+
+${sample}`,
+        { label: 'judgment-classify' },
+      );
+
+      if (!parsed) {
+        throw new Error('Claude returned no JSON');
+      }
+
       const isJudgment = parsed.isJudgment === true || looksJudgment;
       if (!isJudgment) {
         return { isJudgment: false, collection: 'user_documents' };
@@ -134,7 +152,8 @@ Respond with JSON:
       const collection = this.judgmentCollectionFor(parsed.category, text);
       return { isJudgment: true, collection };
     } catch (err) {
-      this.logger.warn(`Judgment classification failed: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Judgment classification failed: ${message}`);
       if (looksJudgment) {
         return {
           isJudgment: true,

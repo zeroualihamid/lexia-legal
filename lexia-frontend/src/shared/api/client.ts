@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { resolveAdminApiToken } from '../auth/adminSession'
 import { useAuthStore } from '../store/authStore'
 
 const apiClient = axios.create({
@@ -12,7 +13,7 @@ const cleanCurrentUrl = () => `${window.location.origin}${window.location.pathna
 
 apiClient.interceptors.request.use(
   (config) => {
-    const token = useAuthStore.getState().token
+    const token = resolveAdminApiToken(useAuthStore.getState().token)
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }

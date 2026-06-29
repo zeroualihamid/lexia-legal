@@ -10,7 +10,9 @@ import {
   Query,
   NotFoundException,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -119,9 +121,11 @@ export class AdminDocumentsController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
     @Query('status') status?: string,
-  ): Promise<AdminDocumentListItem[]> {
+    @Query('meta') meta?: string,
+  ): Promise<AdminDocumentListItem[] | { items: AdminDocumentListItem[]; total: number; pendingReview: number; limit: number; offset: number }> {
     const lim = limit ? Math.min(parseInt(limit, 10) || 50, 500) : 100;
     const off = offset ? parseInt(offset, 10) || 0 : 0;
+    const withMeta = meta === '1' || meta === 'true';
     const params: any[] = [lim, off];
     let where = '';
     if (status) {
@@ -169,7 +173,7 @@ export class AdminDocumentsController {
       .map((r) => r.owner_id as string);
     const owners = await this.usersService.getUsersBriefMap(ownerIds);
 
-    return rows.map((row) => {
+    const items = rows.map((row) => {
       const owner = row.owner_id ? owners.get(row.owner_id) : null;
       let uploadedBy: string | null = null;
       if (row.owner_type === 'system') {
@@ -188,6 +192,38 @@ export class AdminDocumentsController {
         summary_ready: !!row.summary_ready,
       };
     });
+
+    if (!withMeta) {
+      return items;
+    }
+
+    if (status) {
+      const filtered = await this.postgres.queryOne<{ total: number }>(
+        `SELECT COUNT(*)::int AS total FROM documents WHERE status = $1`,
+        [status],
+      );
+      return {
+        items,
+        total: filtered?.total ?? 0,
+        pendingReview: status === 'pending_review' ? (filtered?.total ?? 0) : 0,
+        limit: lim,
+        offset: off,
+      };
+    }
+
+    const counts = await this.postgres.queryOne<{ total: number; pending_review: number }>(
+      `SELECT COUNT(*)::int AS total,
+              COUNT(*) FILTER (WHERE status = 'pending_review')::int AS pending_review
+       FROM documents`,
+    );
+
+    return {
+      items,
+      total: counts?.total ?? 0,
+      pendingReview: counts?.pending_review ?? 0,
+      limit: lim,
+      offset: off,
+    };
   }
 
   @Get(':id')
@@ -221,6 +257,22 @@ export class AdminDocumentsController {
   }
 
   // ─── Page rendering / viewer endpoints ──────────────────────
+
+  @Get(':id/pdf')
+  @ApiOperation({ summary: 'View or download the original PDF file' })
+  async viewPdf(@Param('id') id: string, @Res() res: Response) {
+    const pdf = await this.documentsService.getOriginalPdf(id);
+    const fallbackName = 'document.pdf';
+    const filename = encodeURIComponent(pdf.filename || fallbackName);
+
+    res.setHeader('Content-Type', pdf.contentType);
+    res.setHeader('Content-Length', pdf.buffer.length);
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${fallbackName}"; filename*=UTF-8''${filename}`,
+    );
+    res.send(pdf.buffer);
+  }
 
   @Get(':id/pages')
   @ApiOperation({ summary: 'List rendered pages for a document' })

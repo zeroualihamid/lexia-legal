@@ -1,0 +1,86 @@
+{
+  "graph_id": "legal_graph_unified",
+  "source": "merged_pkls",
+  "source_collections": [
+    "judgments_social",
+    "judgments_commercial",
+    "judgments_civil",
+    "judgments_criminal",
+    "judgments_family",
+    "judgments_constitutional",
+    "judgments_real_estate",
+    "judgments_admin",
+    "lexia_user_docs"
+  ],
+  "selected_documents": [
+    {
+      "document_id": "19361a94-52bf-4745-bbe8-a4ed9335b1d3",
+      "title": "CamScanner 02-12-2025 22.11.pdf",
+      "qdrant_chunks": 3,
+      "collection": "lexia_user_docs"
+    },
+    {
+      "document_id": "ace93760-946b-4535-a469-f9563d9399d2",
+      "title": "CamScanner 02-12-2025 22.11.pdf",
+      "qdrant_chunks": 3,
+      "collection": "lexia_user_docs"
+    },
+    {
+      "document_id": "cce0adcd-c7e7-44b1-a89e-1f7791a44a7e",
+      "title": "CamScanner 02-12-2025 22.11.pdf",
+      "qdrant_chunks": 3,
+      "collection": "lexia_user_docs"
+    },
+    {
+      "document_id": "aca7cf32-e58b-4b7e-86da-7548ce7d228a",
+      "title": "CamScanner 03-01-2026 22.36.pdf",
+      "qdrant_chunks": 4,
+      "collection": "lexia_user_docs"
+    },
+    {
+      "document_id": "49bb32c7-19e3-4ab1-96bc-fad9904dfc57",
+      "title": "CamScanner 03-11-2025 22.57.pdf",
+      "qdrant_chunks": 2,
+      "collection": "lexia_user_docs"
+    },
+    {
+      "document_id": "92ae1107-706d-4656-b715-7f870e7f9451",
+      "title": "CamScanner 24-01-2025 17.03.pdf",
+      "qdrant_chunks": 7,
+      "collection": "lexia_user_docs"
+    },
+    {
+      "document_id": "aadd7c98-54b5-4e92-9d72-3bc7a43f3403",
+      "title": "NS_FACTORY_CANTOR_Contrat.pdf",
+      "qdrant_chunks": 8,
+      "collection": "lexia_user_docs"
+    }
+  ],
+  "excluded_documents": [],
+  "document_count": 7,
+  "chunk_count": 30,
+  "graph_nodes": 30,
+  "graph_edges": 504,
+  "edge_counts": {
+    "same_document": 130,
+    "same_judgment": 130,
+    "same_source_pdf": 130,
+    "next_paragraph": 23,
+    "same_section": 18,
+    "similar_to": 28,
+    "previous_paragraph": 23,
+    "leads_to": 9,
+    "follows_precedent": 12,
+    "grants": 1
+  },
+  "layer_counts": {
+    "discovery": 488,
+    "reasoning": 16
+  },
+  "reasoning_edge_count": 16,
+  "pkl_path": "/Users/mac/Documents/repos/lexia-legal/lexia-agent/data/legal_graph_unified/legal_graph.pkl",
+  "graphml_path": "/Users/mac/Documents/repos/lexia-legal/lexia-agent/data/legal_graph_unified/legal_graph.graphml",
+  "combined_png": "/Users/mac/Documents/repos/lexia-legal/lexia-agent/data/legal_graph_unified/legal_graph_combined_view.png",
+  "reasoning_png": "/Users/mac/Documents/repos/lexia-legal/lexia-agent/data/legal_graph_unified/legal_graph_reasoning_view.png",
+  "discovery_png": "/Users/mac/Documents/repos/lexia-legal/lexia-agent/data/legal_graph_unified/legal_graph_discovery_view.png"
+}

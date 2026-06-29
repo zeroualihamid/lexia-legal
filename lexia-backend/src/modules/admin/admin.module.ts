@@ -38,6 +38,8 @@ import { JudgmentAnalysisModule } from './judgment-analysis/judgment-analysis.mo
 
 // Admin documents (upload + per-document page viewer)
 import { AdminDocumentsModule } from './documents/admin-documents.module';
+import { DriveConnectorsModule } from './drive-connectors/drive-connectors.module';
+import { QueueModule } from '../queue/queue.module';
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { AdminDocumentsModule } from './documents/admin-documents.module';
     JudgmentAnalysisModule,
     UsersModule,
     AdminDocumentsModule,
+    DriveConnectorsModule,
+    QueueModule,
     BullModule.registerQueue(
       { name: 'scraping' },
       { name: 'document-processing' },

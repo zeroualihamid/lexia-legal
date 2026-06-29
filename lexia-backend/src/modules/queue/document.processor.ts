@@ -11,6 +11,7 @@ import OpenAI from 'openai';
 import { MinioService } from '../storage/minio.service';
 import { MistralOcrService } from '../ocr/mistral-ocr.service';
 import { AutoClassifierService } from '../documents/auto-classifier.service';
+import { JudgmentMetadataService } from '../documents/judgment-metadata.service';
 import { ChunkingService } from '../chat/agent/chunking.service';
 import { EmbeddingService } from '../chat/agent/embedding.service';
 import { QdrantService } from '../../database/qdrant.service';
@@ -30,6 +31,7 @@ export class DocumentProcessor {
     private minioService: MinioService,
     private ocrService: MistralOcrService,
     private classifierService: AutoClassifierService,
+    private judgmentMetadataService: JudgmentMetadataService,
     private chunkingService: ChunkingService,
     private embeddingService: EmbeddingService,
     private qdrantService: QdrantService,
@@ -93,11 +95,20 @@ export class DocumentProcessor {
         'text/markdown',
       );
 
-      // 4. Auto-classify
-      const classification = await this.classifierService.classify(ocrText, this.openai);
+      // 4. Auto-classify (Claude Code via CLAUDE_CODE_OAUTH_TOKEN)
+      const classification = await this.classifierService.classify(ocrText);
       const collection = classification.collection;
       this.logger.log(`Document ${documentId} classified as: ${collection}`);
       await job.progress(60);
+
+      const judgmentMeta =
+        collection.startsWith('judgments_')
+          ? await this.judgmentMetadataService.extractFromText(ocrText)
+          : null;
+      const jurisdiction = this.mergeJurisdiction(
+        classification.jurisdiction,
+        judgmentMeta,
+      );
 
       // 5. Chunk text
       const chunks = this.chunkingService.chunkDocument(ocrText, collection);
@@ -144,14 +155,20 @@ export class DocumentProcessor {
              collection = $1,
              ocr_text = $2,
              jurisdiction = $3,
-             word_count = $4
+             word_count = $4,
+             metadata = CASE
+               WHEN $6::jsonb IS NOT NULL
+               THEN metadata || jsonb_build_object('judgment', $6::jsonb)
+               ELSE metadata
+             END
            WHERE id = $5`,
           [
             collection,
             ocrText.slice(0, 10000), // store first 10k chars
-            JSON.stringify(classification.jurisdiction),
+            JSON.stringify(jurisdiction),
             ocrText.split(/\s+/).length,
             documentId,
+            judgmentMeta ? JSON.stringify(judgmentMeta) : null,
           ],
         );
       });
@@ -328,15 +345,18 @@ export class DocumentProcessor {
       );
 
       // Categorise: judgment vs. anything else (judgment-focused detection).
-      const judgmentClass = await this.classifierService.classifyJudgment(
-        ocrText,
-        this.openai,
-      );
+      const judgmentClass = await this.classifierService.classifyJudgment(ocrText);
       const isJudgment = judgmentClass.isJudgment;
       const collection = judgmentClass.collection;
       const classification = isJudgment
-        ? await this.classifierService.classify(ocrText, this.openai)
+        ? await this.classifierService.classify(ocrText)
         : { jurisdiction: {} as any };
+      const judgmentMeta = isJudgment
+        ? await this.judgmentMetadataService.extractFromText(ocrText)
+        : null;
+      const jurisdiction = isJudgment
+        ? this.mergeJurisdiction(classification.jurisdiction, judgmentMeta)
+        : classification.jurisdiction;
       this.logger.log(
         `Chat upload ${documentId} classified as ${collection} (judgment=${isJudgment})`,
       );
@@ -347,20 +367,20 @@ export class DocumentProcessor {
         [documentId],
       );
       const title =
-        this.buildJudgmentTitle(classification, meta?.title_ar) ||
+        this.buildJudgmentTitle({ jurisdiction }, meta?.title_ar) ||
         meta?.title_ar ||
         'مستند';
 
       if (isJudgment) {
         // Add to the shared global judgments corpus (best-effort — OpenAI
-        // vectors). Never let a corpus embedding hiccup fail the whole upload.
+        // embeddings). Never let a corpus embedding hiccup fail the whole upload.
         try {
           await this.indexJudgmentUpload(
             documentId,
             ownerId,
             collection,
             ocrText,
-            classification,
+            { jurisdiction },
             title,
           );
         } catch (idxErr: any) {
@@ -423,17 +443,22 @@ export class DocumentProcessor {
                'isJudgment', true,
                'analysisId', $6::text,
                'analysisJobId', $7::text
-             ),
+             ) || CASE
+               WHEN $8::jsonb IS NOT NULL
+               THEN jsonb_build_object('judgment', $8::jsonb)
+               ELSE '{}'::jsonb
+             END,
              updated_at = NOW()
-           WHERE id = $8`,
+           WHERE id = $9`,
           [
             title,
             collection,
             ocrText.slice(0, 10000),
             ocrText.split(/\s+/).length,
-            JSON.stringify(classification.jurisdiction || {}),
+            JSON.stringify(jurisdiction || {}),
             analysisId,
             String(analysisJob.id),
+            judgmentMeta ? JSON.stringify(judgmentMeta) : null,
             documentId,
           ],
         );
@@ -547,6 +572,38 @@ export class DocumentProcessor {
     const parts = [j.courtName, j.caseNumber, j.date].filter(Boolean);
     if (parts.length === 0) return fallback || null;
     return parts.join(' — ');
+  }
+
+  /** Enrich classifier jurisdiction with structured judgment header fields. */
+  private mergeJurisdiction(
+    jurisdiction: Record<string, unknown> | undefined,
+    judgmentMeta: Awaited<
+      ReturnType<JudgmentMetadataService['extractFromText']>
+    > | null,
+  ): Record<string, unknown> {
+    if (!judgmentMeta) return jurisdiction || {};
+
+    const ref = judgmentMeta.fileReference;
+    const caseNumber =
+      ref.fileReferenceRaw ||
+      [ref.fileNumber, ref.fileCode, ref.fileYear].filter(Boolean).join('/') ||
+      undefined;
+
+    return {
+      ...(jurisdiction || {}),
+      courtName: ref.courtName || jurisdiction?.courtName,
+      caseNumber: caseNumber || jurisdiction?.caseNumber,
+      date: ref.decisionDate || jurisdiction?.date,
+      courtSection: ref.courtSection || jurisdiction?.courtSection,
+      courtPanel: ref.courtPanel || jurisdiction?.courtPanel,
+      fileNumber: ref.fileNumber,
+      fileCode: ref.fileCode,
+      fileYear: ref.fileYear,
+      decisionNumber: ref.decisionNumber,
+      judges: judgmentMeta.judges,
+      plaintiffs: judgmentMeta.parties.plaintiffs,
+      defendants: judgmentMeta.parties.defendants,
+    };
   }
 
   /**

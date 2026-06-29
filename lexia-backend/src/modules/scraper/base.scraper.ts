@@ -5,6 +5,9 @@ export interface ScrapedPage {
   url: string;
   content: string;
   title: string;
+  mimeType?: string;
+  binary?: Buffer;
+  metadata?: Record<string, unknown>;
 }
 
 export abstract class BaseScraper {

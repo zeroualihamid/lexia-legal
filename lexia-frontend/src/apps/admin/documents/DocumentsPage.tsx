@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Tabs,
   Table,
@@ -26,6 +27,7 @@ import {
   DeleteOutlined,
   FileTextOutlined,
   FileSearchOutlined,
+  CloudDownloadOutlined,
 } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import apiClient from '../../../shared/api/client'
@@ -287,13 +289,17 @@ function RejectModal({
 
 export function DocumentsPage() {
   const ui = useAdminUi()
-  const { t, font, dir, pageStyle, tableStyle, h1Style, cellStyle, mutedStyle, collectionLabel } = ui
+  const { t, font, dir, pageStyle, tableStyle, h1Style, cellStyle, mutedStyle, collectionLabel, numberLocale } = ui
+  const navigate = useNavigate()
   const [uploadOpen, setUploadOpen] = useState(false)
   const [rejectDocId, setRejectDocId] = useState<string | null>(null)
   const [viewerDoc, setViewerDoc] = useState<{ id: string; filename: string } | null>(null)
   const [summaryDocId, setSummaryDocId] = useState<string | null>(null)
   const [summaryReload, setSummaryReload] = useState(0)
   const [summarizingId, setSummarizingId] = useState<string | null>(null)
+  const [allPage, setAllPage] = useState(1)
+  const [pendingPage, setPendingPage] = useState(1)
+  const pageSize = 50
   const qc = useQueryClient()
   const summaryStream = useSearchJudgmentSummary(summaryDocId, summaryReload)
   const summarizeJudgment = useSummarizeSearchJudgment()
@@ -374,16 +380,43 @@ export function DocumentsPage() {
     </Space>
   )
 
-  const { data: docs, isLoading } = useQuery({
-    queryKey: ['documents'],
+  const { data: docsResult, isLoading } = useQuery({
+    queryKey: ['documents', allPage, pendingPage],
     queryFn: async () => {
       try {
-        const res = await apiClient.get('/admin/documents')
-        return res.data
+        const res = await apiClient.get('/admin/documents', {
+          params: { meta: '1', limit: pageSize, offset: (allPage - 1) * pageSize },
+        })
+        return res.data as {
+          items: AdminDocumentRow[]
+          total: number
+          pendingReview: number
+        }
       } catch {
-        return MOCK_DOCUMENTS
+        return {
+          items: MOCK_DOCUMENTS,
+          total: MOCK_DOCUMENTS.length,
+          pendingReview: MOCK_DOCUMENTS.filter((d) => d.status === 'pending_review').length,
+        }
       }
     },
+    refetchInterval: 30_000,
+  })
+
+  const { data: pendingResult, isLoading: pendingLoading } = useQuery({
+    queryKey: ['documents-pending', pendingPage],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/documents', {
+        params: {
+          meta: '1',
+          limit: pageSize,
+          offset: (pendingPage - 1) * pageSize,
+          status: 'pending_review',
+        },
+      })
+      return res.data as { items: AdminDocumentRow[]; total: number }
+    },
+    enabled: (docsResult?.pendingReview ?? 0) > 0,
   })
 
   const { mutate: approve } = useMutation({
@@ -496,8 +529,10 @@ export function DocumentsPage() {
     },
   ]
 
-  const allDocs = docs || MOCK_DOCUMENTS
-  const pendingDocs = allDocs.filter((d: any) => d.status === 'pending_review')
+  const allDocs = docsResult?.items ?? []
+  const totalDocs = docsResult?.total ?? 0
+  const pendingTotal = docsResult?.pendingReview ?? 0
+  const pendingDocs = pendingResult?.items ?? []
 
   const tabItems = [
     {
@@ -505,7 +540,12 @@ export function DocumentsPage() {
       label: (
         <span style={{ fontFamily: font }}>
           {t.documents.tabAll}
-          <Badge count={allDocs.length} style={{ marginInlineStart: 8, background: 'var(--color-border-subtle)' }} />
+          <Badge
+            count={totalDocs}
+            overflowCount={999_999}
+            showZero
+            style={{ marginInlineStart: 8, background: 'var(--color-border-subtle)', color: 'var(--color-text-secondary)' }}
+          />
         </span>
       ),
       children: (
@@ -514,7 +554,18 @@ export function DocumentsPage() {
           columns={allColumns}
           rowKey="id"
           loading={isLoading}
-          pagination={{ pageSize: 15 }}
+          pagination={{
+            current: allPage,
+            pageSize,
+            total: totalDocs,
+            showSizeChanger: false,
+            showTotal: (total) => (
+              <span style={{ fontFamily: font, color: 'var(--color-text-tertiary)' }}>
+                {total.toLocaleString(numberLocale)} {t.documents.totalLabel}
+              </span>
+            ),
+            onChange: (p) => setAllPage(p),
+          }}
           style={tableStyle}
           locale={{ emptyText: <span style={{ fontFamily: font }}>{t.documents.emptyAll}</span> }}
         />
@@ -525,8 +576,12 @@ export function DocumentsPage() {
       label: (
         <span style={{ fontFamily: font }}>
           {t.documents.tabPending}
-          {pendingDocs.length > 0 && (
-            <Badge count={pendingDocs.length} style={{ marginInlineStart: 8, background: '#fa8c16' }} />
+          {pendingTotal > 0 && (
+            <Badge
+              count={pendingTotal}
+              overflowCount={999_999}
+              style={{ marginInlineStart: 8, background: '#fa8c16' }}
+            />
           )}
         </span>
       ),
@@ -535,8 +590,19 @@ export function DocumentsPage() {
           dataSource={pendingDocs}
           columns={pendingColumns}
           rowKey="id"
-          loading={isLoading}
-          pagination={{ pageSize: 15 }}
+          loading={pendingLoading || isLoading}
+          pagination={{
+            current: pendingPage,
+            pageSize,
+            total: pendingResult?.total ?? pendingTotal,
+            showSizeChanger: false,
+            showTotal: (total) => (
+              <span style={{ fontFamily: font, color: 'var(--color-text-tertiary)' }}>
+                {total.toLocaleString(numberLocale)} {t.documents.totalLabel}
+              </span>
+            ),
+            onChange: (p) => setPendingPage(p),
+          }}
           style={tableStyle}
           locale={{ emptyText: <span style={{ fontFamily: font }}>{t.documents.emptyPending}</span> }}
         />
@@ -548,14 +614,23 @@ export function DocumentsPage() {
     <div style={pageStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h1 style={h1Style}>{t.documents.title}</h1>
-        <Button
-          type="primary"
-          icon={<UploadOutlined />}
-          onClick={() => setUploadOpen(true)}
-          style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: font, fontWeight: 600 }}
-        >
-          {t.documents.upload}
-        </Button>
+        <Space>
+          <Button
+            icon={<CloudDownloadOutlined />}
+            onClick={() => navigate('/admin/scraper?tab=by-ref')}
+            style={{ fontFamily: font }}
+          >
+            {t.scraper.byReference}
+          </Button>
+          <Button
+            type="primary"
+            icon={<UploadOutlined />}
+            onClick={() => setUploadOpen(true)}
+            style={{ background: GOLD, borderColor: GOLD, color: '#000', fontFamily: font, fontWeight: 600 }}
+          >
+            {t.documents.upload}
+          </Button>
+        </Space>
       </div>
 
       <Tabs items={tabItems} style={{ direction: dir }} />

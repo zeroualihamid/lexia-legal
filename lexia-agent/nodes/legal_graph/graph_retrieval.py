@@ -29,6 +29,9 @@ _cache: Dict[str, Any] = {"sig": None, "neighbors": {}, "meta": {}}
 
 
 def _graph_pickle_paths(data_dir: str) -> List[str]:
+    canonical = os.path.join(data_dir, "legal_graph_unified", "legal_graph.pkl")
+    if os.path.exists(canonical):
+        return [canonical]
     paths: List[str] = []
     for directory in sorted(glob.glob(os.path.join(data_dir, "legal_graph_*"))):
         paths.extend(sorted(glob.glob(os.path.join(directory, "*.pkl"))))

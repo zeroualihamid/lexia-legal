@@ -49,6 +49,7 @@ _DEFAULT_JUDGMENT_COLLECTIONS = [
     "judgments_real_estate",
     "judgments_admin",
     "lexia_user_docs",
+    "user_documents",
 ]
 
 
@@ -97,6 +98,58 @@ class LegalGraphListResponse(BaseModel):
     graphs: List[LegalGraphArtifact]
     count: int
     data_root: str
+
+
+class LegalGraphExplorePreset(BaseModel):
+    id: str
+    label: str
+    question: str
+    intent: str
+    section_types: List[str] = Field(default_factory=list)
+
+
+class LegalGraphExplorePresetsResponse(BaseModel):
+    presets: List[LegalGraphExplorePreset]
+
+
+class LegalGraphExploreQueryRequest(BaseModel):
+    preset_id: Optional[str] = None
+    query: Optional[str] = None
+    depth: int = Field(default=3, ge=1, le=6)
+
+
+class LegalGraphExplorePathRequest(BaseModel):
+    node_id: str
+    query: Optional[str] = None
+    goal_node_id: Optional[str] = None
+
+
+class LegalGraphExploreQueryResponse(BaseModel):
+    preset_id: Optional[str] = None
+    query: str
+    seeds: List[str] = Field(default_factory=list)
+    node_ids: List[str] = Field(default_factory=list)
+    edge_ids: List[str] = Field(default_factory=list)
+    graph: Dict[str, Any] = Field(default_factory=dict)
+    stats: Dict[str, Any] = Field(default_factory=dict)
+    truncated: bool = False
+    message: str = ""
+
+
+class LegalGraphExplorePathResponse(BaseModel):
+    node_id: str
+    goal_node_id: Optional[str] = None
+    path_node_ids: List[str] = Field(default_factory=list)
+    path_steps: List[Dict[str, Any]] = Field(default_factory=list)
+    highlighted_edge_ids: List[str] = Field(default_factory=list)
+    graph: Dict[str, Any] = Field(default_factory=dict)
+    search_method: str = "none"
+    status: str = "no_reasoning_path"
+    summary: str = ""
+    key_steps: List[str] = Field(default_factory=list)
+    confidence_score: float = 0.0
+    message: str = ""
+    suggested_action: str = ""
 
 
 class LegalGraphBuildRequest(BaseModel):
@@ -180,15 +233,13 @@ def _graph_dirs() -> Dict[str, Path]:
     if not root.exists():
         return {}
 
-    graph_dirs: Dict[str, Path] = {}
-    for item in sorted(root.iterdir(), key=lambda p: p.name):
-        if item.is_dir() and item.name.startswith("legal_graph") and _has_direct_graph_artifacts(item):
-            graph_dirs[item.name] = item.resolve()
+    canonical = (root / "legal_graph_unified").resolve()
+    canonical_pkl = canonical / "legal_graph.pkl"
+    if canonical.is_dir() and canonical_pkl.is_file():
+        return {"legal_graph_unified": canonical}
 
-    if _has_root_legal_graph_artifacts(root):
-        graph_dirs.setdefault("legal_graph", root)
-
-    return graph_dirs
+    # No canonical graph yet — expose nothing until the first unified build completes.
+    return {}
 
 
 def _summary_file(directory: Path) -> Optional[Path]:
@@ -605,167 +656,61 @@ def _build_config(body: LegalGraphBuildRequest, run_dir: Path) -> Tuple[LegalGra
 
 
 def _run_build_flow_with_progress(job_id: str, body: LegalGraphBuildRequest) -> None:
-    run_id = f"legal_graph_admin_{_safe_run_id()}"
-    run_dir = _data_root() / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-    config, collections = _build_config(body, run_dir)
-    shared: Dict[str, Any] = {
-        "query": body.query,
-        "legal_graph_config": config,
-        "top_k": body.top_k,
-        "judgments_only": body.judgments_only,
-        "cross_case": body.cross_case,
-    }
+    from services.legal_graph.unified_builder import consolidate_legal_graphs, unified_dir
 
     try:
         _update_build_job(
             job_id,
             status="running",
-            progress=4,
-            phase="initializing",
-            message="Initialisation du graphe juridique.",
+            progress=5,
+            phase="syncing",
+            message="Synchronisation des jugements depuis Postgres vers Qdrant.",
         )
-        agent = LegalGraphAgent(config=config)
-        shared["legal_graph_claude_client"] = agent.claude_client
-
         _update_build_job(
             job_id,
-            progress=10,
-            phase="retrieving",
-            message="Recherche des jugements dans Qdrant.",
+            progress=15,
+            phase="building",
+            message="Construction du graphe juridique unifié (jugements uniquement).",
         )
-        chunks = agent.retrieve(
-            body.query,
-            top_k=body.top_k,
-        )
-        retrieved_chunks = [chunk.model_dump() if hasattr(chunk, "model_dump") else dict(chunk) for chunk in chunks]
-        groups = _chunk_groups(retrieved_chunks)
-        total_documents = len(groups)
-        shared["retrieved_chunks"] = retrieved_chunks
+        summary = consolidate_legal_graphs(use_qdrant=True, delete_legacy_pkls=True, cleanup_legacy_dirs=True)
 
-        _update_build_job(
-            job_id,
-            progress=18,
-            phase="retrieved",
-            message=f"{len(retrieved_chunks)} chunks récupérés depuis {total_documents} jugement(s).",
-            total_documents=total_documents,
-            retrieved_chunks=len(retrieved_chunks),
-        )
-
-        _update_build_job(
-            job_id,
-            progress=22,
-            phase="loading_graph",
-            message="Chargement du graphe persistant.",
-        )
-        LoadGraphNode().run(shared)
-
-        upserted_node_ids: List[str] = []
-        skipped_node_ids: List[str] = []
-        if groups:
-            for index, group in enumerate(groups):
-                start_progress = 24 + int((index / total_documents) * 42)
-                _update_build_job(
-                    job_id,
-                    progress=start_progress,
-                    phase="processing_judgment",
-                    message=f"Traitement du jugement {index + 1}/{total_documents}.",
-                    current_file=group["filename"],
-                    processed_documents=index,
-                    total_documents=total_documents,
-                )
-                shared["retrieved_chunks"] = group["chunks"]
-                UpsertChunkNodesNode().run(shared)
-                upserted_node_ids.extend(shared.get("upserted_node_ids") or [])
-                skipped_node_ids.extend(shared.get("skipped_node_ids") or [])
-                _update_build_job(
-                    job_id,
-                    progress=24 + int(((index + 1) / total_documents) * 42),
-                    processed_documents=index + 1,
-                    upserted_nodes=len(upserted_node_ids),
-                    skipped_nodes=len(skipped_node_ids),
-                )
-        else:
-            _update_build_job(
-                job_id,
-                progress=66,
-                phase="processing_judgment",
-                message="Aucun jugement récupéré pour cette requête.",
-                current_file=None,
-                processed_documents=0,
-                total_documents=0,
-            )
-
-        shared["retrieved_chunks"] = retrieved_chunks
-        shared["upserted_node_ids"] = upserted_node_ids
-        shared["skipped_node_ids"] = skipped_node_ids
-
-        _update_build_job(
-            job_id,
-            progress=70,
-            phase="connecting",
-            message="Création des liens entre chunks et jugements.",
-            current_file=None,
-        )
-        ConnectToExistingGraphNode().run(shared)
-
-        _update_build_job(
-            job_id,
-            progress=78,
-            phase="selecting_reasoning_path",
-            message="Sélection des nœuds de départ et d'arrivée.",
-            connected_edges=len(shared.get("connected_edge_ids") or []),
-        )
-        SelectStartGoalNode().run(shared)
-
-        _update_build_job(
-            job_id,
-            progress=84,
-            phase="searching",
-            message="Recherche du chemin de raisonnement.",
-        )
-        GraphSearchNode().run(shared)
-
-        _update_build_job(
-            job_id,
-            progress=90,
-            phase="saving",
-            message="Sauvegarde du graphe et export GraphML.",
-        )
-        SaveGraphNode().run(shared)
-
-        _update_build_job(
-            job_id,
-            progress=95,
-            phase="rendering",
-            message="Rendu des vues PNG du graphe.",
-        )
-        _write_build_artifacts(run_dir, shared, collections)
-        artifact = _graph_artifact(run_id, run_dir)
+        graph_dir = unified_dir()
+        artifact = _graph_artifact("legal_graph_unified", graph_dir)
+        documents = summary.get("selected_documents") or []
+        excluded = summary.get("excluded_documents") or []
 
         _update_build_job(
             job_id,
             status="completed",
             progress=100,
             phase="completed",
-            message="Graphe juridique généré.",
-            current_file=None,
-            processed_documents=total_documents,
-            total_documents=total_documents,
-            retrieved_chunks=len(retrieved_chunks),
-            upserted_nodes=len(upserted_node_ids),
-            skipped_nodes=len(skipped_node_ids),
-            connected_edges=len(shared.get("connected_edge_ids") or []),
+            message=(
+                f"Graphe unifié généré — {summary.get('document_count', 0)} jugement(s), "
+                f"{summary.get('graph_nodes', 0)} nœuds."
+            ),
+            total_documents=summary.get("document_count"),
+            processed_documents=summary.get("document_count"),
+            retrieved_chunks=summary.get("chunk_count"),
+            upserted_nodes=summary.get("graph_nodes"),
+            connected_edges=summary.get("graph_edges"),
             graph=artifact.model_dump(),
             completed_at=_now_iso(),
         )
+        if excluded:
+            _update_build_job(
+                job_id,
+                message=(
+                    f"Graphe unifié — {summary.get('document_count', 0)} jugement(s). "
+                    f"{len(excluded)} document(s) exclus (contrats/autres)."
+                ),
+            )
     except Exception as exc:
         _update_build_job(
             job_id,
             status="failed",
             phase="failed",
             progress=100,
-            message="Échec de génération du graphe juridique.",
+            message="Échec de génération du graphe juridique unifié.",
             error=str(exc),
             completed_at=_now_iso(),
         )
@@ -804,34 +749,27 @@ async def list_legal_graphs() -> LegalGraphListResponse:
     )
 
 
-@router.post("/build", response_model=LegalGraphBuildResponse, summary="Build a judgment-only legal graph")
+@router.post("/build", response_model=LegalGraphBuildResponse, summary="Build the unified judgments-only legal graph")
 async def build_legal_graph(body: LegalGraphBuildRequest) -> LegalGraphBuildResponse:
-    run_id = f"legal_graph_admin_{_safe_run_id()}"
-    run_dir = _data_root() / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-    config, collections = _build_config(body, run_dir)
+    from services.legal_graph.unified_builder import consolidate_legal_graphs, unified_dir
 
     try:
-        agent = LegalGraphAgent(config=config)
-        shared = agent.run(
-            body.query,
-            top_k=body.top_k,
-            judgments_only=body.judgments_only,
-            cross_case=body.cross_case,
-        )
-        _write_build_artifacts(run_dir, shared, collections)
+        summary = consolidate_legal_graphs(use_qdrant=True, delete_legacy_pkls=True, cleanup_legacy_dirs=True)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Legal graph build failed: {exc}") from exc
 
-    artifact = _graph_artifact(run_id, run_dir)
+    artifact = _graph_artifact("legal_graph_unified", unified_dir())
     return LegalGraphBuildResponse(
         success=True,
-        message="Legal graph built and rendered.",
+        message=(
+            f"Graphe unifié — {summary.get('document_count', 0)} jugement(s), "
+            f"{summary.get('graph_nodes', 0)} nœuds."
+        ),
         graph=artifact,
-        retrieved_chunks=len(shared.get("retrieved_chunks") or []),
-        upserted_nodes=len(shared.get("upserted_node_ids") or []),
-        skipped_nodes=len(shared.get("skipped_node_ids") or []),
-        connected_edges=len(shared.get("connected_edge_ids") or []),
+        retrieved_chunks=int(summary.get("chunk_count") or 0),
+        upserted_nodes=int(summary.get("graph_nodes") or 0),
+        skipped_nodes=len(summary.get("excluded_documents") or []),
+        connected_edges=int(summary.get("graph_edges") or 0),
     )
 
 
@@ -851,6 +789,110 @@ async def start_legal_graph_build_job(body: LegalGraphBuildRequest) -> LegalGrap
 @router.get("/build-jobs/{job_id}", response_model=LegalGraphBuildJobStatus, summary="Get legal graph build job status")
 async def get_legal_graph_build_job(job_id: str) -> LegalGraphBuildJobStatus:
     return _build_job_snapshot(job_id)
+
+
+@router.get(
+    "/explore/presets",
+    response_model=LegalGraphExplorePresetsResponse,
+    summary="List preset legal graph exploration queries",
+)
+async def list_legal_graph_explore_presets() -> LegalGraphExplorePresetsResponse:
+    from services.legal_graph.explorer import list_presets
+
+    return LegalGraphExplorePresetsResponse(
+        presets=[LegalGraphExplorePreset.model_validate(item) for item in list_presets()]
+    )
+
+
+@router.post(
+    "/{graph_id}/explore/query",
+    response_model=LegalGraphExploreQueryResponse,
+    summary="Explore a legal graph subgraph for a preset or free-text query",
+)
+async def explore_legal_graph_query(
+    graph_id: str,
+    body: LegalGraphExploreQueryRequest,
+) -> LegalGraphExploreQueryResponse:
+    from services.legal_graph.explorer import (
+        LegalGraphExplorerError,
+        LegalGraphNotFoundError,
+        load_graph_from_directory,
+        query_subgraph,
+    )
+
+    if not body.preset_id and not (body.query or "").strip():
+        raise HTTPException(status_code=400, detail="preset_id or query is required")
+
+    try:
+        graph = load_graph_from_directory(_resolve_graph_dir(graph_id))
+        result = query_subgraph(
+            graph,
+            preset_id=body.preset_id,
+            query=body.query,
+            depth=body.depth,
+        )
+    except LegalGraphNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except LegalGraphExplorerError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return LegalGraphExploreQueryResponse(
+        preset_id=result.preset_id,
+        query=result.query,
+        seeds=result.seeds,
+        node_ids=result.node_ids,
+        edge_ids=result.edge_ids,
+        graph=result.graph,
+        stats=result.stats,
+        truncated=result.truncated,
+        message=result.message,
+    )
+
+
+@router.post(
+    "/{graph_id}/explore/path",
+    response_model=LegalGraphExplorePathResponse,
+    summary="Find A* reasoning path from a node and summarize it",
+)
+async def explore_legal_graph_path(
+    graph_id: str,
+    body: LegalGraphExplorePathRequest,
+) -> LegalGraphExplorePathResponse:
+    from services.legal_graph.explorer import (
+        LegalGraphExplorerError,
+        LegalGraphNotFoundError,
+        load_graph_from_directory,
+        path_from_node,
+    )
+
+    try:
+        graph = load_graph_from_directory(_resolve_graph_dir(graph_id))
+        result = path_from_node(
+            graph,
+            body.node_id,
+            query=body.query,
+            goal_node_id=body.goal_node_id,
+        )
+    except LegalGraphNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except LegalGraphExplorerError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return LegalGraphExplorePathResponse(
+        node_id=result.node_id,
+        goal_node_id=result.goal_node_id,
+        path_node_ids=result.path_node_ids,
+        path_steps=result.path_steps,
+        highlighted_edge_ids=result.highlighted_edge_ids,
+        graph=result.graph,
+        search_method=result.search_method,
+        status=result.status,
+        summary=result.summary,
+        key_steps=result.key_steps,
+        confidence_score=result.confidence_score,
+        message=result.message,
+        suggested_action=result.suggested_action,
+    )
 
 
 @router.get("/{graph_id}/images/{filename}", summary="Render a legal graph PNG")

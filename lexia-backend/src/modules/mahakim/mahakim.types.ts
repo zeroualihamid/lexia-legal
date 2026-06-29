@@ -29,6 +29,8 @@ export interface MahakimResult {
   text: string;
   query: MahakimQuery;
   capturedAt: string;
+  /** Courts attempted when auto-discovery is used. */
+  triedCourts?: string[];
 }
 
 export interface MahakimSyncJob {

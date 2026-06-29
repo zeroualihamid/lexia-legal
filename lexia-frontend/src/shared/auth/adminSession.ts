@@ -62,6 +62,11 @@ export function clearAdminSession(): void {
   sessionStorage.removeItem(ADMIN_TOKEN_KEY);
 }
 
+/** Prefer the dedicated admin login token over the main Keycloak session token. */
+export function resolveAdminApiToken(fallbackToken: string | null = null): string | null {
+  return readAdminSession()?.token ?? fallbackToken;
+}
+
 export async function loginAdmin(username: string, password: string): Promise<AdminSession> {
   const res = await fetch('/api/admin/auth/login', {
     method: 'POST',

@@ -12,9 +12,13 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import AgentChatPanel from '@/components/features/AgentChatPanel';
 import ResizableChatLayout from '@/components/features/ResizableChatLayout';
+import GoogleDriveConnectorsPanel from '@/components/features/GoogleDriveConnectorsPanel';
 import { cn } from '@/lib/utils';
 
+type ConnectorsTab = 'google_drive' | 'agent';
+
 export default function ConnectorsView() {
+  const [tab, setTab] = useState<ConnectorsTab>('google_drive');
   const [providers, setProviders] = useState<ConnectorProvider[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [settings, setSettings] = useState<ConnectorSettingsResponse | null>(null);
@@ -90,7 +94,20 @@ export default function ConnectorsView() {
   };
 
   return (
-    <div className="flex h-full w-full">
+    <div className="flex h-full w-full flex-col">
+      <div className="flex gap-1 border-b border-border px-3 py-2">
+        <TabButton active={tab === 'google_drive'} onClick={() => setTab('google_drive')}>
+          Google Drive
+        </TabButton>
+        <TabButton active={tab === 'agent'} onClick={() => setTab('agent')}>
+          Sources agent
+        </TabButton>
+      </div>
+
+      {tab === 'google_drive' ? (
+        <GoogleDriveConnectorsPanel />
+      ) : (
+    <div className="flex min-h-0 flex-1 w-full">
       {/* Provider list */}
       <div className="flex w-60 flex-shrink-0 flex-col border-r border-border">
         <div className="flex items-center justify-between border-b border-border px-3 py-2">
@@ -223,6 +240,31 @@ export default function ConnectorsView() {
       />
       </ResizableChatLayout>
     </div>
+      )}
+    </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+        active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted',
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
